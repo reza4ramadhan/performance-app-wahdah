@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { JudulHalaman, Kartu, Lencana, Memuat, labelPeriode, td, th } from "../components/ui";
+import { JudulHalaman, Kartu, Lencana, Memuat, labelPeriode, td, th, kepalaTabel, badanTabel } from "../components/ui";
 import { getDb } from "@/lib/data/store";
 import { rupiah } from "@/lib/format";
 
@@ -34,7 +34,7 @@ async function Isi() {
               ["Ambang IKP minimum", p.ambangIkpMinimum === null ? "Belum diputuskan" : String(p.ambangIkpMinimum)],
               ["Pita predikat", p.predikat.map((b) => `${b.label} ≥ ${b.min}`).join("; ")],
             ].map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 border-b border-zinc-100 py-1 dark:border-zinc-800">
+              <div key={k} className="flex justify-between gap-4 border-b border-wi-50 py-2 dark:border-wi-900">
                 <dt className="text-zinc-600 dark:text-zinc-400">{k}</dt>
                 <dd className="text-right font-medium">{v}</dd>
               </div>
@@ -44,9 +44,9 @@ async function Isi() {
       ))}
 
       <Kartu judul="Katalog indikator K1">
-        <div className="-mx-4 overflow-x-auto">
+        <div className="-mx-5 overflow-x-auto">
           <table className="w-full min-w-175 text-sm">
-            <thead className="border-b border-zinc-200 dark:border-zinc-800">
+            <thead className={kepalaTabel}>
               <tr>
                 <th className={th}>Kode</th>
                 <th className={th}>Peran</th>
@@ -56,7 +56,7 @@ async function Isi() {
                 <th className={th}>Fase</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className={badanTabel}>
               {db.indikator.map((i) => (
                 <tr key={i.kode} className={i.fase === 2 ? "text-zinc-400" : ""}>
                   <td className={`${td} font-mono text-xs`}>{i.kode}</td>

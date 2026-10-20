@@ -25,11 +25,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const terisi = new Set(db.realisasi.filter((r) => r.periodeId === periode.id).map((r) => r.penugasanId));
 
   return (
-    <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
       <Kartu judul={labelPeriode(periode.id)}>
         <PilihPenugasan db={db} periodeId={periode.id} terpilih={t?.id} basis="/input/k1" sudah={(id) => terisi.has(id)} />
       </Kartu>
-      {t ? <FormRealisasi penugasanId={t.id} /> : <Kartu>Pilih penugasan di sebelah kiri.</Kartu>}
+      {t ? <FormRealisasi penugasanId={t.id} /> : <Kartu><p className="py-10 text-center text-sm text-zinc-500">Pilih penugasan di daftar untuk mulai mengisi.</p></Kartu>}
     </div>
   );
 }
@@ -49,7 +49,7 @@ async function FormRealisasi({ penugasanId }: { penugasanId: string }) {
     const r = cari(ind.kode, sub);
     const s = `|${ind.kode}|${sub ?? ""}`;
     return (
-      <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 py-3 sm:grid-cols-[1fr_90px_90px_1fr] dark:border-zinc-800">
+      <div className="grid grid-cols-2 gap-2 border-t border-wi-50 py-3 sm:grid-cols-[1fr_90px_90px_1fr] dark:border-wi-900">
         <div className="col-span-2 text-sm sm:col-span-1">
           <span className="font-mono text-xs">
             {ind.kode}
@@ -96,7 +96,7 @@ async function FormRealisasi({ penugasanId }: { penugasanId: string }) {
         <input type="hidden" name="penugasanId" value={t.id} />
         {katalog.map((ind) =>
           ind.turunan ? (
-            <div key={ind.kode} className="border-t border-zinc-100 py-3 text-sm text-zinc-500 dark:border-zinc-800">
+            <div key={ind.kode} className="border-t border-wi-50 py-3 text-sm text-zinc-500 dark:border-wi-900">
               <span className="font-mono text-xs">{ind.kode}</span> {ind.nama} — dihitung otomatis dari K1 staf.
             </div>
           ) : ind.subTugas ? (

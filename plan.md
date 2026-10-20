@@ -21,6 +21,7 @@ Iterasi ini membangun **jalur utama satu periode bulanan**: data masuk → mesin
 | Dasbor & rincian | Rekap per pegawai, sebaran predikat, total tunjangan; rincian sampai ke indikator | M9.1, M12.1 (sebagian) | ✅ `/`, `/pegawai/[id]` |
 | Status periode | 8 status berurutan; pengesahan hanya bila semua pegawai lengkap; hasil dibekukan; data terkunci | M11.1 | ✅ |
 | Jejak audit | Setiap perubahan realisasi, K3, absensi, dan status dicatat (nilai lama/baru) | NFR audit | ✅ Tercatat, belum ada halaman tampilan |
+| Tampilan | Sidebar + bilah atas, logo Wahdah, warna dari logo (toska `wi`, mint `menara`, kuning `emas`, merah `api`, biru tua `tinta` di `app/globals.css`); dasbor bergaya kartu: angka utama, kelengkapan data, sebaran predikat, tahapan periode, papan pegawai; mode gelap; nyaman di ponsel | NFR akses | ✅ |
 | Uji | `npm test` — 13 uji mesin hitung + 4 uji server action | — | ✅ 17/17 lulus |
 
 ### Cara menjalankan

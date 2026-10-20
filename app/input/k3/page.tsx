@@ -28,11 +28,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const dinilai = new Set(db.skorK3.filter((s) => s.periodeId === periode.id).map((s) => s.penugasanId));
 
   return (
-    <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
       <Kartu judul={labelPeriode(periode.id)}>
         <PilihPenugasan db={db} periodeId={periode.id} terpilih={t?.id} basis="/input/k3" sudah={(id) => dinilai.has(id)} />
       </Kartu>
-      {t ? <FormK3 penugasanId={t.id} /> : <Kartu>Pilih penugasan di sebelah kiri.</Kartu>}
+      {t ? <FormK3 penugasanId={t.id} /> : <Kartu><p className="py-10 text-center text-sm text-zinc-500">Pilih penugasan di daftar untuk mulai mengisi.</p></Kartu>}
     </div>
   );
 }
@@ -58,7 +58,7 @@ async function FormK3({ penugasanId }: { penugasanId: string }) {
         <input type="hidden" name="periodeId" value={periode.id} />
         <input type="hidden" name="penugasanId" value={t.id} />
         {NILAI_K3.map((n) => (
-          <div key={n} className="grid gap-2 border-t border-zinc-100 py-3 sm:grid-cols-[160px_1fr] dark:border-zinc-800">
+          <div key={n} className="grid gap-2 border-t border-wi-50 py-3 sm:grid-cols-[200px_1fr] dark:border-wi-900">
             <fieldset>
               <legend className="mb-1 text-sm font-medium">{LABEL_NILAI_K3[n]}</legend>
               <div className="flex gap-1">
@@ -72,7 +72,7 @@ async function FormK3({ penugasanId }: { penugasanId: string }) {
                       className="peer sr-only"
                       disabled={terkunci}
                     />
-                    <span className="flex h-8 w-8 items-center justify-center rounded border border-zinc-300 text-sm peer-checked:border-emerald-700 peer-checked:bg-emerald-700 peer-checked:text-white peer-focus-visible:ring-2 dark:border-zinc-700">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-sm font-semibold peer-checked:border-wi-600 peer-checked:bg-wi-600 peer-checked:text-white peer-focus-visible:ring-2 dark:border-zinc-700">
                       {v}
                     </span>
                   </label>

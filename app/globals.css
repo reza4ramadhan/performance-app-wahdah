@@ -1,6 +1,54 @@
 @import "tailwindcss";
 
+/* Warna diturunkan dari logo Wahdah Islamiyah:
+   wi    = biru-toska globe (warna utama)
+   menara = hijau mint menara
+   emas  = kuning kubah & pita nama
+   api   = merah-jingga kaligrafi
+   tinta = biru tua garis tepi globe */
+@theme {
+  --color-wi-50: #eefafa;
+  --color-wi-100: #d4f1f2;
+  --color-wi-200: #abe2e6;
+  --color-wi-300: #74ccd3;
+  --color-wi-400: #36b0bc;
+  --color-wi-500: #1595a2;
+  --color-wi-600: #0d7984;
+  --color-wi-700: #0f616b;
+  --color-wi-800: #134f57;
+  --color-wi-900: #14424a;
+  --color-wi-950: #062a30;
+
+  --color-menara-100: #dcf3ea;
+  --color-menara-500: #4fb894;
+  --color-menara-700: #2b7c62;
+
+  --color-emas-100: #fff6c2;
+  --color-emas-300: #ffe24d;
+  --color-emas-400: #ffd60a;
+  --color-emas-700: #8a6a00;
+
+  --color-api-100: #fde3da;
+  --color-api-500: #e2401c;
+  --color-api-700: #a62a12;
+
+  --color-tinta: #1f1b5c;
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --latar: #f3f7f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --latar: #0b1516;
+  }
+}
+
+body {
+  background: var(--latar);
 }

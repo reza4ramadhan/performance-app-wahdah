@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { imporAbsensi } from "../actions";
 import { AksiForm } from "../components/aksi-form";
-import { JudulHalaman, Kartu, Memuat, input, labelPeriode, td, tdAngka, th } from "../components/ui";
+import { JudulHalaman, Kartu, Memuat, input, labelPeriode, td, tdAngka, th, kepalaTabel, badanTabel } from "../components/ui";
 import { getDb, periodeAktif } from "@/lib/data/store";
 import { hitungK2 } from "@/lib/kpi/engine";
 import { angka, persen } from "@/lib/format";
@@ -47,9 +47,9 @@ async function Isi() {
       </Kartu>
 
       <Kartu judul="Rekap terunggah">
-        <div className="-mx-4 overflow-x-auto">
+        <div className="-mx-5 overflow-x-auto">
           <table className="w-full min-w-150 text-sm">
-            <thead className="border-b border-zinc-200 dark:border-zinc-800">
+            <thead className={kepalaTabel}>
               <tr>
                 <th className={th}>Pegawai</th>
                 <th className={`${th} text-right`}>Wajib</th>
@@ -60,7 +60,7 @@ async function Isi() {
                 <th className={`${th} text-right`}>K2</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className={badanTabel}>
               {db.pegawai.map((pg) => {
                 const a = absensi.find((x) => x.pegawaiId === pg.id);
                 const k2 = a ? hitungK2(a, parameter) : null;
@@ -75,7 +75,7 @@ async function Isi() {
                         <td className={tdAngka}>{a.hadir}</td>
                         <td className={tdAngka}>{a.tepatWaktu}</td>
                         <td className={tdAngka}>{a.izinSakitSah}</td>
-                        <td className={`${tdAngka} ${k2 && k2.hadirPersen < parameter.ambangKehadiran ? "text-red-700 dark:text-red-400" : ""}`}>
+                        <td className={`${tdAngka} ${k2 && k2.hadirPersen < parameter.ambangKehadiran ? "text-api-700 dark:text-api-100" : ""}`}>
                           {persen(k2?.hadirPersen)}
                         </td>
                         <td className={`${tdAngka} font-medium`}>{angka(k2?.k2)}</td>

@@ -26,18 +26,18 @@ export function AksiForm({ action, tombol, children, className, konfirmasi }: Pr
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          className="rounded-full bg-wi-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-wi-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wi-500 disabled:opacity-50"
         >
           {pending ? "Memproses…" : tombol}
         </button>
         {state && (
-          <p role="status" className={`text-sm ${state.ok ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+          <p role="status" className={`text-sm font-medium ${state.ok ? "text-menara-700 dark:text-menara-100" : "text-api-700 dark:text-api-100"}`}>
             {state.pesan}
           </p>
         )}
       </div>
       {state?.galat && state.galat.length > 0 && (
-        <ul className="mt-2 list-disc pl-5 text-sm text-red-700 dark:text-red-400">
+        <ul className="mt-3 list-disc rounded-lg bg-api-100/60 py-2 pl-8 pr-3 text-sm text-api-700 dark:bg-api-700/20 dark:text-api-100">
           {state.galat.map((g) => (
             <li key={g}>{g}</li>
           ))}

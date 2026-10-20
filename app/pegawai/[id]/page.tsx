@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { JudulHalaman, Kartu, Lencana, LencanaPredikat, Memuat, labelPeriode, td, tdAngka, th } from "../../components/ui";
+import { Ikon } from "../../components/ikon";
+import { Kartu, Lencana, Memuat, labelPeriode, td, tdAngka, th, kepalaTabel, badanTabel, Avatar } from "../../components/ui";
 import { getDb, hasilPeriode, periodeAktif } from "@/lib/data/store";
 import { angka, persen, rupiah } from "@/lib/format";
 import type { HasilIndikator } from "@/lib/kpi/engine";
@@ -47,62 +48,84 @@ async function Rincian({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <p className="mb-2 text-sm">
-        <Link href="/" className="text-emerald-800 hover:underline dark:text-emerald-400">
-          ← Dasbor
-        </Link>
-      </p>
-      <JudulHalaman
-        judul={h.nama}
-        sub={`${pg.status} · ${pg.tempatTugas}${pg.pimpinan ? ` · ${pg.pimpinan}` : ""} · ${labelPeriode(periode.id)}`}
-      />
+      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-wi-700 hover:underline dark:text-wi-300">
+        <Ikon nama="panah" className="h-4 w-4 rotate-180" /> Dasbor
+      </Link>
 
-      <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-        {[
-          ["K1", h.k1, `× ${parameter.bobot.k1 * 100}%`],
-          ["K2", h.k2, `× ${parameter.bobot.k2 * 100}%`],
-          ["K3", h.k3, `× ${parameter.bobot.k3 * 100}%`],
-          ["K4", h.hanyaK2 ? null : h.k4, `maks ${parameter.k4Maks} poin`],
-          ["IKP Akhir", h.ikpAkhir, h.ikp !== null ? `IKP ${angka(h.ikp)}` : ""],
-        ].map(([label, nilai, ket]) => (
-          <Kartu key={label as string} judul={label as string}>
-            <p className="text-2xl font-semibold tabular-nums">{angka(nilai as number | null)}</p>
+      <section className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-wi-600 via-wi-700 to-wi-900 p-6 text-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <span className="rounded-full ring-4 ring-white/20">
+              <Avatar nama={h.nama} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold">{h.nama}</h1>
+              <p className="text-sm text-wi-100">
+                {pg.status} · {pg.tempatTugas}
+                {pg.pimpinan ? ` · ${pg.pimpinan}` : ""} · {labelPeriode(periode.id)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-wider text-wi-100">IKP Akhir</p>
+            <p className="text-4xl font-bold tabular-nums">{angka(h.ikpAkhir)}</p>
+            {h.ikp !== null && <p className="text-xs text-wi-100">IKP {angka(h.ikp)} + K4 {angka(h.k4)}</p>}
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/15 pt-4 text-sm">
+          {h.hanyaK2 ? (
+            <span>Rumus IKP dan tunjangan pimpinan belum diputuskan; hanya K2 yang ditampilkan.</span>
+          ) : h.ikpAkhir === null ? (
+            <span className="inline-flex items-center gap-2">
+              <Ikon nama="peringatan" className="h-4 w-4 text-emas-300" /> IKP belum bisa dihitung: {h.kekurangan.join("; ")}
+            </span>
+          ) : (
+            <>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-wi-800">{h.predikat}</span>
+              <span>
+                Tunjangan <strong className="tabular-nums">{rupiah(h.tunjangan)}</strong>
+              </span>
+              {h.syarat.lolos ? (
+                <span className="inline-flex items-center gap-1 text-wi-100">
+                  <Ikon nama="centang" className="h-4 w-4" /> Memenuhi syarat
+                </span>
+              ) : (
+                <span className="rounded-full bg-api-500 px-3 py-1 text-xs font-semibold">Gugur: {h.syarat.alasan.join("; ")}</span>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {(
+          [
+            ["K1 · Capaian kerja", h.k1, `bobot ${parameter.bobot.k1 * 100}%`],
+            ["K2 · Kehadiran", h.k2, `bobot ${parameter.bobot.k2 * 100}%`],
+            ["K3 · Perilaku", h.k3, `bobot ${parameter.bobot.k3 * 100}%`],
+            ["K4 · Inovasi Plus", h.hanyaK2 ? null : h.k4, `maks ${parameter.k4Maks} poin`],
+          ] as const
+        ).map(([label, nilai, ket]) => (
+          <Kartu key={label}>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-tinta dark:text-white">{angka(nilai)}</p>
             <p className="text-xs text-zinc-500">{ket}</p>
           </Kartu>
         ))}
       </div>
 
-      <Kartu judul="Hasil dan tunjangan" className="mb-4">
-        {h.hanyaK2 ? (
-          <p className="text-sm">Rumus IKP dan tunjangan pimpinan belum diputuskan; hanya K2 yang ditampilkan.</p>
-        ) : h.ikpAkhir === null ? (
-          <div className="text-sm">
-            <p className="mb-1">IKP belum bisa dihitung karena:</p>
-            <ul className="list-disc pl-5">
-              {h.kekurangan.map((k) => (
-                <li key={k}>{k}</li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <LencanaPredikat predikat={h.predikat} />
-            <span>
-              Tunjangan: <strong className="tabular-nums">{rupiah(h.tunjangan)}</strong>
-            </span>
-            {h.syarat.lolos ? <Lencana nada="hijau">Memenuhi syarat</Lencana> : <Lencana nada="merah">Gugur: {h.syarat.alasan.join("; ")}</Lencana>}
-          </div>
-        )}
-        {h.peringatan.length > 0 && (
-          <ul className="mt-3 list-disc pl-5 text-sm text-amber-700 dark:text-amber-400">
+      {h.peringatan.length > 0 && (
+        <div className="mb-6 flex gap-3 rounded-2xl border border-emas-300/60 bg-emas-100/60 p-4 text-sm text-emas-700 dark:border-emas-700/40 dark:bg-emas-700/10 dark:text-emas-100">
+          <Ikon nama="peringatan" className="mt-0.5 h-5 w-5 shrink-0" />
+          <ul className="space-y-1">
             {[...new Set(h.peringatan)].map((p) => (
               <li key={p}>{p}</li>
             ))}
           </ul>
-        )}
-      </Kartu>
+        </div>
+      )}
 
-      <Kartu judul="K2 — Kehadiran dan ketepatan waktu" className="mb-4">
+      <Kartu judul="K2 — Kehadiran dan ketepatan waktu" className="mb-6">
         <p className="text-sm">
           Kehadiran {persen(h.hadirPersen)} × {parameter.bobotK2.hadir * 100}% + ketepatan waktu {persen(h.tepatPersen)} ×{" "}
           {parameter.bobotK2.tepat * 100}% = <strong>{angka(h.k2)}</strong>
@@ -115,11 +138,11 @@ async function Rincian({ params }: { params: Promise<{ id: string }> }) {
           <Kartu
             key={p.penugasanId}
             judul={`${p.peran} · ${unit.get(p.unitId)}${t?.alokasi ? ` · alokasi ${t.alokasi}%` : ""}`}
-            className="mb-4"
+            className="mb-6"
           >
-            <div className="-mx-4 overflow-x-auto">
+            <div className="-mx-5 overflow-x-auto">
               <table className="w-full min-w-140 text-sm">
-                <thead className="border-b border-zinc-200 dark:border-zinc-800">
+                <thead className={kepalaTabel}>
                   <tr>
                     <th className={th}>Indikator K1</th>
                     <th className={`${th} text-right`}>Realisasi</th>
@@ -127,7 +150,7 @@ async function Rincian({ params }: { params: Promise<{ id: string }> }) {
                     <th className={`${th} text-right`}>Skor</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                <tbody className={badanTabel}>
                   {p.indikator.map((i) => [
                     <BarisIndikator key={i.kode} i={i} />,
                     ...(i.sub ?? []).map((s) => <BarisIndikator key={s.kode} i={s} sub />),
@@ -141,7 +164,7 @@ async function Rincian({ params }: { params: Promise<{ id: string }> }) {
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 border-t border-zinc-100 pt-3 text-sm dark:border-zinc-800">
+            <div className="mt-4 border-t border-wi-50 pt-3 text-sm dark:border-wi-900">
               <p className="mb-2 font-medium">
                 K3 oleh {t?.penilaiId ? nama.get(t.penilaiId) : "—"}: {angka(p.k3)}
               </p>

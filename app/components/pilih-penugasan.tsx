@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Ikon } from "./ikon";
+import { Avatar } from "./ui";
 import type { Db } from "@/lib/data/schema";
 import { penugasanBerlaku } from "@/lib/data/store";
 
@@ -19,20 +21,32 @@ export function PilihPenugasan({ db, periodeId, terpilih, basis, sudah }: {
         if (!di.length) return null;
         return (
           <div key={u.id}>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">{u.nama}</p>
+            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{u.nama}</p>
             <ul className="space-y-0.5">
               {di.map((t) => (
                 <li key={t.id}>
                   <Link
                     href={`${basis}?pn=${t.id}`}
-                    className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${
-                      t.id === terpilih ? "bg-emerald-700 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    aria-current={t.id === terpilih ? "true" : undefined}
+                    className={`flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition ${
+                      t.id === terpilih ? "bg-wi-50 ring-1 ring-wi-200 dark:bg-wi-900 dark:ring-wi-700" : "hover:bg-wi-50/70 dark:hover:bg-wi-900/50"
                     }`}
                   >
-                    <span>
-                      {pegawai.get(t.pegawaiId)} <span className="opacity-70">({t.peran})</span>
+                    <Avatar nama={pegawai.get(t.pegawaiId) ?? "?"} kecil />
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block truncate font-medium">{pegawai.get(t.pegawaiId)}</span>
+                      <span className="block text-xs text-zinc-500">{t.peran}</span>
                     </span>
-                    {sudah(t.id) && <span aria-label="sudah diisi">✓</span>}
+                    {sudah(t.id) ? (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-menara-500 text-white" title="Sudah diisi">
+                        <Ikon nama="centang" className="h-3 w-3" />
+                        <span className="sr-only">sudah diisi</span>
+                      </span>
+                    ) : (
+                      <span className="h-5 w-5 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700" title="Belum diisi">
+                        <span className="sr-only">belum diisi</span>
+                      </span>
+                    )}
                   </Link>
                 </li>
               ))}
