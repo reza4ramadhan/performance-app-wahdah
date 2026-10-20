@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Palet dari logo Wahdah Islamiyah:
+  brand = toska globe (utama) · mint = hijau menara · gold = kubah & pita nama
+  flame = merah-jingga kaligrafi · ink = biru tua garis tepi globe
+*/
+@theme {
+  --color-brand-50: #eefafa;
+  --color-brand-100: #d3f0f2;
+  --color-brand-200: #a8e0e5;
+  --color-brand-300: #6fcad2;
+  --color-brand-400: #34afbb;
+  --color-brand-500: #1494a1;
+  --color-brand-600: #0c7883;
+  --color-brand-700: #0e606a;
+  --color-brand-800: #124e56;
+  --color-brand-900: #134149;
+
+  --color-mint-100: #daf3e9;
+  --color-mint-300: #8fdcbd;
+  --color-mint-500: #46b48d;
+  --color-mint-700: #26775b;
+
+  --color-gold-100: #fff5bf;
+  --color-gold-300: #ffe14a;
+  --color-gold-400: #ffd60a;
+  --color-gold-700: #866600;
+
+  --color-flame-100: #fde2d8;
+  --color-flame-300: #f6a184;
+  --color-flame-500: #e2401c;
+  --color-flame-700: #a42a12;
 }
 
+/* Permukaan & teks berganti otomatis untuk mode gelap. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+:root {
+  --canvas: #f3f8f8;
+  --surface: #ffffff;
+  --surface-2: #f2f8f8;
+  --line: #deecec;
+  --ink: #1f1b5c;
+  --body: #1d2b36;
+  --muted: #637382;
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #091315;
+    --surface: #0f1d20;
+    --surface-2: #142629;
+    --line: #1f383c;
+    --ink: #f1f8f8;
+    --body: #dce7ea;
+    --muted: #93a6ad;
+    color-scheme: dark;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--body);
 }
