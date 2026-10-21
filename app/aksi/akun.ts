@@ -4,7 +4,7 @@ import { eq, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { gagal, type HasilAksi } from "@/lib/aksi";
+import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { getAuth } from "@/lib/auth";
 import { bersihkan, catatGagal, terkunci } from "@/lib/batas-login";
 import { getDb, schema as s } from "@/lib/db";
@@ -66,7 +66,8 @@ export async function gantiPassword(_: HasilAksi | null, fd: FormData): Promise<
   }
   const db = await getDb();
   await db.update(s.user).set({ harusGantiPassword: false }).where(eq(s.user.id, sesi.userId));
-  redirect("/?password=diganti");
+  // Klien menampilkan notifikasi lalu memanggil `keluar` agar pengguna masuk ulang dengan password baru.
+  return berhasil("Password berhasil diganti.");
 }
 
 export async function keluar() {
