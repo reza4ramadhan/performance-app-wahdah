@@ -9,6 +9,7 @@ import { cache } from "react";
 import type { Aktor } from "./akses";
 import { getAuth } from "./auth";
 import { getDb, schema as s } from "./db";
+import { petaBidang } from "./data/unit";
 import type { PeranKerja, PeranSistem } from "./ikp/tipe";
 import { hariIni, periodeDari, type Kantor } from "./waktu";
 
@@ -17,8 +18,8 @@ export type Sesi = Aktor & {
   nama: string;
   kantor: Kantor;
   harusGantiPassword: boolean;
-  /** Penugasan yang berlaku bulan ini. */
-  penugasan: { id: string; peranKerja: PeranKerja; unitId: string; unitNama: string; koordinatorId: string | null }[];
+  /** Penugasan yang berlaku bulan ini. `bidangId`: bidang unit itu (SKUO → bidang induknya), null bila di luar bidang. */
+  penugasan: { id: string; peranKerja: PeranKerja; unitId: string; unitNama: string; bidangId: string | null; koordinatorId: string | null }[];
 };
 
 export const bacaSesi = cache(async (): Promise<Sesi | null> => {
@@ -35,7 +36,7 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
 
   const kantor = pg.kantor as Kantor;
   const periode = periodeDari(hariIni(kantor));
-  const [peran, pn] = await Promise.all([
+  const [peran, pn, bidang] = await Promise.all([
     db.select({ peran: s.peranSistem.peran }).from(s.peranSistem).where(eq(s.peranSistem.pegawaiId, pg.id)),
     db
       .select({ id: s.penugasan.id, peranKerja: s.penugasan.peranKerja, unitId: s.penugasan.unitId, unitNama: s.unit.nama, koordinatorId: s.penugasan.koordinatorId })
@@ -48,6 +49,7 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
           or(isNull(s.penugasan.periodeSelesai), gte(s.penugasan.periodeSelesai, periode)),
         ),
       ),
+    petaBidang(db),
   ]);
 
   return {
@@ -57,7 +59,7 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
     kantor,
     harusGantiPassword: Boolean((data.user as { harusGantiPassword?: boolean }).harusGantiPassword),
     peran: new Set<PeranSistem>(["pegawai", ...peran.map((p) => p.peran)]),
-    penugasan: pn,
+    penugasan: pn.map((p) => ({ ...p, bidangId: bidang.get(p.unitId) ?? null })),
   };
 });
 

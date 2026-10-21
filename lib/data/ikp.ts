@@ -9,6 +9,7 @@ import type { ParamIndikator } from "../ikp/k1";
 import { KATALOG } from "../ikp/katalog";
 import { PARAMETER, type StatusPeriode } from "../ikp/tipe";
 import { geserHariKerja, keUtc, rentangPeriode, type Kantor } from "../waktu";
+import { petaBidang } from "./unit";
 
 export async function liburPerKantor(db: Db) {
   const rows = await db.select().from(s.hariLibur);
@@ -43,10 +44,11 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
   const batas = batasVerifikasi(periode, libur);
   const lewatBatas = sekarang > batas || status === "kalibrasi" || status === "sementara" || status === "disahkan";
 
-  const [pegawai, penugasan, param] = await Promise.all([
+  const [pegawai, penugasan, param, bidang] = await Promise.all([
     db.select().from(s.pegawai).where(eq(s.pegawai.aktif, true)),
     db.select().from(s.penugasan).where(kondisiPenugasanBerlaku(periode)),
     paramIndikator(db),
+    petaBidang(db),
   ]);
   const kantorOf = new Map(pegawai.map((p) => [p.id, p.kantor as Kantor]));
   const pnAktif = penugasan.filter((p) => kantorOf.has(p.pegawaiId));
@@ -80,7 +82,7 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
       batasVerifikasi: lewatBatas ? batas : null,
       libur,
       param,
-      penugasan: pnAktif.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peranKerja, unitId: p.unitId, kantor: kantorOf.get(p.pegawaiId)! })),
+      penugasan: pnAktif.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peranKerja, unitId: p.unitId, bidangId: bidang.get(p.unitId) ?? null, kantor: kantorOf.get(p.pegawaiId)! })),
       item: item.map((i) => ({
         id: i.id,
         penugasanId: i.penugasanId,
@@ -93,7 +95,7 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
         diverifikasiPada: i.diverifikasiPada,
         dibuatPada: i.dibuatPada,
       })),
-      kegiatan: kegiatan.map((k) => ({ id: k.id, unitId: k.unitId, tanggal: k.tanggal, perluSpp: k.perluSpp, perluSpb: k.perluSpb, dibuatPada: k.dibuatPada, penanggungJawabId: k.penanggungJawabId })),
+      kegiatan: kegiatan.map((k) => ({ id: k.id, unitId: k.unitId, tanggal: k.tanggal, perluSpp: k.perluSpp, perluSpb: k.perluSpb, dibuatPada: k.dibuatPada, penanggungJawabId: k.penanggungJawabId, skuoId: k.skuoId })),
       dtrTugas: dtrTugas.map((t) => ({ id: t.id, penugasanId: t.penugasanId, frekuensi: t.frekuensi, disetujui: t.disetujuiOleh !== null })),
       dtrCek: dtrCek.map((c) => ({ tugasId: c.dtrTugasId, tanggal: c.tanggal, selesai: c.selesai, disetujui: c.disetujui })),
       ujiPetik: uji.map((u) => ({ unitId: u.unitId, jumlahDiuji: u.jumlahDiuji, jumlahSesuai: u.jumlahSesuai })),

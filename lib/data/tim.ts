@@ -1,10 +1,11 @@
 // Data tim untuk koordinator: anggota, status pengisian hari ini, antrean verifikasi.
 
 import "server-only";
-import { and, eq, gte, inArray, lt } from "drizzle-orm";
-import { getDb, schema as s } from "../db";
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
+import { getDb, schema as s, type Db } from "../db";
 import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "../waktu";
 import { kondisiPenugasanBerlaku } from "./ikp";
+import { unitDalamBidang } from "./unit";
 
 export type AnggotaTim = { pegawaiId: string; nama: string; kantor: Kantor; penugasan: { id: string; peranKerja: string; unitNama: string; unitId: string }[]; isiHariIni: boolean };
 
@@ -43,4 +44,25 @@ export async function anggotaTim(koordinatorId: string, kantor: Kantor): Promise
       isiHariIni: isi.has(id),
     };
   });
+}
+
+export type StafBidang = { id: string; nama: string; /** Nama SKUO tempat ia ditugaskan (kosong bila langsung di bidang). */ skuo: string[] };
+
+/** Staf SBK sebuah bidang pada satu periode: yang ditugaskan di bidang itu atau di SKUO di bawahnya. Satu baris per pegawai. */
+export async function stafBidang(db: Db, bidangId: string, periode: string): Promise<StafBidang[]> {
+  const unitIds = await unitDalamBidang(db, bidangId);
+  if (!unitIds.length) return [];
+  const rows = await db
+    .select({ id: s.pegawai.id, nama: s.pegawai.nama, unitId: s.unit.id, unitNama: s.unit.nama })
+    .from(s.penugasan)
+    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+    .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
+    .where(and(inArray(s.penugasan.unitId, unitIds), eq(s.penugasan.peranKerja, "SBK"), eq(s.pegawai.aktif, true), kondisiPenugasanBerlaku(periode)))
+    .orderBy(asc(s.pegawai.nama), asc(s.unit.nama));
+  const per = new Map<string, StafBidang>();
+  for (const r of rows) {
+    const x = per.get(r.id) ?? per.set(r.id, { id: r.id, nama: r.nama, skuo: [] }).get(r.id)!;
+    if (r.unitId !== bidangId) x.skuo.push(r.unitNama);
+  }
+  return [...per.values()];
 }

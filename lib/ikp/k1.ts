@@ -18,7 +18,15 @@ import {
 
 export type ParamIndikator = { kode: string; standar: number; tenggat: number | null; aktif: boolean; verifikator: Verifikator };
 
-export type PenugasanK1 = { id: string; pegawaiId: string; peran: PeranKerja; unitId: string; kantor: Kantor };
+export type PenugasanK1 = {
+  id: string;
+  pegawaiId: string;
+  peran: PeranKerja;
+  unitId: string;
+  kantor: Kantor;
+  /** Bidang unit ini (SKUO → bidang induknya). Kosong = unitId. */
+  bidangId?: string | null;
+};
 
 export type ItemK1 = {
   id: string;
@@ -41,8 +49,10 @@ export type KegiatanK1 = {
   perluSpp: boolean;
   perluSpb: boolean;
   dibuatPada: Date;
-  /** Staf penanggung jawab; null = berlaku untuk semua SBK di unit. */
+  /** Staf penanggung jawab; null = berlaku untuk semua SBK di bidang. */
   penanggungJawabId: string | null;
+  /** SKUO kegiatan; menentukan penugasan mana yang memikulnya bila staf memegang beberapa SKUO. */
+  skuoId?: string | null;
 };
 
 export type DtrTugasK1 = { id: string; penugasanId: string; frekuensi: "harian" | "mingguan"; disetujui: boolean };
@@ -117,8 +127,25 @@ const kosong = (def: { kode: string; nama: string }, standar: number, alasan: st
 
 // ── Evaluator ─────────────────────────────────────────────────────────────────
 
+const bidangPn = (p: PenugasanK1) => p.bidangId ?? p.unitId;
+
 class Evaluasi {
   constructor(readonly ctx: KonteksK1) {}
+
+  /** SBK di bidang KSBK ini (termasuk yang ditugaskan di SKUO bawahannya), tanpa dirinya. */
+  private stafBidang(ksbk: PenugasanK1) {
+    return this.ctx.penugasan.filter((p) => p.peran === "SBK" && bidangPn(p) === bidangPn(ksbk) && p.pegawaiId !== ksbk.pegawaiId);
+  }
+
+  /**
+   * Satu kegiatan dipikul satu penugasan per staf, agar tidak terhitung ganda saat staf
+   * memegang beberapa SKUO di bidang yang sama: penugasan di SKUO kegiatan, lalu yang
+   * langsung di bidang, lalu yang pertama.
+   */
+  private pemikul(k: KegiatanK1, pegawaiId: string) {
+    const calon = this.ctx.penugasan.filter((p) => p.peran === "SBK" && p.pegawaiId === pegawaiId && bidangPn(p) === k.unitId).sort((a, b) => a.id.localeCompare(b.id));
+    return (calon.find((p) => k.skuoId && p.unitId === k.skuoId) ?? calon.find((p) => p.unitId === k.unitId) ?? calon[0])?.id;
+  }
 
   private sah(i: ItemK1) {
     const b = this.ctx.batasVerifikasi;
@@ -131,12 +158,14 @@ class Evaluasi {
 
   /** Item staf SBK lain di unit yang sama (untuk KSBK). */
   private itemStaf(ksbk: PenugasanK1, kode: string) {
-    const staf = new Set(this.ctx.penugasan.filter((p) => p.peran === "SBK" && p.unitId === ksbk.unitId && p.pegawaiId !== ksbk.pegawaiId).map((p) => p.id));
+    const staf = new Set(this.stafBidang(ksbk).map((p) => p.id));
     return this.ctx.item.filter((i) => staf.has(i.penugasanId) && i.indikatorKode === kode);
   }
 
   private kegiatanUntuk(pn: PenugasanK1, syarat: (k: KegiatanK1) => boolean) {
-    return this.ctx.kegiatan.filter((k) => k.unitId === pn.unitId && (k.penanggungJawabId === null || k.penanggungJawabId === pn.pegawaiId) && syarat(k));
+    return this.ctx.kegiatan.filter(
+      (k) => k.unitId === bidangPn(pn) && (k.penanggungJawabId === null || k.penanggungJawabId === pn.pegawaiId) && this.pemikul(k, pn.pegawaiId) === pn.id && syarat(k),
+    );
   }
 
   private hariIni(kantor: Kantor) {
@@ -197,8 +226,7 @@ class Evaluasi {
       case "KSBK-1":
         return this.ksbk1(pn, def, p);
       case "KSBK-2": {
-        const nilai = this.ctx.penugasan
-          .filter((s) => s.peran === "SBK" && s.unitId === pn.unitId && s.pegawaiId !== pn.pegawaiId)
+        const nilai = this.stafBidang(pn)
           .map((s) => k1Staf.get(s.id) ?? null)
           .filter((k): k is number => k !== null);
         const rata = rataRata(nilai);

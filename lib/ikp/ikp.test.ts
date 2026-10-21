@@ -128,6 +128,21 @@ describe("K1 dari item", () => {
     expect(ind(h, "pS", "SK-2")).toMatchObject({ target: 2, realisasi: 1, skor: 50 });
   });
 
+  it("SBK di SKUO ikut bidang induknya; staf dengan dua SKUO memikul tiap kegiatan sekali", () => {
+    // C memegang dua SKUO di bawah b1 (s1, s2). g1 (SKUO s2) dan g2 (tanpa SKUO) untuk semua staf.
+    const ctx = konteks();
+    ctx.penugasan.push(
+      { id: "pC1", pegawaiId: "C", peran: "SBK", unitId: "s1", bidangId: "b1", kantor: "makassar" },
+      { id: "pC2", pegawaiId: "C", peran: "SBK", unitId: "s2", bidangId: "b1", kantor: "makassar" },
+    );
+    ctx.kegiatan = ctx.kegiatan.map((k) => ({ ...k, penanggungJawabId: null, skuoId: k.id === "g1" ? "s2" : null }));
+    ctx.item.push(item({ penugasanId: "pC2", indikatorKode: "SBK-2a", kegiatanId: "g1", ...setuju("2026-10-19", "2026-10-19") }));
+    const h2 = hitungK1(ctx);
+    expect(ind(h2, "pC2", "SBK-2a")).toMatchObject({ target: 1, realisasi: 1 }); // g1 → SKUO s2
+    expect(ind(h2, "pC1", "SBK-2a")).toMatchObject({ target: 1, realisasi: 0 }); // g2 → penugasan pertama
+    expect(ind(h2, "pK", "KSBK-2").target).toBe(4); // A, B, C1, C2
+  });
+
   it("item disetujui setelah batas verifikasi tidak dihitung; kewajiban bulanan jadi jatuh tempo", () => {
     const ctx = { ...konteks(), batasVerifikasi: w("2026-10-20", "23:00") };
     const h2 = hitungK1(ctx);

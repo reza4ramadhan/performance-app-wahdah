@@ -45,7 +45,7 @@ const P = periodeDari(today);
 const id: Record<string, string> = {};
 const pn: Record<string, string> = {};
 
-function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: string; peranKerja: "SBK" | "KSBK"; unitId: string; koordinatorId: string | null }[] = []) {
+function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: string; peranKerja: "SBK" | "KSBK"; unitId: string; bidangId?: string; koordinatorId: string | null }[] = []) {
   sesiAktif = {
     userId: `u-${pegawai}`,
     pegawaiId: id[pegawai],
@@ -53,7 +53,7 @@ function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: st
     kantor: "makassar",
     harusGantiPassword: false,
     peran: new Set<PeranSistem>(["pegawai", ...peran]),
-    penugasan: penugasan.map((p) => ({ ...p, unitNama: "Bidang Uji" })),
+    penugasan: penugasan.map((p) => ({ ...p, unitNama: "Bidang Uji", bidangId: p.bidangId ?? p.unitId })),
   };
 }
 
@@ -155,6 +155,27 @@ describe("penilaian K3", () => {
     expect((await tim.simpanK3(null, fd({ penugasanId: pn.koord, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
     sebagai("koord2", ["koordinator"]);
     expect((await tim.simpanK3(null, fd({ penugasanId: pn.staf2, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
+  });
+});
+
+describe("kegiatan bulanan & SBK di SKUO", () => {
+  it("staf yang ditugaskan di SKUO bawahan bidang bisa jadi PJ dan menautkan item ke kegiatan bidang", async () => {
+    const db = await getDb();
+    const [skuo] = await db.insert(s.unit).values({ jenis: "skuo", nama: "Departemen Uji", indukId: id.unit }).returning();
+    const [pg] = await db.insert(s.pegawai).values({ nama: "stafSkuo", nip: "9" }).returning();
+    const [x] = await db.insert(s.penugasan).values({ pegawaiId: pg.id, peranKerja: "SBK", unitId: skuo.id, koordinatorId: id.koord, periodeMulai: P }).returning();
+
+    sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
+    const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSpp: "on" };
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id }))).toMatchObject({ ok: true });
+    const [keg] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
+    expect(keg.penanggungJawabId).toBe(pg.id);
+
+    sesiAktif = { ...sesiAktif!, pegawaiId: pg.id, peran: new Set(["pegawai"]), penugasan: [{ id: x.id, peranKerja: "SBK", unitId: skuo.id, unitNama: "Departemen Uji", bidangId: id.unit, koordinatorId: id.koord }] };
+    expect((await item.ambilPilihanCatat(x.id)).kegiatan.map((k) => k.id)).toContain(keg.id);
+    const r = await item.simpanItem({ idKlien: "klien-skuo-1", penugasanId: x.id, indikatorKode: "SBK-2a", kegiatanId: keg.id, selesai: today, linkBukti: "https://x.id", data: { nomor: "SPP-1" } });
+    expect(r).toMatchObject({ ok: true });
   });
 });
 

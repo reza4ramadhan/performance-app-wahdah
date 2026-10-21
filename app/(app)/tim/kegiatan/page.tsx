@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { hapusKegiatan, salinKegiatanBulanLalu, simpanKegiatan } from "@/app/aksi/tim";
 import { getDb, schema as s } from "@/lib/db";
-import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
+import { stafBidang } from "@/lib/data/tim";
 import { kelompokkan } from "@/lib/format";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, labelTanggalPanjang, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -55,11 +55,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .where(and(eq(s.kegiatan.unitId, unit.id), gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir)))
       .orderBy(asc(s.kegiatan.tanggal)),
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["skuo"])).orderBy(s.unit.nama),
-    db
-      .select({ id: s.pegawai.id, nama: s.pegawai.nama })
-      .from(s.penugasan)
-      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
-      .where(and(eq(s.penugasan.unitId, unit.id), eq(s.penugasan.peranKerja, "SBK"), kondisiPenugasanBerlaku(periode))),
+    stafBidang(db, unit.id, periode),
   ]);
   const perTanggal = kelompokkan(kegiatan, (x) => x.k.tanggal);
 
@@ -152,7 +148,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                 <option value="">Semua staf bidang</option>
                 {staf.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.nama}
+                    {p.skuo.length ? `${p.nama} · ${p.skuo.join(", ")}` : p.nama}
                   </option>
                 ))}
               </select>

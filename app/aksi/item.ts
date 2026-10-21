@@ -37,7 +37,7 @@ async function siapkan(sesi: Sesi, x: IsianItem, tanggalLama: string[] = []) {
   let kegiatan: typeof s.kegiatan.$inferSelect | undefined;
   if (x.kegiatanId) {
     [kegiatan] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.id, x.kegiatanId));
-    if (!kegiatan || kegiatan.unitId !== pn.unitId) galat.kegiatanId = "Kegiatan bukan milik bidang penugasan ini.";
+    if (!kegiatan || kegiatan.unitId !== (pn.bidangId ?? pn.unitId)) galat.kegiatanId = "Kegiatan bukan milik bidang penugasan ini.";
   }
 
   // Jendela edit 2 hari kerja: hanya tanggal yang baru diisi/diubah yang diperiksa.
@@ -171,7 +171,7 @@ export async function ambilPilihanCatat(penugasanId: string) {
     db
       .select({ id: s.kegiatan.id, nama: s.kegiatan.nama, tanggal: s.kegiatan.tanggal })
       .from(s.kegiatan)
-      .where(and(eq(s.kegiatan.unitId, pn.unitId), gte(s.kegiatan.tanggal, tambahHari(today, -35)), lte(s.kegiatan.tanggal, tambahHari(today, 60))))
+      .where(and(eq(s.kegiatan.unitId, pn.bidangId ?? pn.unitId), gte(s.kegiatan.tanggal, tambahHari(today, -35)), lte(s.kegiatan.tanggal, tambahHari(today, 60))))
       .orderBy(s.kegiatan.tanggal),
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["skuo", "bidang", "unit_pendukung"])).orderBy(s.unit.nama),
   ]);

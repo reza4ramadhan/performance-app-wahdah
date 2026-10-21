@@ -58,7 +58,7 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
       db
         .select({ id: s.kegiatan.id, nama: s.kegiatan.nama, tanggal: s.kegiatan.tanggal })
         .from(s.kegiatan)
-        .where(and(eq(s.kegiatan.unitId, pn.unitId), gte(s.kegiatan.tanggal, tambahHari(today, -60)), lte(s.kegiatan.tanggal, tambahHari(today, 60)))),
+        .where(and(eq(s.kegiatan.unitId, sesi.penugasan.find((p) => p.id === pn.id)?.bidangId ?? pn.unitId), gte(s.kegiatan.tanggal, tambahHari(today, -60)), lte(s.kegiatan.tanggal, tambahHari(today, 60)))),
       db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["skuo", "bidang", "unit_pendukung"])),
       tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
     ]);
