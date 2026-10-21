@@ -1,0 +1,6 @@
+jenis,nama,induk,waka_nip
+kantor,Kantor Pusat,,
+bidang,Bidang 1 · Dakwah,Kantor Pusat,1002
+skuo,SKUO Lembaga Dakwah,Bidang 1 · Dakwah,
+unit_pendukung,Layanan Umum,Kantor Pusat,1002
+staf_khusus,Staf Khusus Keamanan,Kantor Pusat,1002

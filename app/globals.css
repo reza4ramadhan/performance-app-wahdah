@@ -1,8 +1,13 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Mode gelap mengikuti pengaturan perangkat. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 /*
   Palet dari logo Wahdah Islamiyah:
-  brand = toska globe (utama) · mint = hijau menara · gold = kubah & pita nama
+  brand = toska globe (warna utama) · mint = hijau menara · gold = kubah & pita nama
   flame = merah-jingga kaligrafi · ink = biru tua garis tepi globe
 */
 @theme {
@@ -16,61 +21,131 @@
   --color-brand-700: #0e606a;
   --color-brand-800: #124e56;
   --color-brand-900: #134149;
+  --color-brand-950: #08292f;
 
-  --color-mint-100: #daf3e9;
-  --color-mint-300: #8fdcbd;
-  --color-mint-500: #46b48d;
-  --color-mint-700: #26775b;
+  --color-mint-50: #effaf5;
+  --color-mint-100: #d8f2e6;
+  --color-mint-500: #3fae86;
+  --color-mint-600: #2b8f6c;
+  --color-mint-700: #237357;
 
-  --color-gold-100: #fff5bf;
-  --color-gold-300: #ffe14a;
+  --color-gold-50: #fffbea;
+  --color-gold-100: #fff3c2;
   --color-gold-400: #ffd60a;
-  --color-gold-700: #866600;
+  --color-gold-500: #ebb800;
+  --color-gold-700: #8a6500;
 
-  --color-flame-100: #fde2d8;
-  --color-flame-300: #f6a184;
+  --color-flame-50: #fef3ef;
+  --color-flame-100: #fde1d7;
   --color-flame-500: #e2401c;
-  --color-flame-700: #a42a12;
+  --color-flame-600: #c43515;
+  --color-flame-700: #a12a11;
+
+  --color-ink: #1f1b5c;
 }
 
-/* Permukaan & teks berganti otomatis untuk mode gelap. */
 @theme inline {
-  --color-canvas: var(--canvas);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-line: var(--line);
-  --color-ink: var(--ink);
-  --color-body: var(--body);
+  --font-sans: var(--font-jakarta);
+  --font-heading: var(--font-jakarta);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-heading: var(--heading);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
 }
 
 :root {
-  --canvas: #f3f8f8;
-  --surface: #ffffff;
-  --surface-2: #f2f8f8;
-  --line: #deecec;
-  --ink: #1f1b5c;
-  --body: #1d2b36;
-  --muted: #637382;
+  --radius: 0.75rem;
+  --background: #f3f7f8;
+  --foreground: #1c2a33;
+  --heading: #1f1b5c;
+  --card: #ffffff;
+  --card-foreground: #1c2a33;
+  --popover: #ffffff;
+  --popover-foreground: #1c2a33;
+  --primary: #0c7883;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf3f4;
+  --secondary-foreground: #124e56;
+  --muted: #eef4f5;
+  --muted-foreground: #5e707c;
+  --accent: #e3f3f4;
+  --accent-foreground: #0e606a;
+  --destructive: #c43515;
+  --border: #e1ebed;
+  --input: #d6e3e6;
+  --ring: #34afbb;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: #091315;
-    --surface: #0f1d20;
-    --surface-2: #142629;
-    --line: #1f383c;
-    --ink: #f1f8f8;
-    --body: #dce7ea;
-    --muted: #93a6ad;
+    --background: #081416;
+    --foreground: #dbe8ea;
+    --heading: #f2f9fa;
+    --card: #0f1f22;
+    --card-foreground: #dbe8ea;
+    --popover: #12252a;
+    --popover-foreground: #dbe8ea;
+    --primary: #34afbb;
+    --primary-foreground: #04191c;
+    --secondary: #16303a;
+    --secondary-foreground: #cfe9ec;
+    --muted: #142a2e;
+    --muted-foreground: #92a8ae;
+    --accent: #143238;
+    --accent-foreground: #a8e0e5;
+    --destructive: #f27455;
+    --border: #1d363b;
+    --input: #26444a;
+    --ring: #34afbb;
     color-scheme: dark;
   }
 }
 
-body {
-  background: var(--canvas);
-  color: var(--body);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 15px;
+  }
+}
+
+/* Ruang aman bawah untuk navigasi ponsel (iPhone dengan home indicator). */
+.pb-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .pb-nav {
+    padding-bottom: 2.5rem;
+  }
 }

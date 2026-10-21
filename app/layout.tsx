@@ -1,37 +1,34 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
-import { BilahAtas } from "./components/bilah-atas";
-import { Sidebar } from "./components/navigasi";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "IKP Pegawai — Kantor Pusat Wahdah Islamiyah", template: "%s · IKP Pegawai WI" },
-  description: "Penilaian kinerja bulanan pegawai Kantor Pusat Wahdah Islamiyah",
-  icons: { icon: "/logo-wahdah.jpg" },
+  title: { default: "IKP Pegawai · Kantor Pusat Wahdah Islamiyah", template: "%s · IKP Pegawai WI" },
+  description: "Log harian, verifikasi, dan IKP bulanan pegawai Kantor Pusat Wahdah Islamiyah",
+  applicationName: "IKP Pegawai WI",
+  appleWebApp: { capable: true, title: "IKP WI", statusBarStyle: "default" },
+  icons: { icon: "/ikon-192.png", apple: "/ikon-apple.png" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f7f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#081416" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="id" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full font-sans">
-        <Suspense>
-          <Sidebar />
-        </Suspense>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <BilahAtas />
-          <main className="w-full max-w-[1440px] flex-1 px-4 py-6 lg:px-8 lg:py-8">{children}</main>
-        </div>
+    <html lang="id" className={`${jakarta.variable} antialiased`}>
+      <body className="min-h-dvh">
+        {children}
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

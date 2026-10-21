@@ -1,0 +1,6 @@
+nip,peran_kerja,unit,koordinator_nip,periode_mulai,bobot_alokasi
+1001,KAKAN,Kantor Pusat,,2026-11,
+1002,WAKA,Kantor Pusat,1001,2026-11,
+2001,KSBK,Bidang 1 · Dakwah,1002,2026-11,
+2002,SBK,Bidang 1 · Dakwah,2001,2026-11,
+1003,SBK,Bidang 1 · Dakwah,2001,2026-11,
