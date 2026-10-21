@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { simpanUnit } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
 import { wajibPeran } from "@/lib/sesi";
+import { JenisInduk } from "./jenis-induk";
 
 export const metadata: Metadata = { title: "Unit" };
 
@@ -36,29 +37,11 @@ async function Isi() {
 
   const formUnit = (u?: (typeof unit)[number]) => (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-heading">Jenis</span>
-          <select name="jenis" className={kelasPilihan} defaultValue={u?.jenis ?? "bidang"}>
-            {Object.entries(JENIS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-heading">Induk</span>
-          <select name="indukId" className={kelasPilihan} defaultValue={u?.indukId ?? ""}>
-            <option value="">—</option>
-            {unit.filter((x) => x.id !== u?.id).map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.nama}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <JenisInduk
+        jenisLabel={JENIS}
+        unit={unit.map((x) => ({ id: x.id, nama: x.nama, jenis: x.jenis }))}
+        awal={u && { id: u.id, jenis: u.jenis, indukId: u.indukId }}
+      />
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-heading">Nama</span>
         <Input name="nama" defaultValue={u?.nama} required />

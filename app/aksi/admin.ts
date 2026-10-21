@@ -122,6 +122,10 @@ export async function simpanUnit(id: string | null, _: HasilAksi | null, fd: For
   const p = skemaUnit.safeParse(Object.fromEntries(fd));
   if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
   const db = await getDb();
+  if (p.data.jenis === "skuo") {
+    const [induk] = p.data.indukId ? await db.select({ jenis: s.unit.jenis }).from(s.unit).where(eq(s.unit.id, p.data.indukId)) : [];
+    if (induk?.jenis !== "bidang") return gagal("Periksa isian.", { indukId: "SKUO harus berada di bawah sebuah bidang." });
+  }
   const nilai = { ...p.data, indukId: p.data.indukId ?? null, wakaId: p.data.wakaId ?? null };
   const [u] = id ? await db.update(s.unit).set(nilai).where(eq(s.unit.id, id)).returning() : await db.insert(s.unit).values(nilai).returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: id ? "ubah" : "buat", entitas: "unit", entitasId: u.id, sesudah: u });
