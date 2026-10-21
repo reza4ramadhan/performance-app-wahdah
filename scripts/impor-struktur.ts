@@ -4,6 +4,7 @@
 // Berkas: unit.csv, pegawai.csv, penugasan.csv — format di docs/templat-impor/.
 // Baris yang gagal dicocokkan dilaporkan; password sementara ditulis ke data/kredensial-awal.csv (jangan dibagikan).
 
+import "./env";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { randomInt } from "node:crypto";

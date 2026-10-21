@@ -2,6 +2,7 @@
 //   npm run buat-admin -- --nama "Nama Lengkap" --nip 1234 --password "rahasia-sementara" [--hp 0812…] [--kantor makassar]
 // Login pertama wajib mengganti password.
 
+import "./env";
 import { parseArgs } from "node:util";
 import { buatAkun, buatAuth } from "../lib/auth-config";
 import { buatDb } from "../lib/db/koneksi";

@@ -2,6 +2,7 @@
 // Neon: pakai DATABASE_URL_UNPOOLED (direkomendasikan untuk migrasi), jatuh ke DATABASE_URL.
 // Tanpa keduanya: PGlite lokal di ./data/pglite.
 
+import "./env";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
 import { buatDb, FOLDER_MIGRASI } from "../lib/db/koneksi";
 import { sinkronKatalog } from "../lib/ikp/sinkron";

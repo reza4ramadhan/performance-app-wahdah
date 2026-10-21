@@ -31,9 +31,13 @@ export async function masuk(_: HasilAksi | null, fd: FormData): Promise<HasilAks
     .where(or(eq(s.pegawai.nip, identitas), eq(s.pegawai.noHp, identitas), eq(s.user.username, identitas)));
 
   try {
-    if (!akun?.username) throw new Error("tidak ada");
+    if (!akun?.username) throw new Error("Akun tidak ditemukan");
     await (await getAuth()).api.signInUsername({ body: { username: akun.username, password, rememberMe: true }, headers: h });
-  } catch {
+  } catch (e) {
+    // Catat penyebab sebenarnya di log server (tanpa password) agar salah konfigurasi
+    // (mis. BETTER_AUTH_URL tidak cocok) tidak tersamar sebagai "password salah".
+    const err = e as { message?: string; status?: string; body?: { code?: string } };
+    console.error(`[masuk] gagal untuk ${identitas}:`, err.body?.code ?? err.status ?? "", err.message ?? e);
     await catatGagal(db, identitas, ip);
     return gagal("NIP/No. HP atau password salah.");
   }

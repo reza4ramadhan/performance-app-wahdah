@@ -1,6 +1,7 @@
 // npm run db:seed — data contoh untuk pengembangan lokal (semua nama fiktif).
 // Menolak berjalan di produksi kecuali --paksa. Semua akun contoh: password "wahdah123".
 
+import "./env";
 import { parseArgs } from "node:util";
 import { buatAkun, buatAuth } from "../lib/auth-config";
 import { buatDb } from "../lib/db/koneksi";
@@ -10,8 +11,9 @@ import type { PeranSistem, SkorK3 } from "../lib/ikp/tipe";
 import { geserHariKerja, hariIni, hariKerjaPeriode, keUtc, periodeBerikut, periodeDari, rentangPeriode, tambahHari } from "../lib/waktu";
 
 const { values: arg } = parseArgs({ options: { paksa: { type: "boolean", default: false } } });
-if (process.env.NODE_ENV === "production" && !arg.paksa) {
-  console.error("Seed contoh tidak dijalankan di produksi. Pakai --paksa bila memang disengaja.");
+if ((process.env.NODE_ENV === "production" || process.env.DATABASE_URL) && !arg.paksa) {
+  console.error("DATABASE_URL mengarah ke basis data sungguhan (Neon). Seed data contoh fiktif dibatalkan.");
+  console.error("Kosongkan DATABASE_URL di .env.local untuk memakai PGlite lokal, atau pakai --paksa bila memang disengaja.");
   process.exit(1);
 }
 

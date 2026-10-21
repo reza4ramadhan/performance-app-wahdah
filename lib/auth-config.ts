@@ -9,10 +9,20 @@ import { username } from "better-auth/plugins";
 import type { Db } from "./db/koneksi";
 import * as schema from "./db/schema";
 
+/** Alamat yang dipercaya: BETTER_AUTH_URL, plus alamat Vercel (variabel sistem yang selalu tersedia di Vercel). */
+function alamat() {
+  const https = (h?: string) => (h ? `https://${h}` : undefined);
+  const utama = process.env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "") || https(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  const lain = [https(process.env.VERCEL_PROJECT_PRODUCTION_URL), https(process.env.VERCEL_URL), https(process.env.VERCEL_BRANCH_URL)];
+  return { baseURL: utama, trustedOrigins: [...new Set([utama, ...lain].filter((x): x is string => !!x))] };
+}
+
 export function buatAuth(db: Db) {
+  const { baseURL, trustedOrigins } = alamat();
   return betterAuth({
     appName: "IKP Pegawai WI",
-    baseURL: process.env.BETTER_AUTH_URL,
+    baseURL,
+    trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, {
       provider: "pg",
