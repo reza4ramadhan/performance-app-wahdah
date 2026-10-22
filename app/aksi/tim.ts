@@ -32,8 +32,8 @@ const skemaKegiatan = z.object({
   tanggal,
   skuoId: z.string().optional(),
   penanggungJawabId: z.string().optional(),
-  perluSpp: z.literal("on").optional(),
-  perluSpb: z.literal("on").optional(),
+  // SPP dan SPB satu paket: satu centang mengisi keduanya.
+  perluSppSpb: z.literal("on").optional(),
 });
 
 export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
@@ -48,7 +48,7 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
   const staf = await stafBidang(db, p.data.unitId, periode);
   if (p.data.penanggungJawabId && !staf.some((x) => x.id === p.data.penanggungJawabId))
     return gagal("Periksa penanggung jawab.", { penanggungJawabId: "Penanggung jawab bukan staf bidang ini pada periode kegiatan." });
-  if (staf.length > 1 && (p.data.perluSpp || p.data.perluSpb) && !p.data.penanggungJawabId)
+  if (staf.length > 1 && p.data.perluSppSpb && !p.data.penanggungJawabId)
     return gagal("Pilih penanggung jawab.", { penanggungJawabId: "Bidang ini punya lebih dari satu staf; tentukan siapa yang menangani SPP/SPB dan pengingat." });
 
   const [k] = await db
@@ -59,8 +59,8 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
       tanggal: p.data.tanggal,
       skuoId: p.data.skuoId || null,
       penanggungJawabId: p.data.penanggungJawabId || null,
-      perluSpp: !!p.data.perluSpp,
-      perluSpb: !!p.data.perluSpb,
+      perluSpp: !!p.data.perluSppSpb,
+      perluSpb: !!p.data.perluSppSpb,
       dibuatOleh: sesi.pegawaiId,
     })
     .returning();

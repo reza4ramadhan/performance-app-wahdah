@@ -79,8 +79,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-heading">{k.nama}</p>
                         <div className="mt-1 flex flex-wrap gap-1.5">
-                          {k.perluSpp && <Lencana nada="brand">SPP</Lencana>}
-                          {k.perluSpb && <Lencana nada="brand">SPB</Lencana>}
+                          {k.perluSpp && k.perluSpb ? (
+                            <Lencana nada="brand">SPP & SPB</Lencana>
+                          ) : (
+                            <>
+                              {k.perluSpp && <Lencana nada="brand">SPP</Lencana>}
+                              {k.perluSpb && <Lencana nada="brand">SPB</Lencana>}
+                            </>
+                          )}
                           <Lencana>{pj ? `PJ: ${pj}` : "Semua staf"}</Lencana>
                           {k.sumber === "salin" && <Lencana nada="gold">Disalin</Lencana>}
                         </div>
@@ -132,16 +138,9 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                 </select>
               </label>
             </div>
-            <div className="flex gap-5">
-              {[
-                ["perluSpp", "Perlu SPP"],
-                ["perluSpb", "Perlu SPB"],
-              ].map(([n, l]) => (
-                <label key={n} className="flex min-h-11 items-center gap-2 text-sm font-medium">
-                  <Checkbox name={n} className="size-5" /> {l}
-                </label>
-              ))}
-            </div>
+            <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+              <Checkbox name="perluSppSpb" className="size-5" /> Perlu SPP & SPB
+            </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Penanggung jawab (staf)</span>
               <select name="penanggungJawabId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""}>

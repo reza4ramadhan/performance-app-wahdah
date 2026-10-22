@@ -166,11 +166,12 @@ describe("kegiatan bulanan & SBK di SKUO", () => {
     const [x] = await db.insert(s.penugasan).values({ pegawaiId: pg.id, peranKerja: "SBK", unitId: skuo.id, koordinatorId: id.koord, periodeMulai: P }).returning();
 
     sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
-    const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSpp: "on" };
+    const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSppSpb: "on" };
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id }))).toMatchObject({ ok: true });
     const [keg] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
     expect(keg.penanggungJawabId).toBe(pg.id);
+    expect(keg).toMatchObject({ perluSpp: true, perluSpb: true });
 
     sesiAktif = { ...sesiAktif!, pegawaiId: pg.id, peran: new Set(["pegawai"]), penugasan: [{ id: x.id, peranKerja: "SBK", unitId: skuo.id, unitNama: "Departemen Uji", bidangId: id.unit, koordinatorId: id.koord }] };
     expect((await item.ambilPilihanCatat(x.id)).kegiatan.map((k) => k.id)).toContain(keg.id);
