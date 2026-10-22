@@ -168,7 +168,9 @@ describe("kegiatan bulanan & SBK di SKUO", () => {
     sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
     const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSppSpb: "on" };
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
-    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id }))).toMatchObject({ ok: true });
+    const [skuoLain] = await db.insert(s.unit).values({ jenis: "skuo", nama: "Departemen Lain", indukId: null }).returning();
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id, skuoId: skuoLain.id }))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String) } });
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id, skuoId: skuo.id }))).toMatchObject({ ok: true });
     const [keg] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
     expect(keg.penanggungJawabId).toBe(pg.id);
     expect(keg).toMatchObject({ perluSpp: true, perluSpb: true });

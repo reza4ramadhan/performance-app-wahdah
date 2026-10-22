@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { hapusKegiatan, salinKegiatanBulanLalu, simpanKegiatan } from "@/app/aksi/tim";
 import { getDb, schema as s } from "@/lib/db";
 import { stafBidang } from "@/lib/data/tim";
+import { unitDalamBidang } from "@/lib/data/unit";
 import { kelompokkan } from "@/lib/format";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, labelTanggalPanjang, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -54,7 +55,9 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .leftJoin(s.pegawai, eq(s.pegawai.id, s.kegiatan.penanggungJawabId))
       .where(and(eq(s.kegiatan.unitId, unit.id), gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir)))
       .orderBy(asc(s.kegiatan.tanggal)),
-    db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["skuo"])).orderBy(s.unit.nama),
+    unitDalamBidang(db, unit.id).then((ids) =>
+      db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(and(eq(s.unit.jenis, "skuo"), inArray(s.unit.id, ids))).orderBy(s.unit.nama),
+    ),
     stafBidang(db, unit.id, periode),
   ]);
   const perTanggal = kelompokkan(kegiatan, (x) => x.k.tanggal);
@@ -136,6 +139,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                     </option>
                   ))}
                 </select>
+                <Galat nama="skuoId" />
               </label>
             </div>
             <label className="flex min-h-11 items-center gap-2 text-sm font-medium">

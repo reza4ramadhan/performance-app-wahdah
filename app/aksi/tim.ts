@@ -8,6 +8,7 @@ import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
 import { stafBidang } from "@/lib/data/tim";
+import { unitDalamBidang } from "@/lib/data/unit";
 import { NILAI_K3, type SkorK3 } from "@/lib/ikp/tipe";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
 import { hariIni, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -45,6 +46,8 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
   if (["sementara", "disahkan"].includes(await periodeStatus(periode))) return gagal("Periode kegiatan itu sudah dikunci.");
 
   const db = await getDb();
+  if (p.data.skuoId && (p.data.skuoId === p.data.unitId || !(await unitDalamBidang(db, p.data.unitId)).includes(p.data.skuoId)))
+    return gagal("Periksa SKUO.", { skuoId: "SKUO ini tidak berada di bawah bidang tersebut." });
   const staf = await stafBidang(db, p.data.unitId, periode);
   if (p.data.penanggungJawabId && !staf.some((x) => x.id === p.data.penanggungJawabId))
     return gagal("Periksa penanggung jawab.", { penanggungJawabId: "Penanggung jawab bukan staf bidang ini pada periode kegiatan." });
