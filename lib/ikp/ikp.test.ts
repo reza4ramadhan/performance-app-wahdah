@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hitungIkp, hitungK2, hitungK3, poinK4Bersih, type MasukanIkp } from "./hitung";
-import { hitungK1, paramDefault, skorIndikator, type ItemK1, type KonteksK1 } from "./k1";
+import { hitungK1, paramDefault, skorIndikator, type ItemK1, type KonteksK1, type TugasK1 } from "./k1";
+import { tanggalJadwal } from "./tugas";
 import { predikatDari, type SkorK3 } from "./tipe";
 import { keUtc } from "../waktu";
 
@@ -9,7 +10,7 @@ const semua = (v: number): SkorK3 => ({ akhlak: v, profesional: v, inovatif: v, 
 
 let n = 0;
 function item(p: Partial<ItemK1> & Pick<ItemK1, "penugasanId" | "indikatorKode">): ItemK1 {
-  return { id: `i${n++}`, kegiatanId: null, masuk: w("2026-10-01"), selesai: null, status: "terbuka", diajukanPada: null, diverifikasiPada: null, dibuatPada: w("2026-10-01"), ...p };
+  return { id: `i${n++}`, kegiatanId: null, masuk: w("2026-10-01"), selesai: null, status: "terbuka", diajukanPada: null, diverifikasiPada: null, dibuatPada: w("2026-10-01"), data: {}, ...p };
 }
 const setuju = (tglMasuk: string, tglSelesai: string, tglVerif = tglSelesai) => ({
   masuk: w(tglMasuk),
@@ -18,6 +19,10 @@ const setuju = (tglMasuk: string, tglSelesai: string, tglVerif = tglSelesai) => 
   diajukanPada: w(tglSelesai),
   diverifikasiPada: w(tglVerif),
 });
+/** Jadwal tugas khusus; `selesai` = waktu ditandai selesai. */
+function tugas(penugasanId: string, tenggat: string, status: TugasK1["status"], selesai?: string): TugasK1 {
+  return { penugasanId, tenggat: w(tenggat, "15:00"), status, selesaiPada: selesai ? w(selesai.slice(0, 10), selesai.slice(11) || "14:00") : null, diverifikasiPada: status === "disetujui" ? w(tenggat, "17:00") : null };
+}
 
 /** Bidang b1: A & B staf SBK, K koordinator (KSBK). S staf khusus. Oktober 2026, "hari ini" 21 Okt. */
 function konteks(): KonteksK1 {
@@ -34,9 +39,11 @@ function konteks(): KonteksK1 {
       { id: "pS", pegawaiId: "S", peran: "SK", unitId: "sk", kantor: "makassar" },
     ],
     kegiatan: [
-      // g1 Jumat 23 Okt, PJ = A. g2 Rabu 28 Okt, tanpa PJ (berlaku untuk semua SBK).
+      // g1 Jumat 23 Okt & g2 Rabu 28 Okt: PJ = A. g0 Rabu 7 Okt & g3 Senin 26 Okt: PJ = B.
       { id: "g1", unitId: "b1", tanggal: "2026-10-23", perluSpp: true, perluSpb: true, dibuatPada: w("2026-10-03"), penanggungJawabId: "A" },
-      { id: "g2", unitId: "b1", tanggal: "2026-10-28", perluSpp: true, perluSpb: false, dibuatPada: w("2026-10-07"), penanggungJawabId: null },
+      { id: "g2", unitId: "b1", tanggal: "2026-10-28", perluSpp: true, perluSpb: false, dibuatPada: w("2026-10-07"), penanggungJawabId: "A" },
+      { id: "g0", unitId: "b1", tanggal: "2026-10-07", perluSpp: false, perluSpb: false, dibuatPada: w("2026-10-03"), penanggungJawabId: "B" },
+      { id: "g3", unitId: "b1", tanggal: "2026-10-26", perluSpp: false, perluSpb: false, dibuatPada: w("2026-10-07"), penanggungJawabId: "B" },
     ],
     item: [
       // SBK-1 A: Jumat→Senin (1 HK ✓), Senin→Rabu (2 HK ✗), hari sama ✓, masih terbuka.
@@ -46,26 +53,33 @@ function konteks(): KonteksK1 {
       item({ penugasanId: "pA", indikatorKode: "SBK-1", masuk: w("2026-10-21") }),
       // SBK-2a A: SPP g1 diinput 19 Okt (batas H-3 HK = 20 Okt) ✓; g2 belum.
       item({ penugasanId: "pA", indikatorKode: "SBK-2a", kegiatanId: "g1", ...setuju("2026-10-19", "2026-10-19") }),
-      // SBK-3 A: g1 dua pengingat ✓; g2 satu ✗.
-      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g1", ...setuju("2026-10-20", "2026-10-20") }),
-      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g1", ...setuju("2026-10-22", "2026-10-22") }),
-      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g2", ...setuju("2026-10-21", "2026-10-21") }),
+      // SBK-3 A: g1 ke-1 16 Okt (≤ H-6 = 17 Okt ✓), ke-2 22 Okt (> H-2 = 21 Okt ✗); g2 ke-1 21 Okt (≤ 22 Okt ✓), ke-2 belum.
+      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g1", data: { ke: "1" }, ...setuju("2026-10-16", "2026-10-16") }),
+      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g1", data: { ke: "2" }, ...setuju("2026-10-22", "2026-10-22") }),
+      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g2", data: { ke: "1" }, ...setuju("2026-10-21", "2026-10-21") }),
+      item({ penugasanId: "pA", indikatorKode: "SBK-3", kegiatanId: "g2", data: { ke: "2" } }),
       // SBK-4 A: dibuat 15 Okt (≤ H-3), siap 22 Okt ✓.
       item({ penugasanId: "pA", indikatorKode: "SBK-4", kegiatanId: "g1", ...setuju("2026-10-15", "2026-10-22"), dibuatPada: w("2026-10-15") }),
-      // SK-2 S: lapor 23 jam ✓, 30 jam ✗.
-      item({ penugasanId: "pS", indikatorKode: "SK-2", masuk: w("2026-10-05", "10:00"), selesai: w("2026-10-06", "09:00"), status: "disetujui", diverifikasiPada: w("2026-10-06") }),
-      item({ penugasanId: "pS", indikatorKode: "SK-2", masuk: w("2026-10-07", "10:00"), selesai: w("2026-10-08", "16:00"), status: "disetujui", diverifikasiPada: w("2026-10-08") }),
+      // SBK-5 B: arsip g0 (batas 3 HK setelah 7 Okt = 12 Okt) ✓ dan ✗; arsip tanpa kegiatan 2 HK ✓.
+      item({ penugasanId: "pB", indikatorKode: "SBK-5", kegiatanId: "g0", ...setuju("2026-10-08", "2026-10-12") }),
+      item({ penugasanId: "pB", indikatorKode: "SBK-5", kegiatanId: "g0", ...setuju("2026-10-08", "2026-10-13") }),
+      item({ penugasanId: "pB", indikatorKode: "SBK-5", ...setuju("2026-10-13", "2026-10-15") }),
     ],
-    dtrTugas: [
-      { id: "d1", penugasanId: "pS", frekuensi: "harian", disetujui: true },
-      { id: "d2", penugasanId: "pS", frekuensi: "mingguan", disetujui: true },
-      { id: "d3", penugasanId: "pS", frekuensi: "harian", disetujui: false },
+    tugas: [
+      // A: tepat & disetujui ✓; terlambat ✗; belum diverifikasi ✗.
+      tugas("pA", "2026-10-10", "disetujui", "2026-10-10T14:00"),
+      tugas("pA", "2026-10-12", "disetujui", "2026-10-13T09:00"),
+      tugas("pA", "2026-10-14", "diajukan", "2026-10-14T10:00"),
+      // S: 5–7 Okt tepat ✓; 8 Okt terlambat; 9 Okt belum (lewat); 26 Okt diselesaikan lebih awal (belum diverifikasi); 27 Okt belum jatuh tempo.
+      tugas("pS", "2026-10-05", "disetujui", "2026-10-05"),
+      tugas("pS", "2026-10-06", "disetujui", "2026-10-06"),
+      tugas("pS", "2026-10-07", "disetujui", "2026-10-07"),
+      tugas("pS", "2026-10-08", "disetujui", "2026-10-08T16:30"),
+      tugas("pS", "2026-10-09", "belum"),
+      tugas("pS", "2026-10-26", "diajukan", "2026-10-20"),
+      tugas("pS", "2026-10-27", "dikerjakan"),
     ],
-    dtrCek: [
-      ...["01", "02", "05", "06", "07", "08", "09", "12", "13", "14", "15", "16"].map((d) => ({ tugasId: "d1", tanggal: `2026-10-${d}`, selesai: true, disetujui: true })),
-      { tugasId: "d1", tanggal: "2026-10-19", selesai: true, disetujui: false }, // belum disetujui atasan
-      ...["2026-10-01", "2026-10-07", "2026-10-14"].map((t) => ({ tugasId: "d2", tanggal: t, selesai: true, disetujui: true })),
-    ],
+    jurnal: new Map([["A", 40], ["B", 2], ["S", 10]]),
     ujiPetik: [{ unitId: "b1", jumlahDiuji: 10, jumlahSesuai: 9 }],
   };
 }
@@ -81,7 +95,7 @@ describe("skor indikator", () => {
   });
 });
 
-describe("K1 dari item", () => {
+describe("K1 Staf Bidang Kerja: Kegiatan SKUO + Surat", () => {
   const h = hitungK1(konteks());
 
   it("SBK-1: tenggat 1 hari kerja melewati akhir pekan; item terbuka tetap dihitung di target", () => {
@@ -89,13 +103,14 @@ describe("K1 dari item", () => {
     expect(ind(h, "pA", "SBK-1").skor).toBeCloseTo((0.5 / 0.9) * 100);
   });
 
-  it("SBK-2a: target dari kegiatan KSBK; penanggung jawab membatasi siapa yang ditarget", () => {
+  it("SBK-2a: target dari kegiatan yang butuh SPP milik penanggung jawab", () => {
     expect(ind(h, "pA", "SBK-2a")).toMatchObject({ target: 2, realisasi: 1 });
-    expect(ind(h, "pB", "SBK-2a")).toMatchObject({ target: 1, realisasi: 0, skor: 0 });
+    expect(ind(h, "pB", "SBK-2a")).toMatchObject({ target: 0, dikecualikan: true });
   });
 
-  it("SBK-3: kegiatan dengan ≥ 2 pengingat sebelum hari H", () => {
-    expect(ind(h, "pA", "SBK-3")).toMatchObject({ target: 2, realisasi: 1, skor: 50 });
+  it("SBK-3: dua pengingat per kegiatan, ke-1 ≤ H-6 dan ke-2 ≤ H-2, dinilai sendiri-sendiri", () => {
+    expect(ind(h, "pA", "SBK-3")).toMatchObject({ target: 4, realisasi: 2, skor: 50 });
+    expect(ind(h, "pB", "SBK-3")).toMatchObject({ target: 4, realisasi: 0, skor: 0 });
   });
 
   it("SBK-4 volume kecil ditandai; SBK-5 tanpa item dikecualikan", () => {
@@ -103,51 +118,101 @@ describe("K1 dari item", () => {
     expect(ind(h, "pA", "SBK-5")).toMatchObject({ dikecualikan: true, skor: null });
   });
 
-  it("K1 penugasan = rata-rata indikator dengan target > 0", () => {
-    const skor = h.get("pA")!.indikator.filter((i) => !i.dikecualikan).map((i) => i.skor!);
-    expect(skor).toHaveLength(5);
-    expect(h.get("pA")!.k1).toBeCloseTo(skor.reduce((a, b) => a + b) / 5);
+  it("SBK-5: arsip kegiatan ≤ 3 hari kerja setelah kegiatan; arsip lain ≤ 3 hari kerja setelah diterima", () => {
+    expect(ind(h, "pB", "SBK-5")).toMatchObject({ target: 3, realisasi: 2 });
+  });
+});
+
+describe("K1 Staf Bidang Kerja: poin tambahan", () => {
+  const h = hitungK1(konteks());
+
+  it("tugas khusus: 0,15 per tugas yang selesai sebelum tenggat dan disetujui", () => {
+    expect(ind(h, "pA", "SBK-TK")).toMatchObject({ target: 1, realisasi: 1, tambahan: true, dikecualikan: false });
+    expect(ind(h, "pA", "SBK-TK").skor).toBeCloseTo(0.15);
   });
 
-  it("KSBK-1: sub a–e dari jejak waktu; KSBK-2 dari K1 staf ÷ 85; KSBK-3 belum jatuh tempo", () => {
+  it("jurnal: 0,15 per entri, maks. 5", () => {
+    expect(ind(h, "pA", "SBK-JR")).toMatchObject({ target: 40, skor: 5, tambahan: true });
+    expect(ind(h, "pB", "SBK-JR").skor).toBeCloseTo(0.3);
+  });
+
+  it("K1 = min(100; rata-rata indikator pokok + poin tambahan)", () => {
+    const a = h.get("pA")!;
+    const pokok = a.indikator.filter((i) => !i.tambahan && !i.dikecualikan).map((i) => i.skor!);
+    expect(pokok).toHaveLength(5); // SBK-1, 2a, 2b, 3, 4
+    expect(a.pokok).toBeCloseTo(pokok.reduce((x, y) => x + y) / 5);
+    expect(a.tambahan).toBeCloseTo(5.15);
+    expect(a.k1).toBeCloseTo(a.pokok! + 5.15);
+  });
+
+  it("K1 tidak melewati 100, dan tanpa indikator pokok poin tambahan tidak membentuk K1", () => {
+    const ctx = konteks();
+    ctx.penugasan = [
+      { id: "pA", pegawaiId: "A", peran: "SBK", unitId: "b1", kantor: "makassar" },
+      { id: "pC", pegawaiId: "C", peran: "SBK", unitId: "b2", kantor: "makassar" },
+    ];
+    ctx.kegiatan = [];
+    ctx.item = [item({ penugasanId: "pA", indikatorKode: "SBK-1", ...setuju("2026-10-19", "2026-10-19") })];
+    ctx.jurnal = new Map([["A", 10], ["C", 20]]);
+    const h2 = hitungK1(ctx);
+    expect(h2.get("pA")).toMatchObject({ pokok: 100, k1: 100 });
+    expect(h2.get("pC")).toMatchObject({ pokok: null, k1: null });
+    expect(h2.get("pC")!.tambahan).toBeCloseTo(3);
+  });
+});
+
+describe("K1 koordinator & Staf Khusus", () => {
+  const h = hitungK1(konteks());
+
+  it("KSBK-1: sub a, c, d, e dari jejak waktu (1b nonaktif); KSBK-2 dari K1 staf ÷ 85; KSBK-3 belum jatuh tempo", () => {
     const k1 = ind(h, "pK", "KSBK-1");
-    expect(k1.sub!.map((s) => [s.target, s.realisasi])).toEqual([[3, 2], [1, 1], [1, 1], [1, 1], [10, 9]]);
-    expect(k1.skor).toBeCloseTo(((2 / 3 / 0.9) * 100 + 400) / 5);
+    expect(k1.sub!.map((s) => [s.kode, s.target, s.realisasi])).toEqual([["KSBK-1a", 3, 2], ["KSBK-1c", 1, 1], ["KSBK-1d", 1, 1], ["KSBK-1e", 10, 9]]);
+    expect(k1.skor).toBeCloseTo(((2 / 3 / 0.9) * 100 + 300) / 4);
 
     const rataStaf = (h.get("pA")!.k1! + h.get("pB")!.k1!) / 2;
     expect(ind(h, "pK", "KSBK-2").skor).toBeCloseTo(Math.min(100, rataStaf / 0.85));
     expect(ind(h, "pK", "KSBK-3")).toMatchObject({ dikecualikan: true, alasan: "Belum jatuh tempo" });
   });
 
-  it("SK-1 DTR: harian per hari kerja, mingguan per pekan; hanya cek yang disetujui", () => {
-    // 1–21 Okt: 15 hari kerja dalam 4 pekan. Harian 12/15, mingguan 3/4.
-    expect(ind(h, "pS", "SK-1")).toMatchObject({ target: 19, realisasi: 15 });
-  });
-
-  it("SK-2: dilaporkan ≤ 24 jam", () => {
-    expect(ind(h, "pS", "SK-2")).toMatchObject({ target: 2, realisasi: 1, skor: 50 });
+  it("SK-TK: tugas jatuh tempo (lewat tenggat atau sudah diselesaikan) jadi target; realisasi tepat waktu & disetujui", () => {
+    expect(ind(h, "pS", "SK-TK")).toMatchObject({ target: 6, realisasi: 3 });
+    expect(ind(h, "pS", "SK-JR").skor).toBeCloseTo(1.5);
+    expect(h.get("pS")!.k1).toBeCloseTo(((3 / 6) / 0.9) * 100 + 1.5);
   });
 
   it("SBK di SKUO ikut bidang induknya; staf dengan dua SKUO memikul tiap kegiatan sekali", () => {
-    // C memegang dua SKUO di bawah b1 (s1, s2). g1 (SKUO s2) dan g2 (tanpa SKUO) untuk semua staf.
+    // C memegang dua SKUO di bawah b1 (s1, s2). g1 (SKUO s2) dan g2 (SKUO s9 yang tidak ia pegang) dengan PJ = C.
     const ctx = konteks();
     ctx.penugasan.push(
       { id: "pC1", pegawaiId: "C", peran: "SBK", unitId: "s1", bidangId: "b1", kantor: "makassar" },
       { id: "pC2", pegawaiId: "C", peran: "SBK", unitId: "s2", bidangId: "b1", kantor: "makassar" },
     );
-    ctx.kegiatan = ctx.kegiatan.map((k) => ({ ...k, penanggungJawabId: null, skuoId: k.id === "g1" ? "s2" : null }));
+    ctx.kegiatan = ctx.kegiatan.map((k) => (k.id === "g1" || k.id === "g2" ? { ...k, penanggungJawabId: "C", skuoId: k.id === "g1" ? "s2" : "s9" } : k));
     ctx.item.push(item({ penugasanId: "pC2", indikatorKode: "SBK-2a", kegiatanId: "g1", ...setuju("2026-10-19", "2026-10-19") }));
     const h2 = hitungK1(ctx);
     expect(ind(h2, "pC2", "SBK-2a")).toMatchObject({ target: 1, realisasi: 1 }); // g1 → SKUO s2
     expect(ind(h2, "pC1", "SBK-2a")).toMatchObject({ target: 1, realisasi: 0 }); // g2 → penugasan pertama
+    expect(ind(h2, "pA", "SBK-2a").target).toBe(0);
     expect(ind(h2, "pK", "KSBK-2").target).toBe(4); // A, B, C1, C2
   });
 
-  it("item disetujui setelah batas verifikasi tidak dihitung; kewajiban bulanan jadi jatuh tempo", () => {
+  it("item & tugas disetujui setelah batas verifikasi tidak dihitung; kewajiban bulanan jadi jatuh tempo", () => {
     const ctx = { ...konteks(), batasVerifikasi: w("2026-10-20", "23:00") };
+    ctx.tugas = ctx.tugas.map((t) => (t.penugasanId === "pA" ? { ...t, diverifikasiPada: w("2026-10-21") } : t));
     const h2 = hitungK1(ctx);
     expect(ind(h2, "pA", "SBK-1").realisasi).toBe(1); // item ketiga baru diverifikasi 21 Okt
+    expect(ind(h2, "pA", "SBK-TK").skor).toBe(0);
     expect(ind(h2, "pK", "KSBK-3")).toMatchObject({ target: 1, realisasi: 0, skor: 0 });
+    expect(ind(h2, "pS", "SK-TK").target).toBe(7); // bulan ditutup: semua jadwal jatuh tempo
+  });
+});
+
+describe("jadwal tugas khusus", () => {
+  it("sekali = satu tanggal; harian = tiap hari kerja; pekanan = tiap 7 hari", () => {
+    const libur = new Set(["2026-10-22"]);
+    expect(tanggalJadwal("sekali", "2026-10-21", "2026-10-30", libur)).toEqual(["2026-10-21"]);
+    expect(tanggalJadwal("harian", "2026-10-21", "2026-10-26", libur)).toEqual(["2026-10-21", "2026-10-23", "2026-10-26"]);
+    expect(tanggalJadwal("pekanan", "2026-10-07", "2026-10-28", libur)).toEqual(["2026-10-07", "2026-10-14", "2026-10-21", "2026-10-28"]);
   });
 });
 
@@ -214,7 +279,7 @@ describe("IKP bulanan", () => {
     m.penugasan.find((p) => p.id === "pA")!.bobotAlokasi = 60;
     m.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SK", unitId: "sk", koordinatorId: "K", bobotAlokasi: 40 });
     m.k1.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SK", unitId: "sk", kantor: "makassar" });
-    m.k1.item.push({ id: "x", penugasanId: "pA2", indikatorKode: "SK-2", kegiatanId: null, masuk: w("2026-10-05"), selesai: w("2026-10-05", "11:00"), status: "disetujui", diajukanPada: null, diverifikasiPada: w("2026-10-05"), dibuatPada: w("2026-10-05") });
+    m.k1.tugas.push(tugas("pA2", "2026-10-05", "disetujui", "2026-10-05"));
     m.k3.push({ penugasanId: "pA2", penilaiId: "K", skor: semua(5) });
     const a = cari(m, "A");
     const [pa, pa2] = a.penugasan;

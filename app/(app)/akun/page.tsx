@@ -48,7 +48,7 @@ async function Isi() {
     beruntun++;
     if (beruntun > 300) break;
   }
-  const staf = sesi.penugasan.some((p) => p.peranKerja === "SK");
+  const bisaTugas = sesi.penugasan.some((p) => p.peranKerja === "SBK" || p.peranKerja === "SK");
   const peran = [...sesi.peran].filter((p) => p !== "pegawai");
 
   return (
@@ -109,7 +109,7 @@ async function Isi() {
       <Kartu className="p-2">
         <BarisTautan href="/jurnal" ikon={NotebookPen} nada="gold" judul="Jurnal kerja" />
         <BarisTautan href="/pengembangan-diri" ikon={BookOpen} nada="mint" judul="Pengembangan diri" />
-        {staf && <BarisTautan href="/dtr" ikon={ClipboardCheck} nada="ink" judul="Daftar Tugas Rutin" />}
+        {bisaTugas && <BarisTautan href="/tugas" ikon={ClipboardCheck} nada="ink" judul="Tugas khusus" />}
         <BarisTautan href="/k4" ikon={Lightbulb} nada="brand" judul="Inovasi Plus (K4)" />
         <BarisTautan href="/ganti-password" ikon={KeyRound} nada="netral" judul="Ganti password" />
       </Kartu>

@@ -65,6 +65,7 @@ export async function simpanItem(input: unknown): Promise<HasilAksi> {
   const p = skemaItem.safeParse(input);
   if (!p.success) return gagal("Isian tidak lengkap.");
   const x = p.data;
+  if (indikatorDari(x.indikatorKode)?.otomatis) return gagal("Item ini dibuat otomatis dari kegiatan KSBK. Buka item tersebut untuk menandainya selesai.");
   const r = await siapkan(sesi, x);
   if (!r.ok) return r.error!;
   const { db, masuk, selesai, periodeId, data, linkBukti } = r.ok;
@@ -118,7 +119,10 @@ export async function ubahItem(id: string, input: unknown): Promise<HasilAksi> {
   const row = await itemMilik(sesi, id);
   if (!row) return gagal("Item tidak ditemukan.");
   if (row.status === "disetujui") return gagal("Item yang sudah disetujui tidak bisa diubah.");
-  const p = skemaItem.safeParse({ ...(input as object), penugasanId: row.penugasanId, indikatorKode: row.indikatorKode, idKlien: row.idKlien ?? row.id });
+  // Item otomatis tetap terikat pada kegiatan dan urutan pengingatnya.
+  const kunci = indikatorDari(row.indikatorKode)?.otomatis ? { kegiatanId: row.kegiatanId } : {};
+  const p = skemaItem.safeParse({ ...(input as object), ...kunci, penugasanId: row.penugasanId, indikatorKode: row.indikatorKode, idKlien: row.idKlien ?? row.id });
+  if (p.success && row.data.ke) p.data.data.ke = row.data.ke;
   if (!p.success) return gagal("Isian tidak lengkap.");
   const lama = isianDari(row, sesi.kantor);
   const r = await siapkan(sesi, p.data, [lama.masuk, lama.selesai].filter((v): v is string => !!v));
@@ -150,6 +154,7 @@ export async function hapusItem(id: string): Promise<HasilAksi> {
   const row = await itemMilik(sesi, id);
   if (!row) return gagal("Item tidak ditemukan.");
   if (row.status === "disetujui") return gagal("Item yang sudah disetujui tidak bisa dihapus.");
+  if (indikatorDari(row.indikatorKode)?.otomatis) return gagal("Item otomatis dari kegiatan tidak bisa dihapus. Minta KSBK menghapus kegiatannya bila batal.");
   const db = await getDb();
   const awal = await tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor);
   if (tanggalLokal(row.dibuatPada, sesi.kantor) < awal) return gagal("Item lebih dari 2 hari kerja ke belakang sudah terkunci.");

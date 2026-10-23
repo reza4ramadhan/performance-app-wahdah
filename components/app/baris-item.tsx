@@ -5,7 +5,7 @@ import type { StatusItem } from "@/lib/ikp/tipe";
 import { cn } from "@/lib/utils";
 import { Lencana, LencanaStatus } from "./ui";
 
-const IKON: Record<StatusItem, { Ikon: typeof CircleCheck; warna: string }> = {
+export const IKON_STATUS: Record<StatusItem, { Ikon: typeof CircleCheck; warna: string }> = {
   terbuka: { Ikon: CircleDashed, warna: "text-muted-foreground" },
   diajukan: { Ikon: CircleDot, warna: "text-gold-500" },
   disetujui: { Ikon: CircleCheck, warna: "text-mint-500" },
@@ -14,7 +14,7 @@ const IKON: Record<StatusItem, { Ikon: typeof CircleCheck; warna: string }> = {
 
 /** Baris item seperti daftar tugas di referensi: ikon status, judul, keterangan, penanda tenggat. */
 export function KartuItem({ item, pemilik = false, href }: { item: BarisItem; pemilik?: boolean; href?: string }) {
-  const { Ikon, warna } = IKON[item.status];
+  const { Ikon, warna } = IKON_STATUS[item.status];
   return (
     <Link
       href={href ?? `/item/${item.id}`}

@@ -50,6 +50,9 @@ export type HasilPenugasan = {
   koordinatorId: string | null;
   bobotAlokasi: number | null;
   indikator: HasilIndikator[];
+  /** Rata-rata indikator pokok dan jumlah poin tambahan (snapshot lama tidak memilikinya). */
+  pokok?: number | null;
+  tambahan?: number;
   k1: number | null;
   k3: number | null;
   k3Rincian: SkorK3 | null;
@@ -112,6 +115,8 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
         koordinatorId: p.koordinatorId,
         bobotAlokasi: p.bobotAlokasi,
         indikator: k1.get(p.id)?.indikator ?? [],
+        pokok: k1.get(p.id)?.pokok ?? null,
+        tambahan: k1.get(p.id)?.tambahan ?? 0,
         k1: k1.get(p.id)?.k1 ?? null,
         k3: rataRata(k3PerPenilai.map((x) => x.k3)),
         k3Rincian: k3PerPenilai[0]?.rincian ?? null,

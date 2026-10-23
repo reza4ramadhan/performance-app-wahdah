@@ -70,7 +70,8 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
         hariIni={today}
         minTanggal={minTanggal}
         pilihan={{ kegiatan, skuo }}
-        bisaHapus
+        bisaHapus={!def.otomatis}
+        kunciKegiatan={def.otomatis}
         bukaAwal={item.status === "ditolak"}
         awal={{
           kegiatanId: item.kegiatanId ?? "",

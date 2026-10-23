@@ -1,12 +1,13 @@
 "use server";
 
-import { and, count, eq, gte, lte } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { bolehNilaiK3 } from "@/lib/akses";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
+import { buatItemOtomatis, itemBelumDisentuh } from "@/lib/data/kegiatan";
 import { stafBidang } from "@/lib/data/tim";
 import { unitDalamBidang } from "@/lib/data/unit";
 import { NILAI_K3, type SkorK3 } from "@/lib/ikp/tipe";
@@ -31,8 +32,8 @@ const skemaKegiatan = z.object({
   unitId: z.string().min(1),
   nama: z.string().trim().min(3, "Isi nama kegiatan.").max(200),
   tanggal,
-  skuoId: z.string().optional(),
-  penanggungJawabId: z.string().optional(),
+  skuoId: z.string().min(1, "Pilih SKUO."),
+  penanggungJawabId: z.string().min(1, "Pilih penanggung jawab."),
   // SPP dan SPB satu paket: satu centang mengisi keduanya.
   perluSppSpb: z.literal("on").optional(),
 });
@@ -46,13 +47,12 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
   if (["sementara", "disahkan"].includes(await periodeStatus(periode))) return gagal("Periode kegiatan itu sudah dikunci.");
 
   const db = await getDb();
-  if (p.data.skuoId && (p.data.skuoId === p.data.unitId || !(await unitDalamBidang(db, p.data.unitId)).includes(p.data.skuoId)))
+  if (p.data.skuoId === p.data.unitId || !(await unitDalamBidang(db, p.data.unitId)).includes(p.data.skuoId))
     return gagal("Periksa SKUO.", { skuoId: "SKUO ini tidak berada di bawah bidang tersebut." });
+  // Penanggung jawab boleh staf SKUO lain di bidang yang sama (saling backup); ia yang dinilai.
   const staf = await stafBidang(db, p.data.unitId, periode);
-  if (p.data.penanggungJawabId && !staf.some((x) => x.id === p.data.penanggungJawabId))
+  if (!staf.some((x) => x.id === p.data.penanggungJawabId))
     return gagal("Periksa penanggung jawab.", { penanggungJawabId: "Penanggung jawab bukan staf bidang ini pada periode kegiatan." });
-  if (staf.length > 1 && p.data.perluSppSpb && !p.data.penanggungJawabId)
-    return gagal("Pilih penanggung jawab.", { penanggungJawabId: "Bidang ini punya lebih dari satu staf; tentukan siapa yang menangani SPP/SPB dan pengingat." });
 
   const [k] = await db
     .insert(s.kegiatan)
@@ -60,16 +60,17 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
       unitId: p.data.unitId,
       nama: p.data.nama,
       tanggal: p.data.tanggal,
-      skuoId: p.data.skuoId || null,
-      penanggungJawabId: p.data.penanggungJawabId || null,
+      skuoId: p.data.skuoId,
+      penanggungJawabId: p.data.penanggungJawabId,
       perluSpp: !!p.data.perluSppSpb,
       perluSpb: !!p.data.perluSppSpb,
       dibuatOleh: sesi.pegawaiId,
     })
     .returning();
-  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "kegiatan", entitasId: k.id, sesudah: k });
+  const n = await buatItemOtomatis(db, [k], sesi.pegawaiId);
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "kegiatan", entitasId: k.id, sesudah: { ...k, itemOtomatis: n } });
   refresh();
-  return berhasil("Kegiatan tersimpan.");
+  return berhasil(`Kegiatan tersimpan. ${n} tugas masuk ke penanggung jawab.`);
 }
 
 export async function hapusKegiatan(id: string): Promise<HasilAksi> {
@@ -77,8 +78,10 @@ export async function hapusKegiatan(id: string): Promise<HasilAksi> {
   const db = await getDb();
   const [k] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.id, id));
   if (!k || !pengelolaUnit(sesi, k.unitId)) return gagal("Kegiatan tidak ditemukan.");
-  const [{ n }] = await db.select({ n: count() }).from(s.item).where(eq(s.item.kegiatanId, id));
-  if (n) return gagal(`Kegiatan sudah dipakai ${n} item, tidak bisa dihapus.`);
+  const item = await db.select().from(s.item).where(eq(s.item.kegiatanId, id));
+  const dikerjakan = item.filter((i) => !itemBelumDisentuh(i));
+  if (dikerjakan.length) return gagal(`Kegiatan sudah dikerjakan staf (${dikerjakan.length} item), tidak bisa dihapus.`);
+  if (item.length) await db.delete(s.item).where(inArray(s.item.id, item.map((i) => i.id)));
   await db.delete(s.kegiatan).where(eq(s.kegiatan.id, id));
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "hapus", entitas: "kegiatan", entitasId: id, sebelum: k });
   refresh();
@@ -93,17 +96,25 @@ export async function salinKegiatanBulanLalu(unitId: string): Promise<HasilAksi>
   const kini = periodeDari(hariIni(sesi.kantor));
   const lalu = rentangPeriode(periodeBerikut(kini, -1));
   const { akhir } = rentangPeriode(kini);
-  const sumber = await db.select().from(s.kegiatan).where(and(eq(s.kegiatan.unitId, unitId), gte(s.kegiatan.tanggal, lalu.awal), lte(s.kegiatan.tanggal, lalu.akhir)));
-  if (!sumber.length) return gagal("Tidak ada kegiatan bulan lalu.");
-  await db.insert(s.kegiatan).values(
-    sumber.map((k) => {
-      const tgl = `${kini}-${k.tanggal.slice(8)}`;
-      return { unitId, nama: k.nama, tanggal: tgl > akhir ? akhir : tgl, skuoId: k.skuoId, perluSpp: k.perluSpp, perluSpb: k.perluSpb, penanggungJawabId: k.penanggungJawabId, dibuatOleh: sesi.pegawaiId, sumber: "salin" as const };
-    }),
+  // Hanya kegiatan SKUO dengan penanggung jawab yang masih staf bidang ini.
+  const staf = new Set((await stafBidang(db, unitId, kini)).map((x) => x.id));
+  const sumber = (await db.select().from(s.kegiatan).where(and(eq(s.kegiatan.unitId, unitId), gte(s.kegiatan.tanggal, lalu.awal), lte(s.kegiatan.tanggal, lalu.akhir)))).filter(
+    (k) => k.skuoId && k.penanggungJawabId && staf.has(k.penanggungJawabId),
   );
-  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "salin", entitas: "kegiatan", entitasId: unitId, sesudah: { jumlah: sumber.length } });
+  if (!sumber.length) return gagal("Tidak ada kegiatan bulan lalu yang bisa disalin.");
+  const baru = await db
+    .insert(s.kegiatan)
+    .values(
+      sumber.map((k) => {
+        const tgl = `${kini}-${k.tanggal.slice(8)}`;
+        return { unitId, nama: k.nama, tanggal: tgl > akhir ? akhir : tgl, skuoId: k.skuoId, perluSpp: k.perluSpp, perluSpb: k.perluSpb, penanggungJawabId: k.penanggungJawabId, dibuatOleh: sesi.pegawaiId, sumber: "salin" as const };
+      }),
+    )
+    .returning();
+  const n = await buatItemOtomatis(db, baru, sesi.pegawaiId);
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "salin", entitas: "kegiatan", entitasId: unitId, sesudah: { jumlah: baru.length, itemOtomatis: n } });
   refresh();
-  return berhasil(`${sumber.length} kegiatan disalin. Periksa dan sesuaikan tanggalnya.`);
+  return berhasil(`${baru.length} kegiatan disalin. Periksa dan sesuaikan tanggalnya.`);
 }
 
 // ── Catatan perilaku ──────────────────────────────────────────────────────────

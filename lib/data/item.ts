@@ -36,7 +36,7 @@ export function judulItem(kode: string, data: Record<string, string>, kegiatan: 
   const pokok = data.perihal || data.judul || data.uraian;
   const def = indikatorDari(kode);
   if (pokok) return pokok;
-  if (kegiatan) return `${def?.pendek ?? kode} · ${kegiatan}`;
+  if (kegiatan) return `${def?.pendek ?? kode}${data.ke ? ` ${data.ke}` : ""} · ${kegiatan}`;
   return def?.nama ?? kode;
 }
 

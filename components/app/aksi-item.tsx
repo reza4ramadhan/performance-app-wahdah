@@ -21,6 +21,7 @@ export function UbahItem({
   minTanggal,
   bisaHapus,
   bukaAwal,
+  kunciKegiatan = false,
 }: {
   id: string;
   kode: string;
@@ -30,6 +31,7 @@ export function UbahItem({
   minTanggal: string;
   bisaHapus: boolean;
   bukaAwal: boolean;
+  kunciKegiatan?: boolean;
 }) {
   const bentuk = indikatorDari(kode)!.item!;
   const [buka, setBuka] = useState(bukaAwal);
@@ -66,7 +68,7 @@ export function UbahItem({
       }}
       className="space-y-4"
     >
-      <FieldItem bentuk={bentuk} nilai={nilai} ubah={setNilai} galat={galat} pilihan={pilihan} hariIni={hariIni} minTanggal={minTanggal} />
+      <FieldItem bentuk={bentuk} nilai={nilai} ubah={setNilai} galat={galat} pilihan={pilihan} hariIni={hariIni} minTanggal={minTanggal} kunciKegiatan={kunciKegiatan} />
       <div className="flex gap-2">
         <Button type="submit" size="lg" className="flex-1" disabled={proses}>
           {proses ? "Menyimpan…" : nilai.sudahSelesai ? "Simpan & ajukan verifikasi" : "Simpan"}

@@ -38,7 +38,9 @@ const verif = await import("@/app/aksi/verifikasi");
 const tim = await import("@/app/aksi/tim");
 const periode = await import("@/app/aksi/periode");
 const absensi = await import("@/app/aksi/absensi");
-const { eq } = await import("drizzle-orm");
+const tugas = await import("@/app/aksi/tugas");
+const { tanggalJadwal } = await import("@/lib/ikp/tugas");
+const { and, eq } = await import("drizzle-orm");
 
 const today = hariIni("makassar");
 const P = periodeDari(today);
@@ -158,27 +160,120 @@ describe("penilaian K3", () => {
   });
 });
 
-describe("kegiatan bulanan & SBK di SKUO", () => {
-  it("staf yang ditugaskan di SKUO bawahan bidang bisa jadi PJ dan menautkan item ke kegiatan bidang", async () => {
+describe("kegiatan SKUO & item otomatis", () => {
+  it("SKUO dan penanggung jawab wajib; PJ harus staf bidang; item otomatis masuk ke PJ", async () => {
     const db = await getDb();
     const [skuo] = await db.insert(s.unit).values({ jenis: "skuo", nama: "Departemen Uji", indukId: id.unit }).returning();
     const [pg] = await db.insert(s.pegawai).values({ nama: "stafSkuo", nip: "9" }).returning();
     const [x] = await db.insert(s.penugasan).values({ pegawaiId: pg.id, peranKerja: "SBK", unitId: skuo.id, koordinatorId: id.koord, periodeMulai: P }).returning();
+    id.skuo = skuo.id;
 
     sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
     const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSppSpb: "on" };
-    expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
+    expect(await tim.simpanKegiatan(null, fd(isi))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String), penanggungJawabId: expect.any(String) } });
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, skuoId: skuo.id, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
     const [skuoLain] = await db.insert(s.unit).values({ jenis: "skuo", nama: "Departemen Lain", indukId: null }).returning();
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id, skuoId: skuoLain.id }))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String) } });
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id, skuoId: skuo.id }))).toMatchObject({ ok: true });
-    const [keg] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
-    expect(keg.penanggungJawabId).toBe(pg.id);
-    expect(keg).toMatchObject({ perluSpp: true, perluSpb: true });
 
+    const [keg] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
+    expect(keg).toMatchObject({ penanggungJawabId: pg.id, skuoId: skuo.id, perluSpp: true, perluSpb: true });
+    const otomatis = await db.select().from(s.item).where(eq(s.item.kegiatanId, keg.id));
+    expect(otomatis.map((i) => `${i.indikatorKode}${i.data.ke ?? ""}`).sort()).toEqual(["SBK-2a", "SBK-2b", "SBK-31", "SBK-32"]);
+    expect(otomatis.every((i) => i.penugasanId === x.id && i.status === "terbuka")).toBe(true);
+
+    // Staf menyelesaikan item otomatis, tetapi tidak bisa mencatatnya sendiri, mengganti kegiatannya, atau menghapusnya.
     sesiAktif = { ...sesiAktif!, pegawaiId: pg.id, peran: new Set(["pegawai"]), penugasan: [{ id: x.id, peranKerja: "SBK", unitId: skuo.id, unitNama: "Departemen Uji", bidangId: id.unit, koordinatorId: id.koord }] };
-    expect((await item.ambilPilihanCatat(x.id)).kegiatan.map((k) => k.id)).toContain(keg.id);
-    const r = await item.simpanItem({ idKlien: "klien-skuo-1", penugasanId: x.id, indikatorKode: "SBK-2a", kegiatanId: keg.id, selesai: today, linkBukti: "https://x.id", data: { nomor: "SPP-1" } });
-    expect(r).toMatchObject({ ok: true });
+    expect((await item.simpanItem({ idKlien: "klien-skuo-1", penugasanId: x.id, indikatorKode: "SBK-2a", kegiatanId: keg.id, selesai: today, linkBukti: "https://x.id", data: { nomor: "SPP-1" } })).ok).toBe(false);
+    const spp = otomatis.find((i) => i.indikatorKode === "SBK-2a")!;
+    const pengingat = otomatis.find((i) => i.data.ke === "2")!;
+    expect(await item.selesaikanItem(spp.id, today, "https://x.id")).toMatchObject({ ok: true });
+    expect(await item.ubahItem(pengingat.id, { kegiatanId: null, selesai: today, linkBukti: "https://x.id", data: { saluran: "Grup" } })).toMatchObject({ ok: true });
+    const [p2] = await db.select().from(s.item).where(eq(s.item.id, pengingat.id));
+    expect(p2).toMatchObject({ status: "diajukan", kegiatanId: keg.id, data: { ke: "2", saluran: "Grup" } });
+    expect((await item.hapusItem(otomatis.find((i) => i.data.ke === "1")!.id)).ok).toBe(false);
+    // Layanan & arsip tetap dicatat staf; arsip boleh tanpa kegiatan.
+    expect(await item.simpanItem({ idKlien: "klien-skuo-2", penugasanId: x.id, indikatorKode: "SBK-5", masuk: today, data: { jenis: "Notulensi", judul: "Notulensi rapat" } })).toMatchObject({ ok: true });
+
+    // SPP sekarang diverifikasi KSBK, bukan Keuangan.
+    sebagai("keu", ["keuangan"]);
+    expect((await verif.verifikasiItem([spp.id], "setuju")).ok).toBe(false);
+    sebagai("koord", ["koordinator"]);
+    expect(await verif.verifikasiItem([spp.id], "setuju")).toMatchObject({ ok: true });
+  });
+
+  it("kegiatan yang sudah dikerjakan tidak bisa dihapus; yang belum disentuh terhapus bersama item otomatisnya", async () => {
+    const db = await getDb();
+    sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
+    const [daurah] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Daurah Uji"));
+    expect((await tim.hapusKegiatan(daurah.id)).ok).toBe(false);
+
+    // PJ lintas SKUO: staf bidang menangani kegiatan SKUO Departemen Uji.
+    expect(await tim.simpanKegiatan(null, fd({ unitId: id.unit, nama: "Rapat Uji", tanggal: today, skuoId: id.skuo, penanggungJawabId: id.staf }))).toMatchObject({ ok: true });
+    const [rapat] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Rapat Uji"));
+    const itemRapat = await db.select().from(s.item).where(eq(s.item.kegiatanId, rapat.id));
+    expect(itemRapat.map((i) => i.indikatorKode)).toEqual(["SBK-3", "SBK-3"]); // tanpa SPP & SPB
+    expect(itemRapat.every((i) => i.penugasanId === pn.staf)).toBe(true);
+    expect(await tim.hapusKegiatan(rapat.id)).toMatchObject({ ok: true });
+    expect(await db.select().from(s.item).where(eq(s.item.kegiatanId, rapat.id))).toHaveLength(0);
+  });
+});
+
+describe("tugas khusus", () => {
+  const pnStafTugas = () => ({ id: pn.staf, peranKerja: "SBK" as const, unitId: id.unit, koordinatorId: id.koord });
+  const isi = (o: Record<string, string> = {}) => ({ penugasanId: pn.staf, judul: "Menyiapkan bahan rapat", frekuensi: "sekali", tanggalMulai: today, jamTenggat: "23:59", ...o });
+
+  it("hanya koordinator penugasan yang bisa memberi tugas; tugas berulang membuat satu jadwal per hari kerja", async () => {
+    sebagai("koord2", ["koordinator"]);
+    expect(await tugas.simpanTugasKhusus(null, fd(isi()))).toMatchObject({ ok: false, galat: { penugasanId: expect.any(String) } });
+    sebagai("koord", ["koordinator"]);
+    expect(await tugas.simpanTugasKhusus(null, fd(isi({ frekuensi: "harian" })))).toMatchObject({ ok: false, galat: { tanggalAkhir: expect.any(String) } });
+    expect(await tugas.simpanTugasKhusus(null, fd(isi({ tanggalMulai: tambahHari(today, -1) })))).toMatchObject({ ok: false, galat: { tanggalMulai: expect.any(String) } });
+    expect(await tugas.simpanTugasKhusus(null, fd(isi()))).toMatchObject({ ok: true });
+    const akhir = tambahHari(today, 9);
+    expect(await tugas.simpanTugasKhusus(null, fd(isi({ judul: "Patroli arsip", frekuensi: "harian", tanggalAkhir: akhir })))).toMatchObject({ ok: true });
+
+    const db = await getDb();
+    const [harian] = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.judul, "Patroli arsip"));
+    const jadwal = await db.select().from(s.tugasKhususJadwal).where(eq(s.tugasKhususJadwal.tugasId, harian.id));
+    expect(jadwal).toHaveLength(tanggalJadwal("harian", today, akhir, new Set()).length);
+  });
+
+  it("staf: sementara dikerjakan wajib persentase; selesai diajukan ke pemberi tugas", async () => {
+    const db = await getDb();
+    const [t] = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.judul, "Menyiapkan bahan rapat"));
+    const [j] = await db.select().from(s.tugasKhususJadwal).where(eq(s.tugasKhususJadwal.tugasId, t.id));
+    id.jadwal = j.id;
+
+    sebagai("staf2", [], [{ id: pn.staf2, peranKerja: "SBK", unitId: id.unit, koordinatorId: id.koord }]);
+    expect((await tugas.perbaruiTugas(j.id, { status: "selesai" })).ok).toBe(false);
+    sebagai("staf", [], [pnStafTugas()]);
+    expect(await tugas.perbaruiTugas(j.id, { status: "dikerjakan", persen: "" })).toMatchObject({ ok: false, galat: { persen: expect.any(String) } });
+    expect(await tugas.perbaruiTugas(j.id, { status: "dikerjakan", persen: "100" })).toMatchObject({ ok: false, galat: { persen: expect.any(String) } });
+    expect(await tugas.perbaruiTugas(j.id, { status: "dikerjakan", persen: "40", catatan: "Menunggu data" })).toMatchObject({ ok: true });
+    expect((await db.select().from(s.tugasKhususJadwal).where(eq(s.tugasKhususJadwal.id, j.id)))[0]).toMatchObject({ status: "dikerjakan", persen: 40 });
+    expect(await tugas.perbaruiTugas(j.id, { status: "selesai", linkBukti: "https://drive.google.com/x" })).toMatchObject({ ok: true });
+    const [sesudah] = await db.select().from(s.tugasKhususJadwal).where(eq(s.tugasKhususJadwal.id, j.id));
+    expect(sesudah).toMatchObject({ status: "diajukan", persen: 100 });
+    expect(sesudah.selesaiPada).not.toBeNull();
+    expect((await tugas.perbaruiTugas(j.id, { status: "dikerjakan", persen: "50" })).ok).toBe(false); // sedang diverifikasi
+  });
+
+  it("hanya pemberi tugas yang memverifikasi; jadwal yang disetujui tetap tercatat saat tugas dihapus", async () => {
+    sebagai("staf", ["koordinator"], [pnStafTugas()]);
+    expect((await tugas.verifikasiTugas([id.jadwal], "setuju")).ok).toBe(false);
+    sebagai("koord2", ["koordinator"]);
+    expect((await tugas.verifikasiTugas([id.jadwal], "setuju")).ok).toBe(false);
+    sebagai("koord", ["koordinator"]);
+    expect((await tugas.verifikasiTugas([id.jadwal], "tolak")).ok).toBe(false); // alasan wajib
+    expect(await tugas.verifikasiTugas([id.jadwal], "setuju")).toMatchObject({ ok: true });
+
+    const db = await getDb();
+    const [harian] = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.judul, "Patroli arsip"));
+    expect(await tugas.hapusTugasKhusus(harian.id)).toMatchObject({ ok: true, pesan: "Tugas dihapus." });
+    const [sekali] = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.judul, "Menyiapkan bahan rapat"));
+    expect(await tugas.hapusTugasKhusus(sekali.id)).toMatchObject({ ok: true });
+    expect(await db.select().from(s.tugasKhususJadwal).where(and(eq(s.tugasKhususJadwal.tugasId, sekali.id), eq(s.tugasKhususJadwal.status, "disetujui")))).toHaveLength(1);
   });
 });
 

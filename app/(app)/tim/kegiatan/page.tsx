@@ -25,7 +25,7 @@ export default function HalamanKegiatan(props: PageProps<"/tim/kegiatan">) {
       <Kepala
         judul="Kegiatan bulanan"
         kembali="/tim"
-        sub="Input paling lambat tanggal 5 (KSBK-1c). Kegiatan ini menjadi target SPP, SPB, dan pengingat staf, jadi staf tidak menentukan targetnya sendiri."
+        sub="Input paling lambat tanggal 5 (KSBK-1c). Setiap kegiatan langsung masuk ke dashboard penanggung jawab: pengingat H-6 & H-2, serta SPP & SPB bila dicentang."
       />
       <Suspense fallback={<Kerangka />}>
         <Isi searchParams={props.searchParams} />
@@ -90,7 +90,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                               {k.perluSpb && <Lencana nada="brand">SPB</Lencana>}
                             </>
                           )}
-                          <Lencana>{pj ? `PJ: ${pj}` : "Semua staf"}</Lencana>
+                          {pj && <Lencana>PJ: {pj}</Lencana>}
                           {k.sumber === "salin" && <Lencana nada="gold">Disalin</Lencana>}
                         </div>
                       </div>
@@ -131,8 +131,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-heading">SKUO</span>
-                <select name="skuoId" className={kelasPilihan} defaultValue="">
-                  <option value="">—</option>
+                <select name="skuoId" className={kelasPilihan} defaultValue={skuo.length === 1 ? skuo[0].id : ""} required>
+                  <option value="">Pilih SKUO…</option>
                   {skuo.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.nama}
@@ -143,12 +143,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               </label>
             </div>
             <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-              <Checkbox name="perluSppSpb" className="size-5" /> Perlu SPP & SPB
+              <Checkbox name="perluSppSpb" className="size-5" /> Butuh SPP & SPB
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Penanggung jawab (staf)</span>
-              <select name="penanggungJawabId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""}>
-                <option value="">Semua staf bidang</option>
+              <select name="penanggungJawabId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""} required>
+                <option value="">Pilih staf…</option>
                 {staf.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.skuo.length ? `${p.nama} · ${p.skuo.join(", ")}` : p.nama}
@@ -156,6 +156,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                 ))}
               </select>
               <Galat nama="penanggungJawabId" />
+              <span className="mt-1 block text-xs text-muted-foreground">Boleh staf SKUO lain di bidang ini sebagai backup; penanggung jawab yang dinilai.</span>
             </label>
           </FormAksi>
         </Kartu>

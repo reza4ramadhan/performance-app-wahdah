@@ -1,11 +1,12 @@
 // Tenggat item untuk ditampilkan ke pegawai (sisa waktu) — mengikuti aturan hitung di k1.ts.
 
+import { PARAMETER } from "./tipe";
 import { geserHariKerja, hariKerjaAntara, rentangPeriode, tambahHari, tanggalLokal, type Kantor } from "../waktu";
 
 export type TenggatItem = { tanggal: string; jam?: Date } | null;
 
 export function tenggatItem(
-  i: { indikatorKode: string; tglMasuk: Date; periodeId: string },
+  i: { indikatorKode: string; tglMasuk: Date; periodeId: string; data?: Record<string, string> },
   kegiatanTanggal: string | null,
   tenggat: number | null,
   libur: ReadonlySet<string>,
@@ -15,21 +16,19 @@ export function tenggatItem(
   const masuk = tanggalLokal(i.tglMasuk, kantor);
   switch (i.indikatorKode) {
     case "SBK-1":
-    case "SBK-5":
       return { tanggal: geserHariKerja(masuk, t, libur) };
+    case "SBK-5":
+      return { tanggal: geserHariKerja(kegiatanTanggal ?? masuk, t, libur) };
     case "SBK-2a":
       return kegiatanTanggal ? { tanggal: geserHariKerja(kegiatanTanggal, -t, libur) } : null;
     case "SBK-2b":
       return kegiatanTanggal ? { tanggal: tambahHari(kegiatanTanggal, t) } : null;
-    case "SBK-3":
-      return kegiatanTanggal ? { tanggal: tambahHari(kegiatanTanggal, -1) } : null;
+    case "SBK-3": {
+      const h = PARAMETER.pengingatHMinus[Number(i.data?.ke ?? 1) - 1] ?? PARAMETER.pengingatHMinus.at(-1)!;
+      return kegiatanTanggal ? { tanggal: tambahHari(kegiatanTanggal, -h) } : null;
+    }
     case "SBK-4":
       return kegiatanTanggal ? { tanggal: tambahHari(kegiatanTanggal, -t) } : null;
-    case "SK-2":
-    case "SK-3": {
-      const jam = new Date(i.tglMasuk.getTime() + t * 3_600_000);
-      return { tanggal: tanggalLokal(jam, kantor), jam };
-    }
     case "KSBK-3":
       return { tanggal: geserHariKerja(rentangPeriode(i.periodeId).akhir, t, libur) };
     default:

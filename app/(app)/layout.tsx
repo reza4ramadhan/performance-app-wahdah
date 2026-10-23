@@ -32,7 +32,7 @@ async function Navigasi() {
     id: p.id,
     label: `${p.peranKerja} · ${p.unitNama}`,
     indikator: indikatorAktif(p.peranKerja, param)
-      .filter((d) => d.tipe === "item" && d.item)
+      .filter((d) => d.tipe === "item" && d.item && !d.otomatis)
       .map((d) => ({ kode: d.kode, pendek: d.pendek, nama: d.nama })),
   }));
   const peranUtama = [...sesi.peran].filter((x) => x !== "pegawai").map((x) => LABEL_PERAN_SISTEM[x]);

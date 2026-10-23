@@ -123,8 +123,8 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
                     <td className={tdA}>{i.sub || i.dikecualikan ? "" : bilangan(i.target)}</td>
                     <td className={tdA}>{i.sub || i.dikecualikan ? "" : i.kode === "KSBK-2" ? angka(i.realisasi) : bilangan(i.realisasi)}</td>
                     <td className={tdA}>{i.capaian === null ? "" : persenBulat(i.capaian)}</td>
-                    <td className={tdA}>{persenBulat(i.standar)}</td>
-                    <td className={`${tdA} font-semibold`}>{angka(i.skor)}</td>
+                    <td className={tdA}>{i.tambahan ? "" : persenBulat(i.standar)}</td>
+                    <td className={`${tdA} font-semibold`}>{i.tambahan ? `+${angka(i.skor)}` : angka(i.skor)}</td>
                   </tr>,
                   ...(i.sub ?? []).map((x) => (
                     <tr key={x.kode} className="text-neutral-600">
@@ -141,7 +141,7 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
                 ])}
                 <tr>
                   <td className={`${td} font-semibold`} colSpan={5}>
-                    K1 penugasan
+                    K1 penugasan{p.tambahan ? ` (rata-rata pokok ${angka(p.pokok)} + tambahan ${angka(p.tambahan)}, maks. 100)` : ""}
                   </td>
                   <td className={`${tdA} font-bold`}>{angka(p.k1)}</td>
                 </tr>

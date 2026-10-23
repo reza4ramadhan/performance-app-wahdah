@@ -144,7 +144,7 @@ export const indikator = pgTable("indikator", {
   kode: text("kode").primaryKey(),
   peranKerja: text("peran_kerja").notNull(),
   nama: text("nama").notNull(),
-  tipe: text("tipe", { enum: ["item", "turunan", "dtr"] }).notNull(),
+  tipe: text("tipe", { enum: ["item", "turunan", "tugas", "tambahan"] }).notNull(),
   standarCapaian: angka("standar_capaian").notNull(),
   tenggat: integer("tenggat"),
   verifikatorPeran: text("verifikator_peran", { enum: ["koordinator", "keuangan", "sekretariat"] }).notNull(),
@@ -239,26 +239,46 @@ export const pengembanganDiri = pgTable(
   (t) => [index("pd_pegawai_tanggal_idx").on(t.pegawaiId, t.tanggal)],
 );
 
-export const dtrTugas = pgTable("dtr_tugas", {
-  id: id(),
-  penugasanId: text("penugasan_id").notNull().references(() => penugasan.id, { onDelete: "cascade" }),
-  periodeId: text("periode_id").notNull(),
-  uraian: text("uraian").notNull(),
-  frekuensi: text("frekuensi", { enum: ["harian", "mingguan"] }).notNull(),
-  disetujuiOleh: text("disetujui_oleh").references(() => pegawai.id),
-  disetujuiPada: tz("disetujui_pada"),
-});
-
-export const dtrCek = pgTable(
-  "dtr_cek",
+/** Tugas dari koordinator penugasan kepada staf (SBK / Staf Khusus), sekali atau berulang. */
+export const tugasKhusus = pgTable(
+  "tugas_khusus",
   {
     id: id(),
-    dtrTugasId: text("dtr_tugas_id").notNull().references(() => dtrTugas.id, { onDelete: "cascade" }),
-    tanggal: date("tanggal").notNull(),
-    selesai: boolean("selesai").notNull().default(true),
-    disetujui: boolean("disetujui").notNull().default(false),
+    penugasanId: text("penugasan_id").notNull().references(() => penugasan.id, { onDelete: "cascade" }),
+    judul: text("judul").notNull(),
+    uraian: text("uraian"),
+    frekuensi: text("frekuensi", { enum: ["sekali", "harian", "pekanan"] }).notNull(),
+    tanggalMulai: date("tanggal_mulai").notNull(),
+    /** Sama dengan tanggal mulai untuk tugas sekali. */
+    tanggalAkhir: date("tanggal_akhir").notNull(),
+    /** "HH:MM" di zona kantor staf. */
+    jamTenggat: text("jam_tenggat").notNull(),
+    dibuatOleh: text("dibuat_oleh").notNull().references(() => pegawai.id),
+    dibuatPada: dibuat(),
   },
-  (t) => [uniqueIndex("dtr_cek_unik").on(t.dtrTugasId, t.tanggal)],
+  (t) => [index("tugas_khusus_penugasan_idx").on(t.penugasanId)],
+);
+
+/** Satu kejadian tugas khusus (satu untuk tugas sekali, satu per hari kerja / pekan untuk tugas berulang). */
+export const tugasKhususJadwal = pgTable(
+  "tugas_khusus_jadwal",
+  {
+    id: id(),
+    tugasId: text("tugas_id").notNull().references(() => tugasKhusus.id, { onDelete: "cascade" }),
+    periodeId: text("periode_id").notNull(),
+    tenggat: tz("tenggat").notNull(),
+    status: text("status", { enum: ["belum", "dikerjakan", "diajukan", "disetujui", "ditolak"] }).notNull().default("belum"),
+    persen: integer("persen").notNull().default(0),
+    catatan: text("catatan"),
+    linkBukti: text("link_bukti"),
+    /** Waktu staf menandai selesai (waktu server). */
+    selesaiPada: tz("selesai_pada"),
+    verifikatorId: text("verifikator_id").references(() => pegawai.id),
+    diverifikasiPada: tz("diverifikasi_pada"),
+    alasanTolak: text("alasan_tolak"),
+    diubahPada: tz("diubah_pada"),
+  },
+  (t) => [index("tugas_jadwal_tugas_idx").on(t.tugasId), index("tugas_jadwal_periode_idx").on(t.periodeId, t.status)],
 );
 
 // ── Penilaian ─────────────────────────────────────────────────────────────────

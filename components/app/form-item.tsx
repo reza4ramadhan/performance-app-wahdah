@@ -44,6 +44,7 @@ export function FieldItem({
   pilihan,
   hariIni,
   minTanggal,
+  kunciKegiatan = false,
 }: {
   bentuk: BentukItem;
   nilai: NilaiForm;
@@ -52,6 +53,8 @@ export function FieldItem({
   pilihan: Pilihan | null;
   hariIni: string;
   minTanggal: string;
+  /** Item otomatis: kegiatan tidak bisa diganti. */
+  kunciKegiatan?: boolean;
 }) {
   const set = (patch: Partial<NilaiForm>) => ubah({ ...nilai, ...patch });
   const tipeInput = (jenis: "tanggal" | "waktu") => (jenis === "tanggal" ? "date" : "datetime-local");
@@ -60,10 +63,10 @@ export function FieldItem({
 
   return (
     <div className="space-y-4">
-      {bentuk.kegiatan && (
-        <Kolom label="Kegiatan" galat={galat.kegiatanId} bantuan={pilihan && !pilihan.kegiatan.length ? "Belum ada kegiatan bidang. Minta KSBK menginput kegiatan bulanan." : undefined}>
-          <select className={kelasPilihan} value={nilai.kegiatanId} onChange={(e) => set({ kegiatanId: e.target.value })} aria-invalid={!!galat.kegiatanId} disabled={!pilihan}>
-            <option value="">{pilihan ? "Pilih kegiatan…" : "Memuat…"}</option>
+      {bentuk.kegiatan !== "tidak" && (
+        <Kolom label={bentuk.kegiatan === "opsional" ? "Kegiatan (opsional)" : "Kegiatan"} galat={galat.kegiatanId} bantuan={pilihan && !pilihan.kegiatan.length ? "Belum ada kegiatan bidang. Minta KSBK menginput kegiatan bulanan." : undefined}>
+          <select className={kelasPilihan} value={nilai.kegiatanId} onChange={(e) => set({ kegiatanId: e.target.value })} aria-invalid={!!galat.kegiatanId} disabled={!pilihan || kunciKegiatan}>
+            <option value="">{!pilihan ? "Memuat…" : bentuk.kegiatan === "opsional" ? "Tanpa kegiatan" : "Pilih kegiatan…"}</option>
             {pilihan?.kegiatan.map((k) => (
               <option key={k.id} value={k.id}>
                 {k.tanggal.slice(8)}/{k.tanggal.slice(5, 7)} · {k.nama}
@@ -156,7 +159,7 @@ export function FieldItem({
 /** Ubah nilai form menjadi payload Server Action. */
 export function keIsian(bentuk: BentukItem, n: NilaiForm) {
   return {
-    kegiatanId: bentuk.kegiatan ? n.kegiatanId || null : null,
+    kegiatanId: bentuk.kegiatan !== "tidak" ? n.kegiatanId || null : null,
     masuk: bentuk.masuk ? n.masuk : null,
     selesai: n.sudahSelesai ? n.selesai : null,
     linkBukti: n.sudahSelesai ? n.linkBukti : n.linkBukti || null,

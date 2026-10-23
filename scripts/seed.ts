@@ -7,6 +7,7 @@ import { buatAkun, buatAuth } from "../lib/auth-config";
 import { buatDb } from "../lib/db/koneksi";
 import * as s from "../lib/db/schema";
 import { sinkronKatalog } from "../lib/ikp/sinkron";
+import { tanggalJadwal } from "../lib/ikp/tugas";
 import type { PeranSistem, SkorK3 } from "../lib/ikp/tipe";
 import { geserHariKerja, hariIni, hariKerjaPeriode, keUtc, periodeBerikut, periodeDari, rentangPeriode, tambahHari } from "../lib/waktu";
 
@@ -111,7 +112,7 @@ async function main() {
     { unit: bk1, nama: "Rapat Koordinasi Lembaga Dakwah", hari: 12, spp: false, spb: false, pj: citra.id },
     { unit: bk1, nama: "Tabligh Akbar Bulanan", hari: 20, spp: true, spb: true, pj: budi.id },
     { unit: bk2, nama: "Pelatihan Guru Tahfizh", hari: 9, spp: true, spb: true, pj: eka.id },
-    { unit: bk2, nama: "Rapat Kurikulum", hari: 18, spp: false, spb: false, pj: null },
+    { unit: bk2, nama: "Rapat Kurikulum", hari: 18, spp: false, spb: false, pj: citra.id },
   ].entries()) {
     const tanggal = hk[Math.min(k.hari, hk.length - 1)];
     const [row] = await db
@@ -124,7 +125,6 @@ async function main() {
   // ── Item ──
   type ItemBaru = typeof s.item.$inferInsert;
   const items: ItemBaru[] = [];
-  const verifikasiOleh = (kode: string, koordinator: string) => (kode.startsWith("SBK-2") ? keu.id : koordinator);
   const tambah = (p: { id: string; pegawaiId: string; koordinatorId: string | null }, kode: string, masuk: string, selesai: string | null, data: Record<string, string>, opsi: { kegiatanId?: string; status?: ItemBaru["status"]; verif?: string; jam?: [string, string] } = {}) => {
     const sudahLewat = selesai !== null && selesai <= today;
     const status = opsi.status ?? (sudahLewat ? (selesai! < tambahHari(today, -2) ? "disetujui" : "diajukan") : "terbuka");
@@ -139,7 +139,7 @@ async function main() {
       linkBukti: selesai && sudahLewat ? "https://drive.google.com/contoh-bukti" : null,
       status,
       diajukanPada: status !== "terbuka" ? w(selesai!, "15:00") : null,
-      verifikatorId: status === "disetujui" || status === "ditolak" ? verifikasiOleh(kode, p.koordinatorId!) : null,
+      verifikatorId: status === "disetujui" || status === "ditolak" ? p.koordinatorId : null,
       diverifikasiPada: status === "disetujui" || status === "ditolak" ? w(opsi.verif ?? geserHariKerja(selesai!, acak() < 0.8 ? 0 : 2, LIBUR), "10:00") : null,
       alasanTolak: status === "ditolak" ? "Link bukti tidak bisa dibuka" : null,
       dibuatOleh: p.pegawaiId,
@@ -158,20 +158,20 @@ async function main() {
       if (acak() < 0.25) tambah(p, "SBK-5", d, geserHariKerja(d, acak() < rajin ? 2 : 5, LIBUR), { jenis: pilih(["Notulensi", "Dokumen kegiatan"]), judul: `Notulensi ${pilih(["rapat pekanan", "rapat bidang", "koordinasi SKUO"])}` });
     }
   }
+  // Item otomatis kegiatan (pengingat 1 & 2, SPP, SPB) dengan pola kerja per staf; layanan & arsip ditambah staf.
   for (const k of kegiatan) {
-    const staf = k.penanggungJawabId === budi.id ? pBudi : k.penanggungJawabId === citra.id ? pCitra1 : k.penanggungJawabId === eka.id ? pEka : pCitra2;
-    const awal = tambahHari(k.tanggal, -7) < `${periode}-01` ? `${periode}-01` : tambahHari(k.tanggal, -7);
-    if (k.perluSpp) tambah(staf, "SBK-2a", awal, geserHariKerja(k.tanggal, staf === pEka ? -1 : -4, LIBUR), { nomor: `SPP-${k.tanggal.slice(5).replace("-", "")}` }, { kegiatanId: k.id });
-    tambah(staf, "SBK-3", awal, tambahHari(k.tanggal, -5), { saluran: "Grup" }, { kegiatanId: k.id });
-    if (staf !== pEka) tambah(staf, "SBK-3", awal, tambahHari(k.tanggal, -1), { saluran: "Pesan pribadi" }, { kegiatanId: k.id });
-    tambah(staf, "SBK-4", tambahHari(k.tanggal, -6) < `${periode}-01` ? `${periode}-01` : tambahHari(k.tanggal, -6), tambahHari(k.tanggal, -1), { jenis: pilih(["Konsumsi", "Zoom", "Sertifikat"]) }, { kegiatanId: k.id });
+    const staf = k.unitId === bk1.id ? (k.penanggungJawabId === budi.id ? pBudi : pCitra1) : k.penanggungJawabId === eka.id ? pEka : pCitra2;
+    const awal = `${periode}-01`;
+    const lambat = staf === pEka;
+    tambah(staf, "SBK-3", awal, tambahHari(k.tanggal, lambat ? -5 : -7), { ke: "1", saluran: "Grup" }, { kegiatanId: k.id });
+    tambah(staf, "SBK-3", awal, lambat ? null : tambahHari(k.tanggal, -2), { ke: "2", saluran: "Pesan pribadi" }, { kegiatanId: k.id });
+    if (k.perluSpp) tambah(staf, "SBK-2a", awal, geserHariKerja(k.tanggal, lambat ? -1 : -4, LIBUR), { nomor: `SPP-${k.tanggal.slice(5).replace("-", "")}` }, { kegiatanId: k.id });
+    if (k.perluSpb) tambah(staf, "SBK-2b", awal, tambahHari(k.tanggal, 3), { nomor: `SPB-${k.tanggal.slice(5).replace("-", "")}` }, { kegiatanId: k.id });
+    tambah(staf, "SBK-4", tambahHari(k.tanggal, -6) < awal ? awal : tambahHari(k.tanggal, -6), tambahHari(k.tanggal, -1), { jenis: pilih(["Konsumsi", "Zoom", "Sertifikat"]) }, { kegiatanId: k.id });
+    if (k.tanggal < today) tambah(staf, "SBK-5", k.tanggal, geserHariKerja(k.tanggal, lambat ? 4 : 2, LIBUR), { jenis: "Dokumen kegiatan", judul: `Dokumentasi ${k.nama}` }, { kegiatanId: k.id });
   }
   // Satu item ditolak supaya alur perbaikan terlihat.
   tambah(pEka, "SBK-1", sampai[Math.max(0, sampai.length - 4)], sampai[Math.max(0, sampai.length - 4)], { perihal: "Surat permohonan narasumber", skuo: skuo2.nama }, { status: "ditolak" });
-
-  // Staf Khusus: kejadian & layanan.
-  for (const d of sampai.filter(() => acak() < 0.2)) tambah(pHasan, "SK-2", d, d, { uraian: pilih(["Lampu parkir padam", "Tamu tanpa janji", "Pintu darurat terbuka"]) }, { jam: ["21:00", acak() < 0.85 ? "22:00" : "23:30"] });
-  for (const d of sampai.filter(() => acak() < 0.3)) tambah(pHasan, "SK-3", d, d, { uraian: pilih(["Buka ruang rapat", "Antar dokumen", "Atur parkir tamu"]) }, { jam: ["08:00", "10:00"] });
 
   // Pegawai pendukung: sedikit SBK-1 di Kesetjenan.
   const pendukung = await db.select().from(s.penugasan).where((await import("drizzle-orm")).eq(s.penugasan.unitId, setjen.id));
@@ -179,21 +179,35 @@ async function main() {
 
   for (let i = 0; i < items.length; i += 200) await db.insert(s.item).values(items.slice(i, i + 200));
 
-  // ── DTR Staf Khusus ──
-  const dtr = await db
-    .insert(s.dtrTugas)
-    .values([
-      { penugasanId: pHasan.id, periodeId: periode, uraian: "Patroli malam area gedung", frekuensi: "harian", disetujuiOleh: fajar.id, disetujuiPada: w(`${periode}-02`) },
-      { penugasanId: pHasan.id, periodeId: periode, uraian: "Cek APAR dan jalur evakuasi", frekuensi: "mingguan", disetujuiOleh: fajar.id, disetujuiPada: w(`${periode}-02`) },
-      { penugasanId: pHasan.id, periodeId: periode, uraian: "Kepatuhan shift jaga", frekuensi: "harian", disetujuiOleh: fajar.id, disetujuiPada: w(`${periode}-02`) },
-    ])
-    .returning();
-  const cek = [];
-  for (const d of sampai) {
-    for (const t of dtr.filter((t) => t.frekuensi === "harian")) if (acak() < 0.9) cek.push({ dtrTugasId: t.id, tanggal: d, selesai: true, disetujui: d < tambahHari(today, -1) });
-    if (new Date(`${d}T00:00:00Z`).getUTCDay() === 3) cek.push({ dtrTugasId: dtr[1].id, tanggal: d, selesai: true, disetujui: d < today });
+  // ── Tugas khusus: atasan → Staf Khusus (berulang), KSBK → SBK (sekali) ──
+  const { awal: awalBulan, akhir: akhirBulan } = rentangPeriode(periode);
+  const tugasKhusus = [
+    { pn: pHasan, oleh: fajar.id, judul: "Patroli malam area gedung", frekuensi: "harian" as const, mulai: awalBulan, akhir: akhirBulan, jam: "23:00", rajin: 0.9 },
+    { pn: pHasan, oleh: fajar.id, judul: "Cek APAR dan jalur evakuasi", frekuensi: "pekanan" as const, mulai: hk[2] ?? awalBulan, akhir: akhirBulan, jam: "16:00", rajin: 0.8 },
+    { pn: pBudi, oleh: ahmad.id, judul: "Menyiapkan bahan rapat pimpinan", frekuensi: "sekali" as const, mulai: hk[4] ?? awalBulan, akhir: hk[4] ?? awalBulan, jam: "15:00", rajin: 1 },
+    { pn: pBudi, oleh: ahmad.id, judul: "Rekap kehadiran peserta daurah", frekuensi: "sekali" as const, mulai: tambahHari(today, 3), akhir: tambahHari(today, 3), jam: "12:00", rajin: 1 },
+    { pn: pEka, oleh: dani.id, judul: "Mendata kebutuhan buku tahfizh", frekuensi: "sekali" as const, mulai: hk[6] ?? awalBulan, akhir: hk[6] ?? awalBulan, jam: "15:00", rajin: 0 },
+  ];
+  for (const t of tugasKhusus) {
+    const [row] = await db.insert(s.tugasKhusus).values({ penugasanId: t.pn.id, judul: t.judul, frekuensi: t.frekuensi, tanggalMulai: t.mulai, tanggalAkhir: t.akhir, jamTenggat: t.jam, dibuatOleh: t.oleh, dibuatPada: w(awalBulan) }).returning();
+    await db.insert(s.tugasKhususJadwal).values(
+      tanggalJadwal(t.frekuensi, t.mulai, t.akhir, LIBUR).map((d) => {
+        const tenggat = w(d, t.jam);
+        const lewat = d < today;
+        const selesai = lewat && acak() < t.rajin;
+        return {
+          tugasId: row.id,
+          periodeId: periodeDari(d),
+          tenggat,
+          status: selesai ? ("disetujui" as const) : d === tambahHari(today, 3) ? ("dikerjakan" as const) : ("belum" as const),
+          persen: selesai ? 100 : d === tambahHari(today, 3) ? 40 : 0,
+          selesaiPada: selesai ? new Date(tenggat.getTime() - 3_600_000) : null,
+          verifikatorId: selesai ? t.oleh : null,
+          diverifikasiPada: selesai ? w(tambahHari(d, 1), "08:00") : null,
+        };
+      }),
+    );
   }
-  if (cek.length) await db.insert(s.dtrCek).values(cek);
 
   // ── Jurnal & pengembangan diri ──
   const jurnal = [];

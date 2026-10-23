@@ -89,6 +89,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                     {p.bobotAlokasi ? <span className="ml-2 align-middle"><Lencana nada="brand">bobot {p.bobotAlokasi}%</Lencana></span> : null}
                   </JudulBagian>
                   <DaftarIndikator indikator={p.indikator} />
+                  {!!p.tambahan && p.pokok != null && (
+                    <p className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                      Rata-rata indikator pokok {angka(p.pokok)} + poin tambahan {angka(p.tambahan)} = K1 {angka(p.k1)} (maks. 100)
+                    </p>
+                  )}
                 </Kartu>
               ))}
           </div>

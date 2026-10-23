@@ -39,7 +39,23 @@ export const LABEL_STATUS_ITEM: Record<StatusItem, string> = {
   ditolak: "Ditolak",
 };
 
-export const STATUS_PERIODE = ["berjalan", "verifikasi", "kalibrasi", "sementara", "disahkan"] as const;
+export const STATUS_TUGAS = ["belum", "dikerjakan", "diajukan", "disetujui", "ditolak"] as const;
+export type StatusTugas = (typeof STATUS_TUGAS)[number];
+
+export const LABEL_STATUS_TUGAS: Record<StatusTugas, string> = {
+  belum: "Belum dikerjakan",
+  dikerjakan: "Sementara dikerjakan",
+  diajukan: "Menunggu verifikasi",
+  disetujui: "Selesai",
+  ditolak: "Ditolak",
+};
+
+export const FREKUENSI_TUGAS = ["sekali", "harian", "pekanan"] as const;
+export type FrekuensiTugas = (typeof FREKUENSI_TUGAS)[number];
+
+export const LABEL_FREKUENSI_TUGAS: Record<FrekuensiTugas, string> = { sekali: "Sekali", harian: "Harian", pekanan: "Pekanan" };
+
+export const STATUS_PERIODE =["berjalan", "verifikasi", "kalibrasi", "sementara", "disahkan"] as const;
 export type StatusPeriode = (typeof STATUS_PERIODE)[number];
 
 export const LABEL_STATUS_PERIODE: Record<StatusPeriode, string> = {
@@ -89,6 +105,10 @@ export const PARAMETER = {
   bobotK2: { hadir: 0.6, tepat: 0.4 },
   ambangKehadiran: 85,
   volumeKecil: 3,
+  /** Poin tambahan K1 per tugas khusus selesai / per jurnal, dan batas per jenis. K1 tetap maks. 100. */
+  tambahan: { poin: 0.15, maks: 5 },
+  /** Pengingat kegiatan (SBK-3): pengingat ke-1 paling lambat H-6, ke-2 paling lambat H-2 (hari kalender). */
+  pengingatHMinus: [6, 2],
   /** Hari kerja terakhir untuk mengisi/mengubah log ke belakang. */
   batasEditHariKerja: 2,
   /** Batas verifikasi setelah bulan berakhir. */

@@ -36,7 +36,7 @@ export const IKON_MENU: Record<NamaIkonMenu, LucideIcon> = {
   akun: UserRound,
   jurnal: NotebookPen,
   belajar: BookOpen,
-  dtr: ClipboardCheck,
+  tugas: ClipboardCheck,
   k4: Lightbulb,
   verifikasi: BadgeCheck,
   kegiatan: CalendarDays,

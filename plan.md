@@ -62,13 +62,13 @@ Aplikasi web mobile-first yang ringan. Pegawai mengisi **log indikator** dan **j
 
 | Peran sistem | Siapa | Bisa |
 |---|---|---|
-| **Pegawai** | SBK, Staf Khusus, staf unit pendukung | Isi log item, jurnal, log pengembangan diri, checklist DTR; ajukan K4; lihat progres dan IKP sendiri |
-| **Koordinator** | KSBK (13 bidang), Kepala Unit Pendukung, atasan Staf Khusus | Semua hak Pegawai untuk dirinya; input kegiatan bulanan bidang; verifikasi item staf; isi K3 staf; setujui DTR; periksa K4; dashboard tim |
+| **Pegawai** | SBK, Staf Khusus, staf unit pendukung | Isi log item, jurnal, log pengembangan diri, progres tugas khusus; ajukan K4; lihat progres dan IKP sendiri |
+| **Koordinator** | KSBK (13 bidang), Kepala Unit Pendukung, atasan Staf Khusus | Semua hak Pegawai untuk dirinya; input kegiatan bulanan bidang; verifikasi item staf; beri dan verifikasi tugas khusus; lihat jurnal staf; isi K3 staf; periksa K4; dashboard tim |
 | **Wakil Kepala Kantor (I/II)** | 2 orang | Nilai K3 dan verifikasi K1 KSBK, Sekretaris, dan Kepala Unit Pendukung di wilayahnya; kalibrasi K3; tetapkan tingkat K4; dashboard semua |
 | **Kepala Kantor** | 1 orang | Dashboard semua; sahkan IKP bulanan |
 | **Sekretariat** | Staf Sekretariat yang ditunjuk | Verifikasi akhir; hitung dan kunci IKP sementara; verifikasi laporan bidang (KSBK-3); ekspor |
 | **Personalia** | Staf Personalia | Unggah rekap absensi bulanan (K2) |
-| **Keuangan (verifikator)** | Staf Keuangan | Tandai SPP/SPB "sesuai SOP / dikembalikan" (SBK-2a/2b, KSBK-1b). *Lihat Bagian 13.2.* |
+| **Keuangan (verifikator)** | Staf Keuangan | *Sementara nonaktif:* SPP/SPB diverifikasi KSBK sampai peran Keuangan diperbaiki. *Lihat Bagian 13.2.* |
 | **Admin** | Data, Digitalisasi & Monev | Data master, penugasan, indikator, hari libur, periode, akun |
 
 Satu akun bisa memegang beberapa peran sistem sekaligus.
@@ -89,7 +89,7 @@ Satu akun bisa memegang beberapa peran sistem sekaligus.
 2. Catat item baru atau selesaikan item yang sudah ada (mis. surat masuk pagi, selesai sore).
 3. Tulis jurnal singkat untuk pekerjaan di luar indikator (tag SKUO/bidang dan pemberi tugas).
 4. Isi log pengembangan diri (judul bacaan/materi, durasi, ringkasan satu kalimat).
-5. Staf Khusus: centang checklist DTR hari itu.
+5. SBK dan Staf Khusus: perbarui status tugas khusus (sementara dikerjakan + persentase, atau selesai).
 6. Pukul 16.00 waktu setempat: pengingat web push untuk yang belum mengisi apa pun hari itu.
 
 Log bisa diisi atau diubah sampai **2 hari kerja ke belakang**. Setelah itu terkunci, kecuali dibuka oleh Admin dengan alasan yang tercatat di audit log.
@@ -103,7 +103,6 @@ Log bisa diisi atau diubah sampai **2 hari kerja ke belakang**. Setelah itu terk
 | Waktu | Kegiatan | Pelaku |
 |---|---|---|
 | ≤ tgl 5 | Input daftar kegiatan bulan ini untuk bidangnya (dari PKA/SIMAKPRO) | KSBK |
-| ≤ tgl 5 | Ajukan DTR (3–5 tugas rutin), disetujui atasan | Staf Khusus, atasan |
 | Sepanjang bulan | Log item, jurnal, verifikasi bertahap | Semua |
 | ≤ 5 hari kerja setelah bulan berakhir | Selesaikan verifikasi; isi K3; periksa K4; pegawai ajukan K4 | Koordinator, WaKa, pegawai |
 | ≤ tgl 5 bulan berikutnya | Unggah rekap absensi | Personalia |
@@ -120,39 +119,47 @@ Log bisa diisi atau diubah sampai **2 hari kerja ke belakang**. Setelah itu terk
 Kolom **Tenggat** dihitung dalam hari kerja (Senin–Jumat, dikurangi hari libur yang diatur Admin, dengan zona waktu kantor pegawai: WITA Makassar, WIB Jakarta).
 
 ### 6.1 Staf Bidang Kerja (SBK)
-| Kode | Item yang dicatat pegawai | Target = | Realisasi = | Standar | Verifikator |
+K1 SBK terdiri dari tiga bagian yang tampil di dashboard: **Kegiatan SKUO** (indikator utama, bersama Surat), **Tugas Khusus**, dan **Jurnal Hari Ini** (poin tambahan).
+
+| Kode | Item | Target = | Realisasi = | Standar | Verifikator |
 |---|---|---|---|---|---|
 | SBK-1 | Permintaan surat: tgl diterima, SKUO, perihal, tgl selesai, link | jumlah permintaan diterima | selesai ≤ 1 hari kerja | ≥ 90% | KSBK |
-| SBK-2a | SPP per kegiatan: tgl input di SIMAKPRO, link/no. SPP | jumlah SPP wajib (dari kegiatan bulan ini) | diinput tepat waktu **dan** ditandai sesuai SOP | ≥ 90% | Keuangan |
-| SBK-2b | SPB per kegiatan: tgl input | jumlah SPB wajib | diinput ≤ 7 hari setelah kegiatan **dan** sesuai SOP | ≥ 90% | Keuangan |
-| SBK-3 | Pengingat: kegiatan, tanggal kirim, saluran (grup/pesan), link tangkapan layar | jumlah kegiatan terjadwal (input KSBK) | kegiatan dengan ≥ 2 pengingat sebelum tanggal pelaksanaan | 100% | KSBK |
-| SBK-4 | Permintaan layanan umum: kegiatan, jenis (media, Zoom, sertifikat, konsumsi, akomodasi), tgl siap | jumlah layanan diajukan | siap sebelum kegiatan dimulai | ≥ 95% | KSBK |
-| SBK-5 | Dokumen arsip: jenis (notulensi/dokumen kegiatan), tgl terima, tgl arsip, link | jumlah dokumen wajib arsip | diarsipkan ≤ 3 hari kerja | ≥ 90% | KSBK |
+| SBK-2a | SPP per kegiatan (otomatis bila "Butuh SPP & SPB"): tgl input di SIMAKPRO, no. SPP | kegiatan SKUO yang butuh SPP | diinput ≤ H-3 hari kerja | ≥ 90% | KSBK |
+| SBK-2b | SPB per kegiatan (otomatis bila "Butuh SPP & SPB"): tgl input | kegiatan SKUO yang butuh SPB | diinput ≤ 7 hari setelah kegiatan | ≥ 90% | KSBK |
+| SBK-3 | Pengingat ke-1 dan ke-2 per kegiatan (otomatis): tanggal kirim, saluran | 2 × kegiatan SKUO | pengingat ke-1 ≤ H-6, ke-2 ≤ H-2 (hari kalender), dinilai sendiri-sendiri | 100% | KSBK |
+| SBK-4 | Permintaan layanan umum (ditambah staf dari kartu kegiatan): jenis, tgl siap | jumlah layanan diajukan | siap sebelum kegiatan dimulai | ≥ 95% | KSBK |
+| SBK-5 | Dokumen arsip (kegiatan opsional): jenis, tgl terima, tgl arsip, link | jumlah dokumen dicatat | ≤ 3 hari kerja setelah kegiatan (atau setelah diterima bila tanpa kegiatan) | ≥ 90% | KSBK |
+| SBK-TK | Tugas khusus dari KSBK | — | +0,15 per tugas selesai ≤ tenggat dan disetujui pemberi tugas, maks. 5 | tambahan | pemberi tugas |
+| SBK-JR | Jurnal | — | +0,15 per entri, maks. 5 (tanpa verifikasi; dapat dilihat atasan) | tambahan | — |
 
-Untuk SBK-2a, SBK-2b, dan SBK-3, target dibuat otomatis dari **kegiatan yang diinput KSBK**. Pegawai tidak menentukan targetnya sendiri.
+Kegiatan SKUO wajib memiliki SKUO dan penanggung jawab (boleh staf SKUO lain di bidang yang sama sebagai backup; penanggung jawab yang dinilai). Saat kegiatan disimpan, **Pengingat 1, Pengingat 2, SPP, dan SPB** (dua terakhir bila dicentang) otomatis masuk sebagai item terbuka milik penanggung jawab. Target SBK-2a/2b/3 tetap dihitung dari kegiatan, bukan dari item.
+
+**K1 SBK** = min(100; rata-rata SBK-1 s.d. SBK-5 yang Target > 0 + poin tugas khusus + poin jurnal). Nilai 100 bisa dicapai tanpa poin tambahan; poin tambahan menolong bila nilai Kegiatan SKUO rendah. Tanpa indikator pokok, poin tambahan saja tidak membentuk K1.
 
 ### 6.2 Koordinator Staf Bidang Kerja (KSBK)
 | Kode | Sumber | Cara hitung |
 |---|---|---|
 | KSBK-1a | Waktu verifikasi item SBK-1 oleh KSBK | draf surat diperiksa ≤ 1 hari kerja setelah staf menandai selesai |
-| KSBK-1b | Tanda Keuangan pada SPP/SPB bidang | SPP/SPB tidak dikembalikan karena kesalahan |
+| KSBK-1b | Tanda Keuangan pada SPP/SPB bidang | *Nonaktif* sampai verifikasi Keuangan berjalan lagi |
 | KSBK-1c | Tanggal input kegiatan bulanan | 100 jika kegiatan diinput ≤ tgl 5, selain itu 0 |
 | KSBK-1d | Tanggal item SBK-4 dibuat vs tanggal kegiatan | layanan diajukan ≤ H-3 |
 | KSBK-1e | Form uji petik arsip bulanan (min. 10 dokumen) | dokumen lengkap dan sesuai indeks ÷ dokumen diuji |
-| KSBK-1 | — | rata-rata skor 1a–1e (masing-masing dibatasi 100) |
+| KSBK-1 | — | rata-rata skor sub-indikator aktif (1a, 1c–1e), masing-masing dibatasi 100 |
 | KSBK-2 | Otomatis | rata-rata skor K1 staf di bidangnya (tanpa dirinya) ÷ 85 × 100, maks. 100 |
 | KSBK-3 | Item laporan bidang bulanan (link) | laporan tepat waktu, diverifikasi Sekretariat |
 
 Sebagian besar KSBK-1 dihitung dari jejak waktu yang sudah ada di aplikasi, sehingga KSBK tidak perlu mengisi ulang.
 
 ### 6.3 Staf Khusus (SK)
-| Kode | Item | Target = | Realisasi = | Standar |
+| Kode | Sumber | Target = | Realisasi = | Standar |
 |---|---|---|---|---|
-| SK-1 | Checklist DTR (harian/mingguan sesuai frekuensi tiap tugas) | jumlah tugas DTR terjadwal | tugas dicentang dan disetujui atasan | ≥ 90% |
-| SK-2 | Kejadian: waktu kejadian, waktu lapor, uraian | jumlah kejadian | dilaporkan ≤ 1×24 jam | 100% |
-| SK-3 | Permintaan layanan: waktu masuk, waktu selesai | jumlah permintaan | selesai ≤ SLA | ≥ 90% |
+| SK-TK | Tugas khusus dari atasan (menggantikan DTR) | jadwal tugas yang jatuh tempo bulan ini | selesai ≤ tenggat dan disetujui atasan | ≥ 90% |
+| SK-JR | Jurnal | — | +0,15 per entri, maks. 5 (tambahan) | — |
 
-Untuk staf keamanan, DTR bisa berisi kepatuhan shift dan checklist patroli.
+*Sementara:* rumus lengkap K1 Staf Khusus menyusul. Staf Khusus mengusulkan tugas kepada atasan diterapkan kemudian.
+
+### 6.3a Tugas Khusus (SBK dan Staf Khusus)
+Diberikan oleh koordinator penugasan (KSBK untuk SBK, atasan untuk Staf Khusus): judul, uraian, tenggat (tanggal + jam), frekuensi **Sekali / Harian / Pekanan**. Tugas berulang membuat satu jadwal per hari kerja (harian) atau per 7 hari (pekanan); tiap jadwal dinilai sendiri. Staf memilih status **Sementara dikerjakan** (wajib persentase) atau **Selesai**; waktu selesai dicatat server. Jadwal yang selesai wajib diverifikasi pemberi tugas.
 
 **Indikator tanpa item pada bulan itu** (target = 0) dikeluarkan dari rata-rata K1, bukan diberi skor 100 atau 0. Indikator dengan target ≤ 3 diberi tanda "volume kecil" untuk kalibrasi.
 
@@ -197,19 +204,21 @@ IKP Akhir           = IKP + K4
 Navigasi bawah, 4 tab: **Hari Ini · Item · Progres · Akun**. Koordinator dan pimpinan mendapat tab tambahan **Tim**.
 
 ### Pegawai
-1. **Hari Ini**: kartu ringkas: item terbuka (dengan sisa tenggat), status isian hari ini, tombol besar **+ Catat**. Bagian jurnal dan pengembangan diri bisa dilipat di bawahnya.
+1. **Hari Ini**: kartu ringkas dan status isian hari ini, lalu tiga bagian: **Kegiatan SKUO** (satu kartu per kegiatan berisi Pengingat 1/2, SPP, SPB, Layanan, Arsip), **Tugas khusus**, dan **Jurnal hari ini**; surat dan item lain yang masih terbuka di bawahnya.
 2. **+ Catat** (bottom sheet): pilih penugasan (dilewati otomatis kalau hanya satu) → pilih indikator (chip) → field khusus indikator (≤ 5 field, tanggal default hari ini) → link bukti (opsional saat dibuat, wajib saat ditandai selesai).
 3. **Item**: daftar item dengan filter status (terbuka, menunggu verifikasi, ditolak, selesai). Item yang ditolak menampilkan alasannya dan bisa diperbaiki.
 4. **Jurnal**: satu atau beberapa entri per hari: uraian, SKUO/bidang, pemberi tugas, link (opsional).
 5. **Pengembangan diri**: tanggal, judul, durasi (menit), ringkasan satu kalimat.
-6. **DTR** (Staf Khusus): checklist hari ini; pengajuan DTR awal bulan.
+6. **Tugas khusus** (SBK, Staf Khusus): daftar tugas dengan tenggat, pembaruan status dan persentase.
 7. **Progres**: skor K1 berjalan per indikator dan per penugasan, rekap pengisian, riwayat IKP bulan sebelumnya.
 8. **K4**: form pengajuan inovasi dan statusnya.
 
 ### Koordinator
 9. **Tim – Hari Ini**: siapa belum mengisi, item menunggu verifikasi (bisa setujui massal dengan geser/centang), item lewat tenggat.
 10. **Verifikasi**: kartu item → Setujui / Tolak (alasan wajib).
-11. **Kegiatan bulanan**: input cepat kegiatan bidang (nama, SKUO, tanggal, perlu SPP/SPB ya/tidak). Fitur salin dari bulan lalu. Impor Excel disiapkan di Fase berikutnya.
+11. **Kegiatan bulanan**: input cepat kegiatan bidang (nama, SKUO wajib, tanggal, butuh SPP & SPB, penanggung jawab wajib). Fitur salin dari bulan lalu. Impor Excel disiapkan di Fase berikutnya.
+11a. **Tugas khusus staf**: beri tugas (sekali/harian/pekanan), pantau progres, verifikasi yang ditandai selesai.
+11b. **Jurnal staf**: lihat jurnal anggota tim (pimpinan: semua pegawai).
 12. **Catatan perilaku**: catatan singkat per staf, kapan saja.
 13. **Penilaian K3**: satu layar per staf, 6 slider/segmen 1–5, catatan perilaku bulan itu tampil sebagai referensi.
 14. **Uji petik arsip** (KSBK-1e): form bulanan.
@@ -269,15 +278,16 @@ unit(id, jenis[bidang|skuo|unit_pendukung|staf_khusus], nama, induk_id, waka_id)
 peran_kerja(kode[SBK|KSBK|KU|SK|KAKAN|WAKA], nama)
 penugasan(id, pegawai_id, peran_kerja, unit_id, koordinator_id, periode_mulai, periode_selesai, bobot_alokasi)
 periode(id, tahun, bulan, status, dikunci_pada, disahkan_oleh)
-indikator(id, kode, peran_kerja, nama, tipe[item_tenggat|item_ya_tidak|dtr|turunan], standar_capaian,
+indikator(id, kode, peran_kerja, nama, tipe[item|turunan|tugas|tambahan], standar_capaian,
           tenggat_hari_kerja, verifikator_peran, fase, aktif)
 kegiatan(id, unit_id, skuo_id, nama, tanggal, perlu_spp, perlu_spb, dibuat_oleh, dibuat_pada, sumber[manual|impor])
 item(id, penugasan_id, indikator_id, kegiatan_id?, data jsonb, tgl_masuk, tgl_selesai, link_bukti,
      status[terbuka|diajukan|disetujui|ditolak], verifikator_id, diverifikasi_pada, alasan_tolak, periode_id)
 jurnal(id, pegawai_id, tanggal, uraian, unit_id, pemberi_tugas, link)
 pengembangan_diri(id, pegawai_id, tanggal, judul, durasi_menit, ringkasan)
-dtr_tugas(id, penugasan_id, periode_id, uraian, frekuensi, disetujui_oleh)
-dtr_cek(id, dtr_tugas_id, tanggal, selesai, disetujui)
+tugas_khusus(id, penugasan_id, judul, uraian, frekuensi[sekali|harian|pekanan], tanggal_mulai, tanggal_akhir, jam_tenggat, dibuat_oleh)
+tugas_khusus_jadwal(id, tugas_id, periode_id, tenggat, status[belum|dikerjakan|diajukan|disetujui|ditolak], persen, catatan,
+                    link_bukti, selesai_pada, verifikator_id, diverifikasi_pada, alasan_tolak)
 catatan_perilaku(id, penilai_id, pegawai_id, tanggal, nilai_k3?, catatan)
 penilaian_k3(id, periode_id, penugasan_id, penilai_id, skor x6, contoh x6, status)
 absensi(periode_id, pegawai_id, hari_kerja_wajib, hadir, hadir_tepat_waktu, izin_sakit, sanksi_berat)
@@ -310,7 +320,7 @@ Satu kali dari sheet STRUKTUR KPWI (tab *Nama* dan *Detail Bidang*) yang diekspo
 | Milestone | Isi | Selesai bila |
 |---|---|---|
 | **M0 – Fondasi** | Skema, auth, peran, Admin dasar, impor STRUKTUR KPWI, hari libur, kalkulator hari kerja | Semua pegawai bisa login dan melihat penugasannya |
-| **M1 – Input harian** | + Catat, Item, Jurnal, Pengembangan diri, DTR, Kegiatan bulanan, Verifikasi, PWA + push 16.00 | Satu bidang pilot bisa mengisi selama 1 minggu |
+| **M1 – Input harian** | + Catat, Item, Jurnal, Pengembangan diri, Tugas khusus, Kegiatan bulanan, Verifikasi, PWA + push 16.00 | Satu bidang pilot bisa mengisi selama 1 minggu |
 | **M2 – Penilaian** | Unggah absensi, K3 + catatan perilaku, K4, uji petik arsip, mesin perhitungan IKP, status periode | IKP satu bulan pilot cocok dengan hitungan manual |
 | **M3 – Kontrol dan laporan** | Dashboard koordinator/pimpinan, kalibrasi, rekap dan pengesahan, 3 ekspor | Kepala Kantor bisa mengesahkan dan mengunduh rekap |
 | **Uji coba** | 3 bulan, tanpa dampak insentif | Kriteria lolos uji coba di Bagian 9 pedoman terpenuhi |

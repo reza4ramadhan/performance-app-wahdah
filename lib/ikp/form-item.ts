@@ -29,7 +29,7 @@ export function periksaIsian(x: IsianItem): { galat: GalatIsian; bentuk: BentukI
   const b = def.item;
   const pola = (jenis: "tanggal" | "waktu") => (jenis === "tanggal" ? tanggal : waktu);
 
-  if (b.kegiatan && !x.kegiatanId) galat.kegiatanId = "Pilih kegiatan.";
+  if (b.kegiatan === "wajib" && !x.kegiatanId) galat.kegiatanId = "Pilih kegiatan.";
   if (b.masuk && !pola(b.masuk.jenis).safeParse(x.masuk ?? "").success) galat.masuk = `${b.masuk.label} wajib diisi.`;
   if (x.selesai) {
     if (!pola(b.selesai.jenis).safeParse(x.selesai).success) galat.selesai = `${b.selesai.label} tidak valid.`;

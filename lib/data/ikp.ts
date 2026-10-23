@@ -2,7 +2,7 @@
 // Skor berjalan dihitung on-the-fly dari item; hasil_ikp hanya ditulis saat periode dikunci/disahkan.
 
 import "server-only";
-import { and, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { getDb, schema as s, type Db } from "../db";
 import { hitungIkp, type HasilIkp, type MasukanIkp } from "../ikp/hitung";
 import type { ParamIndikator } from "../ikp/k1";
@@ -54,10 +54,15 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
   const pnAktif = penugasan.filter((p) => kantorOf.has(p.pegawaiId));
   const pnIds = pnAktif.map((p) => p.id);
 
-  const [item, kegiatan, dtrTugas, uji, absensi, k3, pd, k4] = await Promise.all([
+  const [item, kegiatan, tugas, jurnal, uji, absensi, k3, pd, k4] = await Promise.all([
     pnIds.length ? db.select().from(s.item).where(and(eq(s.item.periodeId, periode), inArray(s.item.penugasanId, pnIds))) : [],
     db.select().from(s.kegiatan).where(and(gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir))),
-    db.select().from(s.dtrTugas).where(eq(s.dtrTugas.periodeId, periode)),
+    db
+      .select({ jadwal: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId })
+      .from(s.tugasKhususJadwal)
+      .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
+      .where(eq(s.tugasKhususJadwal.periodeId, periode)),
+    db.select({ pegawaiId: s.jurnal.pegawaiId, n: count() }).from(s.jurnal).where(and(gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir))).groupBy(s.jurnal.pegawaiId),
     db.select().from(s.ujiPetikArsip).where(eq(s.ujiPetikArsip.periodeId, periode)),
     db.select().from(s.absensi).where(eq(s.absensi.periodeId, periode)),
     db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periode), eq(s.penilaianK3.status, "dikirim"))),
@@ -68,9 +73,6 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
       .innerJoin(s.k4Pengusul, eq(s.k4Pengusul.k4Id, s.k4Pengajuan.id))
       .where(and(eq(s.k4Pengajuan.periodeId, periode), inArray(s.k4Pengajuan.status, ["ditetapkan", "disahkan"]))),
   ]);
-  const dtrCek = dtrTugas.length
-    ? await db.select().from(s.dtrCek).where(and(inArray(s.dtrCek.dtrTugasId, dtrTugas.map((t) => t.id)), gte(s.dtrCek.tanggal, awal), lte(s.dtrCek.tanggal, akhir)))
-    : [];
 
   const poinK4 = new Map<string, number>();
   for (const r of k4) poinK4.set(r.pegawaiId, (poinK4.get(r.pegawaiId) ?? 0) + (r.poin ?? 0));
@@ -94,10 +96,11 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
         diajukanPada: i.diajukanPada,
         diverifikasiPada: i.diverifikasiPada,
         dibuatPada: i.dibuatPada,
+        data: i.data,
       })),
       kegiatan: kegiatan.map((k) => ({ id: k.id, unitId: k.unitId, tanggal: k.tanggal, perluSpp: k.perluSpp, perluSpb: k.perluSpb, dibuatPada: k.dibuatPada, penanggungJawabId: k.penanggungJawabId, skuoId: k.skuoId })),
-      dtrTugas: dtrTugas.map((t) => ({ id: t.id, penugasanId: t.penugasanId, frekuensi: t.frekuensi, disetujui: t.disetujuiOleh !== null })),
-      dtrCek: dtrCek.map((c) => ({ tugasId: c.dtrTugasId, tanggal: c.tanggal, selesai: c.selesai, disetujui: c.disetujui })),
+      tugas: tugas.map(({ jadwal: j, penugasanId }) => ({ penugasanId, tenggat: j.tenggat, status: j.status, selesaiPada: j.selesaiPada, diverifikasiPada: j.diverifikasiPada })),
+      jurnal: new Map(jurnal.map((j) => [j.pegawaiId, j.n])),
       ujiPetik: uji.map((u) => ({ unitId: u.unitId, jumlahDiuji: u.jumlahDiuji, jumlahSesuai: u.jumlahSesuai })),
     },
     pegawai: pegawai.map((p) => ({ id: p.id, nama: p.nama, kantor: p.kantor as Kantor })),

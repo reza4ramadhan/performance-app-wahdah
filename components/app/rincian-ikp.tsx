@@ -3,6 +3,7 @@
 import type { HasilIndikator } from "@/lib/ikp/k1";
 import { angka, bilangan, persenBulat } from "@/lib/format";
 import { indikatorDari } from "@/lib/ikp/katalog";
+import { PARAMETER } from "@/lib/ikp/tipe";
 import { cn } from "@/lib/utils";
 import { Batang, Lencana } from "./ui";
 
@@ -37,12 +38,18 @@ function BarisIndikator({ i, ringkas, kecil = false }: { i: HasilIndikator; ring
           <span className="mr-1.5 font-mono text-xs text-muted-foreground">{i.kode}</span>
           {i.nama}
         </p>
-        <p className={cn("shrink-0 font-bold tabular-nums", i.dikecualikan ? "text-muted-foreground" : "text-heading")}>{i.skor === null ? "—" : angka(i.skor)}</p>
+        <p className={cn("shrink-0 font-bold tabular-nums", i.dikecualikan ? "text-muted-foreground" : i.tambahan ? "text-mint-600" : "text-heading")}>
+          {i.skor === null ? "—" : i.tambahan ? `+${angka(i.skor)}` : angka(i.skor)}
+        </p>
       </div>
-      {!i.dikecualikan && <Batang nilai={i.skor} className="mt-1.5" nada={i.skor !== null && i.skor < 70 ? "flame" : i.skor !== null && i.skor < 90 ? "gold" : "brand"} />}
+      {!i.dikecualikan && !i.tambahan && <Batang nilai={i.skor} className="mt-1.5" nada={i.skor !== null && i.skor < 70 ? "flame" : i.skor !== null && i.skor < 90 ? "gold" : "brand"} />}
       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {i.dikecualikan ? (
           <span>Dikeluarkan dari rata-rata: {i.alasan}</span>
+        ) : i.tambahan ? (
+          <span>
+            Poin tambahan: {bilangan(i.realisasi)} × {angka(PARAMETER.tambahan.poin)} · maks. {bilangan(PARAMETER.tambahan.maks)}
+          </span>
         ) : i.kode === "KSBK-2" ? (
           <span>
             Rata-rata K1 {bilangan(i.target)} staf: {angka(i.realisasi)} · acuan {bilangan(i.standar * 100)}

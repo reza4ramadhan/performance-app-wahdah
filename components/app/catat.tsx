@@ -13,6 +13,8 @@ import { Chip } from "./kolom";
 import { FieldItem, keIsian, nilaiAwal, type NilaiForm, type Pilihan } from "./form-item";
 
 export type PenugasanCatat = { id: string; label: string; indikator: { kode: string; pendek: string; nama: string }[] };
+/** Pilihan awal saat sheet dibuka dari kartu kegiatan. */
+export type PresetCatat = { penugasanId: string; kode: string; kegiatanId?: string };
 
 const KUNCI_DRAF = "ikp-draf-item";
 const KUNCI_TERAKHIR = "ikp-catat-terakhir";
@@ -57,16 +59,16 @@ export function useKirimDraf() {
   }, [kirim]);
 }
 
-function nilaiUntuk(kode: string, hariIni: string) {
+function nilaiUntuk(kode: string, hariIni: string, kegiatanId?: string) {
   const b = kode ? indikatorDari(kode)?.item : undefined;
-  return b ? nilaiAwal(b, hariIni) : null;
+  return b ? nilaiAwal(b, hariIni, kegiatanId ? { kegiatanId } : undefined) : null;
 }
 
-/** Penugasan & indikator terakhir yang dipakai di perangkat ini. */
-function terakhirDipakai(penugasan: PenugasanCatat[]) {
-  let t: { pnId?: string; kode?: string } = {};
+/** Preset dari tombol, atau penugasan & indikator terakhir yang dipakai di perangkat ini. */
+function terakhirDipakai(penugasan: PenugasanCatat[], preset?: PresetCatat) {
+  let t: { pnId?: string; kode?: string } = preset ? { pnId: preset.penugasanId, kode: preset.kode } : {};
   try {
-    if (typeof window !== "undefined") t = JSON.parse(localStorage.getItem(KUNCI_TERAKHIR) ?? "{}");
+    if (!preset && typeof window !== "undefined") t = JSON.parse(localStorage.getItem(KUNCI_TERAKHIR) ?? "{}");
   } catch {}
   const p = penugasan.find((x) => x.id === t.pnId) ?? penugasan[0];
   return { pnId: p?.id ?? "", kode: p?.indikator.some((i) => i.kode === t.kode) ? t.kode! : (p?.indikator[0]?.kode ?? "") };
@@ -78,18 +80,20 @@ export function SheetCatat({
   penugasan,
   hariIni,
   minTanggal,
+  preset,
 }: {
   buka: boolean;
   setBuka: (b: boolean) => void;
   penugasan: PenugasanCatat[];
   hariIni: string;
   minTanggal: string;
+  preset?: PresetCatat;
 }) {
   // Sheet dipasang ulang setiap dibuka (lihat Cangkang), jadi keadaan awal cukup dihitung sekali di sini.
-  const [awal] = useState(() => terakhirDipakai(penugasan));
+  const [awal] = useState(() => terakhirDipakai(penugasan, preset));
   const [pnId, setPnId] = useState(awal.pnId);
   const [kode, setKode] = useState(awal.kode);
-  const [nilai, setNilai] = useState<NilaiForm | null>(() => nilaiUntuk(awal.kode, hariIni));
+  const [nilai, setNilai] = useState<NilaiForm | null>(() => nilaiUntuk(awal.kode, hariIni, awal.kode === preset?.kode ? preset?.kegiatanId : undefined));
   const [galat, setGalat] = useState<Record<string, string>>({});
   const [pilihan, setPilihan] = useState<Record<string, Pilihan>>({});
   const [menyimpan, mulai] = useTransition();

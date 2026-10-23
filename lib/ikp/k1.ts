@@ -1,18 +1,11 @@
-// K1: dari item, kegiatan, DTR, dan uji petik → Target, Realisasi, skor per indikator (plan.md Bagian 6–7).
+// K1: dari item, kegiatan, tugas khusus, jurnal, dan uji petik → Target, Realisasi, skor per indikator (plan.md Bagian 6–7).
 // Fungsi murni: pemanggil memuat data satu periode lalu menyerahkannya ke sini.
+// K1 penugasan = min(100; rata-rata indikator pokok + poin tambahan). Poin tambahan (tugas khusus, jurnal)
+// hanya menambah; nilai 100 bisa dicapai tanpa poin tambahan.
 
 import { KATALOG, type DefinisiIndikator, type Verifikator } from "./katalog";
-import { PARAMETER, type PeranKerja, type StatusItem } from "./tipe";
-import {
-  geserHariKerja,
-  hariKerjaAntara,
-  hariKerjaPeriode,
-  rentangPeriode,
-  seninPekan,
-  tambahHari,
-  tanggalLokal,
-  type Kantor,
-} from "../waktu";
+import { PARAMETER, type PeranKerja, type StatusItem, type StatusTugas } from "./tipe";
+import { geserHariKerja, hariKerjaAntara, rentangPeriode, tambahHari, tanggalLokal, type Kantor } from "../waktu";
 
 // ── Masukan ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +32,8 @@ export type ItemK1 = {
   diajukanPada: Date | null;
   diverifikasiPada: Date | null;
   dibuatPada: Date;
+  /** Field khusus; SBK-3 memakai `ke` ("1" / "2"). */
+  data: Record<string, string>;
 };
 
 export type KegiatanK1 = {
@@ -49,14 +44,14 @@ export type KegiatanK1 = {
   perluSpp: boolean;
   perluSpb: boolean;
   dibuatPada: Date;
-  /** Staf penanggung jawab; null = berlaku untuk semua SBK di bidang. */
+  /** Staf penanggung jawab (wajib untuk kegiatan baru). */
   penanggungJawabId: string | null;
   /** SKUO kegiatan; menentukan penugasan mana yang memikulnya bila staf memegang beberapa SKUO. */
   skuoId?: string | null;
 };
 
-export type DtrTugasK1 = { id: string; penugasanId: string; frekuensi: "harian" | "mingguan"; disetujui: boolean };
-export type DtrCekK1 = { tugasId: string; tanggal: string; selesai: boolean; disetujui: boolean };
+/** Satu jadwal tugas khusus yang tenggatnya jatuh dalam periode ini. */
+export type TugasK1 = { penugasanId: string; tenggat: Date; status: StatusTugas; selesaiPada: Date | null; diverifikasiPada: Date | null };
 export type UjiPetikK1 = { unitId: string; jumlahDiuji: number; jumlahSesuai: number };
 
 export type KonteksK1 = {
@@ -71,8 +66,9 @@ export type KonteksK1 = {
   item: ItemK1[];
   /** Kegiatan yang dilaksanakan dalam periode ini. */
   kegiatan: KegiatanK1[];
-  dtrTugas: DtrTugasK1[];
-  dtrCek: DtrCekK1[];
+  tugas: TugasK1[];
+  /** Jumlah entri jurnal per pegawai dalam periode ini. */
+  jurnal: ReadonlyMap<string, number>;
   ujiPetik: UjiPetikK1[];
 };
 
@@ -91,10 +87,20 @@ export type HasilIndikator = {
   dikecualikan: boolean;
   alasan?: string;
   volumeKecil: boolean;
+  /** Poin tambahan: tidak ikut rata-rata, skornya ditambahkan ke K1. */
+  tambahan?: boolean;
   sub?: HasilIndikator[];
 };
 
-export type HasilK1Penugasan = { penugasanId: string; indikator: HasilIndikator[]; k1: number | null };
+export type HasilK1Penugasan = {
+  penugasanId: string;
+  indikator: HasilIndikator[];
+  /** Rata-rata indikator pokok (Target > 0). */
+  pokok: number | null;
+  /** Jumlah poin tambahan. */
+  tambahan: number;
+  k1: number | null;
+};
 
 // ── Aturan dasar ──────────────────────────────────────────────────────────────
 
@@ -125,9 +131,24 @@ function hasil(def: { kode: string; nama: string }, target: number, realisasi: n
 
 const kosong = (def: { kode: string; nama: string }, standar: number, alasan: string) => hasil(def, 0, 0, standar, alasan);
 
+/** Poin tambahan: jumlah × 0,15, dibatasi 5. */
+function tambahan(def: { kode: string; nama: string }, jumlah: number): HasilIndikator {
+  const { poin, maks } = PARAMETER.tambahan;
+  return { kode: def.kode, nama: def.nama, target: jumlah, realisasi: jumlah, capaian: null, standar: 1, skor: Math.min(maks, jumlah * poin), dikecualikan: false, volumeKecil: false, tambahan: true };
+}
+
 // ── Evaluator ─────────────────────────────────────────────────────────────────
 
 const bidangPn = (p: PenugasanK1) => p.bidangId ?? p.unitId;
+
+/**
+ * Penugasan SBK seorang staf yang memikul sebuah kegiatan bidang: penugasan di SKUO kegiatan,
+ * lalu yang langsung di bidang, lalu yang pertama. Dipakai juga saat membuat item otomatis.
+ */
+export function pemikulKegiatan<T extends { id: string; unitId: string }>(calon: T[], k: { unitId: string; skuoId?: string | null }): T | undefined {
+  const urut = [...calon].sort((a, b) => a.id.localeCompare(b.id));
+  return urut.find((p) => k.skuoId && p.unitId === k.skuoId) ?? urut.find((p) => p.unitId === k.unitId) ?? urut[0];
+}
 
 class Evaluasi {
   constructor(readonly ctx: KonteksK1) {}
@@ -137,14 +158,12 @@ class Evaluasi {
     return this.ctx.penugasan.filter((p) => p.peran === "SBK" && bidangPn(p) === bidangPn(ksbk) && p.pegawaiId !== ksbk.pegawaiId);
   }
 
-  /**
-   * Satu kegiatan dipikul satu penugasan per staf, agar tidak terhitung ganda saat staf
-   * memegang beberapa SKUO di bidang yang sama: penugasan di SKUO kegiatan, lalu yang
-   * langsung di bidang, lalu yang pertama.
-   */
+  /** Satu kegiatan dipikul satu penugasan per staf, agar tidak terhitung ganda saat staf memegang beberapa SKUO di bidang yang sama. */
   private pemikul(k: KegiatanK1, pegawaiId: string) {
-    const calon = this.ctx.penugasan.filter((p) => p.peran === "SBK" && p.pegawaiId === pegawaiId && bidangPn(p) === k.unitId).sort((a, b) => a.id.localeCompare(b.id));
-    return (calon.find((p) => k.skuoId && p.unitId === k.skuoId) ?? calon.find((p) => p.unitId === k.unitId) ?? calon[0])?.id;
+    return pemikulKegiatan(
+      this.ctx.penugasan.filter((p) => p.peran === "SBK" && p.pegawaiId === pegawaiId && bidangPn(p) === k.unitId),
+      k,
+    )?.id;
   }
 
   private sah(i: ItemK1) {
@@ -163,8 +182,19 @@ class Evaluasi {
   }
 
   private kegiatanUntuk(pn: PenugasanK1, syarat: (k: KegiatanK1) => boolean) {
-    return this.ctx.kegiatan.filter(
-      (k) => k.unitId === bidangPn(pn) && (k.penanggungJawabId === null || k.penanggungJawabId === pn.pegawaiId) && this.pemikul(k, pn.pegawaiId) === pn.id && syarat(k),
+    return this.ctx.kegiatan.filter((k) => k.unitId === bidangPn(pn) && k.penanggungJawabId === pn.pegawaiId && this.pemikul(k, pn.pegawaiId) === pn.id && syarat(k));
+  }
+
+  /** Tugas khusus yang selesai sebelum tenggat dan disetujui pemberi tugas (sebelum batas verifikasi). */
+  private tugasTepat(pn: PenugasanK1) {
+    const b = this.ctx.batasVerifikasi;
+    return this.ctx.tugas.filter(
+      (t) =>
+        t.penugasanId === pn.id &&
+        t.status === "disetujui" &&
+        (!b || (t.diverifikasiPada !== null && t.diverifikasiPada <= b)) &&
+        t.selesaiPada !== null &&
+        t.selesaiPada <= t.tenggat,
     );
   }
 
@@ -183,9 +213,17 @@ class Evaluasi {
     const items = this.itemDari(pn.id, def.kode);
 
     switch (def.kode) {
-      case "SBK-1":
-      case "SBK-5": {
+      case "SBK-1": {
         const ok = items.filter((i) => this.sah(i) && i.selesai && hariKerjaAntara(lokal(i.masuk), lokal(i.selesai), libur) <= tenggat);
+        return hasil(def, items.length, ok.length, p.standar);
+      }
+      case "SBK-5": {
+        // Arsip kegiatan: ≤ N hari kerja setelah kegiatan; arsip lain: ≤ N hari kerja setelah diterima.
+        const ok = items.filter((i) => {
+          if (!this.sah(i) || !i.selesai) return false;
+          const k = this.kegiatan(i.kegiatanId);
+          return k ? lokal(i.selesai) <= geserHariKerja(k.tanggal, tenggat, libur) : hariKerjaAntara(lokal(i.masuk), lokal(i.selesai), libur) <= tenggat;
+        });
         return hasil(def, items.length, ok.length, p.standar);
       }
       case "SBK-2a":
@@ -198,9 +236,16 @@ class Evaluasi {
         return hasil(def, perlu.length, tepat.length, p.standar, "Tidak ada kegiatan yang perlu " + (def.kode === "SBK-2a" ? "SPP" : "SPB"));
       }
       case "SBK-3": {
+        // Tiap pengingat dinilai sendiri: ke-1 ≤ H-6, ke-2 ≤ H-2.
         const terjadwal = this.kegiatanUntuk(pn, () => true);
-        const cukup = terjadwal.filter((k) => items.filter((i) => i.kegiatanId === k.id && this.sah(i) && i.selesai && lokal(i.selesai) < k.tanggal).length >= tenggat);
-        return hasil(def, terjadwal.length, cukup.length, p.standar, "Tidak ada kegiatan terjadwal");
+        const h = PARAMETER.pengingatHMinus;
+        let tepat = 0;
+        for (const k of terjadwal)
+          h.forEach((hari, n) => {
+            const batas = tambahHari(k.tanggal, -hari);
+            if (items.some((i) => i.kegiatanId === k.id && i.data.ke === String(n + 1) && this.sah(i) && i.selesai && lokal(i.selesai) <= batas)) tepat++;
+          });
+        return hasil(def, terjadwal.length * h.length, tepat, p.standar, "Tidak ada kegiatan terjadwal");
       }
       case "SBK-4": {
         const ok = items.filter((i) => {
@@ -209,10 +254,16 @@ class Evaluasi {
         });
         return hasil(def, items.length, ok.length, p.standar);
       }
-      case "SK-2":
-      case "SK-3": {
-        const ok = items.filter((i) => this.sah(i) && i.selesai && i.selesai.getTime() - i.masuk.getTime() <= tenggat * 3_600_000);
-        return hasil(def, items.length, ok.length, p.standar);
+      case "SBK-TK":
+        return tambahan(def, this.tugasTepat(pn).length);
+      case "SBK-JR":
+      case "SK-JR":
+        return tambahan(def, this.ctx.jurnal.get(pn.pegawaiId) ?? 0);
+      case "SK-TK": {
+        // Jatuh tempo: tenggat sudah lewat, sudah diselesaikan lebih awal, atau bulan sudah ditutup.
+        const tutup = this.ctx.batasVerifikasi !== null;
+        const jatuhTempo = this.ctx.tugas.filter((t) => t.penugasanId === pn.id && (tutup || t.tenggat <= this.ctx.sekarang || t.status === "diajukan" || t.status === "disetujui"));
+        return hasil(def, jatuhTempo.length, this.tugasTepat(pn).length, p.standar, "Belum ada tugas khusus yang jatuh tempo");
       }
       case "KSBK-3": {
         const batas = geserHariKerja(rentangPeriode(this.ctx.periode).akhir, tenggat, libur);
@@ -221,8 +272,6 @@ class Evaluasi {
         const tepat = items.some((i) => this.sah(i) && i.selesai && lokal(i.selesai) <= batas);
         return hasil(def, 1, tepat ? 1 : 0, p.standar);
       }
-      case "SK-1":
-        return this.dtr(pn, def, p);
       case "KSBK-1":
         return this.ksbk1(pn, def, p);
       case "KSBK-2": {
@@ -239,26 +288,6 @@ class Evaluasi {
     }
   }
 
-  private dtr(pn: PenugasanK1, def: DefinisiIndikator, p: ParamIndikator) {
-    const libur = this.ctx.libur(pn.kantor);
-    const hariKerja = hariKerjaPeriode(this.ctx.periode, libur, this.hariIni(pn.kantor));
-    const pekan = [...new Set(hariKerja.map(seninPekan))];
-    const tugas = this.ctx.dtrTugas.filter((t) => t.penugasanId === pn.id && t.disetujui);
-    let target = 0;
-    let realisasi = 0;
-    for (const t of tugas) {
-      const cek = this.ctx.dtrCek.filter((c) => c.tugasId === t.id && c.selesai && c.disetujui);
-      if (t.frekuensi === "harian") {
-        target += hariKerja.length;
-        realisasi += new Set(cek.map((c) => c.tanggal).filter((d) => hariKerja.includes(d))).size;
-      } else {
-        target += pekan.length;
-        realisasi += new Set(cek.map((c) => seninPekan(c.tanggal)).filter((w) => pekan.includes(w))).size;
-      }
-    }
-    return hasil(def, target, realisasi, p.standar, tugas.length ? "Belum ada jadwal" : "DTR belum disetujui");
-  }
-
   private ksbk1(pn: PenugasanK1, def: DefinisiIndikator, p: ParamIndikator): HasilIndikator {
     const lokal = (d: Date) => tanggalLokal(d, pn.kantor);
     const libur = this.ctx.libur(pn.kantor);
@@ -271,9 +300,7 @@ class Evaluasi {
     const cepat = diajukan.filter((i) => i.diverifikasiPada && hariKerjaAntara(lokal(i.diajukanPada!), lokal(i.diverifikasiPada), libur) <= 1);
     sub.push(hasil(s.a, diajukan.length, cepat.length, p.standar));
 
-    // b — SPP/SPB bidang tidak dikembalikan Keuangan.
-    const diputus = [...this.itemStaf(pn, "SBK-2a"), ...this.itemStaf(pn, "SBK-2b")].filter((i) => i.status === "disetujui" || i.status === "ditolak");
-    sub.push(hasil(s.b, diputus.length, diputus.filter((i) => i.status === "disetujui").length, p.standar, "Belum ada SPP/SPB yang diperiksa"));
+    // b — SPP/SPB tidak dikembalikan Keuangan: nonaktif sampai verifikasi Keuangan berjalan lagi.
 
     // c — kegiatan bulanan diinput paling lambat tanggal 5.
     const batasC = `${this.ctx.periode}-05`;
@@ -335,8 +362,11 @@ export function hitungK1(ctx: KonteksK1): Map<string, HasilK1Penugasan> {
 
   const hitung = (pn: PenugasanK1) => {
     const indikator = indikatorAktif(pn.peran, ctx.param).map((def) => ev.indikator(pn, def, ctx.param.get(def.kode)!, k1Staf));
-    const k1 = rataRata(indikator.filter((i) => !i.dikecualikan).map((i) => i.skor!));
-    hasilPn.set(pn.id, { penugasanId: pn.id, indikator, k1 });
+    const pokok = rataRata(indikator.filter((i) => !i.tambahan && !i.dikecualikan).map((i) => i.skor!));
+    const tambahan = indikator.filter((i) => i.tambahan).reduce((a, i) => a + (i.skor ?? 0), 0);
+    // Tanpa indikator pokok, poin tambahan saja tidak membentuk K1.
+    const k1 = pokok === null ? null : Math.min(100, pokok + tambahan);
+    hasilPn.set(pn.id, { penugasanId: pn.id, indikator, pokok, tambahan, k1 });
     return k1;
   };
 

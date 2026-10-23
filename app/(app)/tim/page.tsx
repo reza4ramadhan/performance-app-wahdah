@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { inArray } from "drizzle-orm";
-import { AlarmClock, BadgeCheck, UserRoundX, Users } from "lucide-react";
+import { AlarmClock, BadgeCheck, ClipboardCheck, UserRoundX, Users } from "lucide-react";
 import { KartuItem } from "@/components/app/baris-item";
 import { IKON_MENU } from "@/components/app/ikon-menu";
 import { Avatar, BarisTautan, JudulBagian, Kartu, Kepala, Kerangka, Statistik } from "@/components/app/ui";
@@ -10,6 +10,7 @@ import { schema as s } from "@/lib/db";
 import { kondisiAntrean } from "@/lib/data/antrean";
 import { daftarItem } from "@/lib/data/item";
 import { anggotaTim } from "@/lib/data/tim";
+import { daftarTugas, kondisiTugasMenunggu } from "@/lib/data/tugas";
 import { menuUntuk } from "@/lib/menu";
 import { wajibSesi } from "@/lib/sesi";
 import { labelTanggalPanjang, hariIni } from "@/lib/waktu";
@@ -28,7 +29,11 @@ async function Isi() {
   const sesi = await wajibSesi();
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
   if (!kelola) redirect("/");
-  const [tim, antrean] = await Promise.all([anggotaTim(sesi.pegawaiId, sesi.kantor), daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 })]);
+  const [tim, antrean, tugasMenunggu] = await Promise.all([
+    anggotaTim(sesi.pegawaiId, sesi.kantor),
+    daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
+    daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+  ]);
   const pnTim = tim.flatMap((t) => t.penugasan.map((p) => p.id));
   const lewat = pnTim.length ? (await daftarItem(inArray(s.item.penugasanId, pnTim), { kantor: sesi.kantor, batas: 400 })).filter((i) => i.lewat) : [];
   const belum = tim.filter((t) => !t.isiHariIni);
@@ -78,6 +83,11 @@ async function Isi() {
                 </section>
               )}
             </>
+          )}
+          {tugasMenunggu.length > 0 && (
+            <Kartu className="p-2">
+              <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={`${tugasMenunggu.length} tugas ditandai selesai, menunggu verifikasi Anda`} />
+            </Kartu>
           )}
           {!tim.length && antrean.length > 0 && (
             <Kartu className="p-2">

@@ -117,7 +117,7 @@ Versi sebelumnya menyimpan data contoh di berkas JSON (`data/db.json`). Versi in
 
 ```
 app/(masuk)/            masuk, ganti password
-app/(app)/              halaman ber-login: Hari Ini, Item, Progres, Akun, Jurnal, Pengembangan diri, DTR, K4,
+app/(app)/              halaman ber-login: Hari Ini, Item, Progres, Akun, Jurnal, Pengembangan diri, Tugas khusus, K4,
                         Tim (koordinator), Verifikasi, Kantor (pimpinan), Absensi (Personalia), Admin
 app/(cetak)/rapor/      rapor per pegawai (Lampiran B), siap cetak / simpan PDF
 app/aksi/               Server Action (setiap aksi memeriksa sesi dan aturan akses sendiri)
@@ -139,10 +139,11 @@ Butir-butir ini mengikuti `plan.md` Bagian 13. Nilainya bisa diubah Admin di **A
 | Hal | Yang dipakai sekarang |
 | --- | --- |
 | Tenggat SPP (13.1) | Diinput paling lambat **H-3 hari kerja** sebelum kegiatan. |
-| Keuangan memakai aplikasi (13.2) | Ya. SBK-2a/2b diverifikasi Keuangan (setujui = sesuai SOP, tolak = dikembalikan). Bila Keuangan tidak memakai aplikasi, ubah verifikatornya menjadi Koordinator. |
-| SLA SK-3 (13.9) | 24 jam. |
+| Keuangan memakai aplikasi (13.2) | Sementara tidak. SBK-2a/2b diverifikasi KSBK dan KSBK-1b nonaktif sampai peran Keuangan diperbaiki. |
+| K1 Staf Khusus | Sementara: Tugas Khusus tepat waktu (SK-TK) + poin jurnal; rumus lengkap menyusul. DTR, kejadian, dan layanan SK dihapus. |
 | Bobot Kepala Unit Pendukung (13.5) | 50% K2 + 50% K3 (*kode*). |
-| Siapa yang ditarget SPP/SPB/pengingat | Penanggung jawab kegiatan yang dipilih KSBK. Bila bidang punya lebih dari satu staf, penanggung jawab wajib dipilih. |
+| Siapa yang ditarget SPP/SPB/pengingat | Penanggung jawab kegiatan (wajib dipilih KSBK; boleh staf SKUO lain di bidang yang sama). Item Pengingat 1/2, SPP, dan SPB dibuat otomatis untuknya. |
+| Poin tambahan K1 (tugas khusus, jurnal) | 0,15 per tugas/entri, maks. 5 per jenis; K1 tetap maks. 100 (*kode*: `PARAMETER.tambahan`). |
 | K2: izin/sakit sah | Penyebut = hari kerja wajib **sesuai unggahan Personalia** (plan.md Bagian 7, *kode*). Bila izin/sakit sah tidak boleh menurunkan skor, Personalia mengunggah hari kerja wajib yang sudah dikurangi izin/sakit, atau satu baris di `lib/ikp/hitung.ts` diubah. |
 | Kewajiban bulanan (KSBK-1c, 1e, KSBK-3) | Dihitung 0 bila belum ada setelah jatuh tempo; sebelum jatuh tempo dikeluarkan dari rata-rata. |
 | Inovasi tim (K4) | Setiap pengusul (maks. 3) menerima poin yang sama. |
