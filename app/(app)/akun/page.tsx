@@ -65,7 +65,7 @@ async function Isi() {
   }
   const bisaTugas = sesi.amanah?.peranKerja === "SBK" || sesi.amanah?.peranKerja === "SK";
   const peran = [...sesi.peran].filter((p) => p !== "pegawai");
-  const rangkap = sesi.penugasan.length > 1;
+  const rangkap = sesi.daftarAmanah.length > 1;
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
@@ -104,14 +104,19 @@ async function Isi() {
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{rangkap ? "Pindah amanah" : "Amanah bulan ini"}</p>
         {rangkap && <p className="mb-2 text-sm text-muted-foreground">Menu, dashboard, item, dan tim mengikuti amanah yang aktif.</p>}
         <ul className="divide-y divide-border text-sm">
-          {sesi.penugasan.map((p) => {
-            const aktif = p.id === sesi.amanah?.id;
-            const n = antreanAmanah.get(p.id) ?? 0;
+          {sesi.daftarAmanah.map((grup) => {
+            const p = grup[0];
+            const aktif = grup.some((x) => x.id === sesi.amanah?.id);
+            const n = grup.reduce((a, x) => a + (antreanAmanah.get(x.id) ?? 0), 0);
             return (
               <li key={p.id} className="flex min-h-14 items-center gap-3 py-2">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{p.unitNama}</span>
+                  {grup.map((x) => (
+                    <span key={x.id} className="block truncate text-xs text-muted-foreground">
+                      {x.unitNama}
+                    </span>
+                  ))}
                 </span>
                 {n > 0 && <Lencana nada="gold">{n} menunggu verifikasi</Lencana>}
                 {aktif ? (

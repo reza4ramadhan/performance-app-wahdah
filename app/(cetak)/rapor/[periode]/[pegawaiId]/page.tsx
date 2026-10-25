@@ -7,6 +7,7 @@ import { TombolCetak } from "./tombol-cetak";
 import { bolehLihatPegawai } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode } from "@/lib/data/ikp";
+import { idPenugasan, unitPenugasan, type HasilPenugasan } from "@/lib/ikp/hitung";
 import { angka, bilangan, persenBulat } from "@/lib/format";
 import { LABEL_NILAI_K3, LABEL_PERAN_KERJA, LABEL_STATUS_PERIODE, NILAI_K3 } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
@@ -38,7 +39,7 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
   const h = hasil.find((x) => x.pegawaiId === pegawaiId);
   const [pg] = await db.select().from(s.pegawai).where(eq(s.pegawai.id, pegawaiId));
   if (!h || !pg) notFound();
-  const pnIds = h.penugasan.map((p) => p.penugasanId).concat("-");
+  const pnIds = h.penugasan.flatMap(idPenugasan).concat("-");
   const [unit, k3, abs, k4, sendiri] = await Promise.all([
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit),
     db
@@ -60,6 +61,7 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
       .groupBy(s.item.penugasanId),
   ]);
   const nSendiri = new Map(sendiri.map((x) => [x.pn, x.n]));
+  const jumlahSendiri = (p: HasilPenugasan) => idPenugasan(p).reduce((a, id) => a + (nSendiri.get(id) ?? 0), 0);
   const namaUnit = new Map(unit.map((u) => [u.id, u.nama]));
   const a = abs[0];
 
@@ -104,9 +106,9 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
               <thead>
                 <tr>
                   <th className={th} colSpan={6}>
-                    {LABEL_PERAN_KERJA[p.peran]} · {namaUnit.get(p.unitId)}
+                    {LABEL_PERAN_KERJA[p.peran]} · {unitPenugasan(p).map((u) => namaUnit.get(u)).join(", ")}
                     {p.bobotAlokasi ? ` · bobot ${p.bobotAlokasi}%` : ""}
-                    {nSendiri.get(p.penugasanId) ? <span className="font-normal text-neutral-600"> · {nSendiri.get(p.penugasanId)} item diverifikasi sendiri (rangkap jabatan)</span> : null}
+                    {jumlahSendiri(p) ? <span className="font-normal text-neutral-600"> · {jumlahSendiri(p)} item diverifikasi sendiri (rangkap jabatan)</span> : null}
                   </th>
                 </tr>
                 <tr>

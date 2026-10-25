@@ -2,7 +2,9 @@
 // Fungsi murni: pemanggil memuat data satu periode lalu menyerahkannya ke sini.
 // K1 penugasan = min(100; rata-rata indikator pokok + poin tambahan). Poin tambahan (tugas khusus, jurnal)
 // hanya menambah; nilai 100 bisa dicapai tanpa poin tambahan.
+// Penugasan satu amanah (peran sama, bidang sama; lib/amanah.ts) dihitung sebagai satu K1 gabungan.
 
+import { kunciAmanah } from "../amanah";
 import { KATALOG, type DefinisiIndikator, type Verifikator } from "./katalog";
 import { PARAMETER, type PeranKerja, type StatusItem, type StatusTugas } from "./tipe";
 import { geserHariKerja, hariKerjaAntara, rentangPeriode, tambahHari, tanggalLokal, type Kantor } from "../waktu";
@@ -93,7 +95,10 @@ export type HasilIndikator = {
 };
 
 export type HasilK1Penugasan = {
+  /** Penugasan wakil amanah. */
   penugasanId: string;
+  /** Semua penugasan dalam amanah ini (K1 gabungan); berisi satu bila tidak rangkap di bidang yang sama. */
+  penugasanIds: string[];
   indikator: HasilIndikator[];
   /** Rata-rata indikator pokok (Target > 0). */
   pokok: number | null;
@@ -140,6 +145,14 @@ function tambahan(def: { kode: string; nama: string }, jumlah: number): HasilInd
 // ── Evaluator ─────────────────────────────────────────────────────────────────
 
 const bidangPn = (p: PenugasanK1) => p.bidangId ?? p.unitId;
+const kunciPn = (p: PenugasanK1) => `${p.pegawaiId}|${kunciAmanah({ peranKerja: p.peran, unitId: p.unitId, bidangId: p.bidangId })}`;
+
+/** Penugasan dikelompokkan per amanah pegawai; anggota pertama menjadi wakil. */
+export function amanahK1(penugasan: readonly PenugasanK1[]): PenugasanK1[][] {
+  const grup = new Map<string, PenugasanK1[]>();
+  for (const p of [...penugasan].sort((a, b) => a.id.localeCompare(b.id))) (grup.get(kunciPn(p)) ?? grup.set(kunciPn(p), []).get(kunciPn(p))!).push(p);
+  return [...grup.values()];
+}
 
 /**
  * Penugasan SBK seorang staf yang memikul sebuah kegiatan bidang: penugasan di SKUO kegiatan,
@@ -151,7 +164,19 @@ export function pemikulKegiatan<T extends { id: string; unitId: string }>(calon:
 }
 
 class Evaluasi {
-  constructor(readonly ctx: KonteksK1) {}
+  /** penugasanId → id semua penugasan seamanah (termasuk dirinya). */
+  private readonly seamanah = new Map<string, ReadonlySet<string>>();
+
+  constructor(readonly ctx: KonteksK1) {
+    for (const g of amanahK1(ctx.penugasan)) {
+      const ids = new Set(g.map((p) => p.id));
+      for (const p of g) this.seamanah.set(p.id, ids);
+    }
+  }
+
+  private ids(pn: PenugasanK1) {
+    return this.seamanah.get(pn.id) ?? new Set([pn.id]);
+  }
 
   /** SBK di bidang KSBK ini (termasuk yang ditugaskan di SKUO bawahannya), tanpa dirinya. */
   private stafBidang(ksbk: PenugasanK1) {
@@ -171,8 +196,9 @@ class Evaluasi {
     return i.status === "disetujui" && (!b || (i.diverifikasiPada !== null && i.diverifikasiPada <= b));
   }
 
-  private itemDari(penugasanId: string, kode: string) {
-    return this.ctx.item.filter((i) => i.penugasanId === penugasanId && i.indikatorKode === kode);
+  private itemDari(pn: PenugasanK1, kode: string) {
+    const ids = this.ids(pn);
+    return this.ctx.item.filter((i) => ids.has(i.penugasanId) && i.indikatorKode === kode);
   }
 
   /** Item staf SBK lain di unit yang sama (untuk KSBK). */
@@ -182,15 +208,17 @@ class Evaluasi {
   }
 
   private kegiatanUntuk(pn: PenugasanK1, syarat: (k: KegiatanK1) => boolean) {
-    return this.ctx.kegiatan.filter((k) => k.unitId === bidangPn(pn) && k.penanggungJawabId === pn.pegawaiId && this.pemikul(k, pn.pegawaiId) === pn.id && syarat(k));
+    const ids = this.ids(pn);
+    return this.ctx.kegiatan.filter((k) => k.unitId === bidangPn(pn) && k.penanggungJawabId === pn.pegawaiId && ids.has(this.pemikul(k, pn.pegawaiId) ?? "") && syarat(k));
   }
 
   /** Tugas khusus yang selesai sebelum tenggat dan disetujui pemberi tugas (sebelum batas verifikasi). */
   private tugasTepat(pn: PenugasanK1) {
     const b = this.ctx.batasVerifikasi;
+    const ids = this.ids(pn);
     return this.ctx.tugas.filter(
       (t) =>
-        t.penugasanId === pn.id &&
+        ids.has(t.penugasanId) &&
         t.status === "disetujui" &&
         (!b || (t.diverifikasiPada !== null && t.diverifikasiPada <= b)) &&
         t.selesaiPada !== null &&
@@ -210,7 +238,7 @@ class Evaluasi {
     const lokal = (d: Date) => tanggalLokal(d, pn.kantor);
     const libur = this.ctx.libur(pn.kantor);
     const tenggat = p.tenggat ?? 0;
-    const items = this.itemDari(pn.id, def.kode);
+    const items = this.itemDari(pn, def.kode);
 
     switch (def.kode) {
       case "SBK-1": {
@@ -262,7 +290,8 @@ class Evaluasi {
       case "SK-TK": {
         // Jatuh tempo: tenggat sudah lewat, sudah diselesaikan lebih awal, atau bulan sudah ditutup.
         const tutup = this.ctx.batasVerifikasi !== null;
-        const jatuhTempo = this.ctx.tugas.filter((t) => t.penugasanId === pn.id && (tutup || t.tenggat <= this.ctx.sekarang || t.status === "diajukan" || t.status === "disetujui"));
+        const ids = this.ids(pn);
+        const jatuhTempo = this.ctx.tugas.filter((t) => ids.has(t.penugasanId) && (tutup || t.tenggat <= this.ctx.sekarang || t.status === "diajukan" || t.status === "disetujui"));
         return hasil(def, jatuhTempo.length, this.tugasTepat(pn).length, p.standar, "Belum ada tugas khusus yang jatuh tempo");
       }
       case "KSBK-3": {
@@ -275,8 +304,10 @@ class Evaluasi {
       case "KSBK-1":
         return this.ksbk1(pn, def, p);
       case "KSBK-2": {
-        const nilai = this.stafBidang(pn)
-          .map((s) => k1Staf.get(s.id) ?? null)
+        // Staf yang rangkap SKUO dalam bidang ini punya satu K1 gabungan: dihitung sekali.
+        const wakil = new Set(this.stafBidang(pn).map((s) => [...this.ids(s)][0]));
+        const nilai = [...wakil]
+          .map((id) => k1Staf.get(id) ?? null)
           .filter((k): k is number => k !== null);
         const rata = rataRata(nilai);
         if (rata === null) return kosong(def, p.standar, "Belum ada K1 staf");
@@ -352,25 +383,28 @@ export function indikatorAktif(peran: PeranKerja, param: ReadonlyMap<string, Par
 }
 
 /**
- * K1 semua penugasan dalam satu periode.
+ * K1 semua penugasan dalam satu periode, satu kali per amanah; tiap anggota amanah mendapat hasil yang sama.
  * Urutan wajib: staf (SBK, SK) dulu, lalu KSBK karena KSBK-2 butuh K1 staf.
  */
 export function hitungK1(ctx: KonteksK1): Map<string, HasilK1Penugasan> {
   const ev = new Evaluasi(ctx);
   const hasilPn = new Map<string, HasilK1Penugasan>();
   const k1Staf = new Map<string, number | null>();
+  const amanah = amanahK1(ctx.penugasan);
 
-  const hitung = (pn: PenugasanK1) => {
+  const hitung = (grup: PenugasanK1[]) => {
+    const pn = grup[0];
     const indikator = indikatorAktif(pn.peran, ctx.param).map((def) => ev.indikator(pn, def, ctx.param.get(def.kode)!, k1Staf));
     const pokok = rataRata(indikator.filter((i) => !i.tambahan && !i.dikecualikan).map((i) => i.skor!));
     const tambahan = indikator.filter((i) => i.tambahan).reduce((a, i) => a + (i.skor ?? 0), 0);
     // Tanpa indikator pokok, poin tambahan saja tidak membentuk K1.
     const k1 = pokok === null ? null : Math.min(100, pokok + tambahan);
-    hasilPn.set(pn.id, { penugasanId: pn.id, indikator, pokok, tambahan, k1 });
+    const h = { penugasanId: pn.id, penugasanIds: grup.map((p) => p.id), indikator, pokok, tambahan, k1 };
+    for (const p of grup) hasilPn.set(p.id, h);
     return k1;
   };
 
-  for (const pn of ctx.penugasan.filter((p) => p.peran === "SBK" || p.peran === "SK")) k1Staf.set(pn.id, hitung(pn));
-  for (const pn of ctx.penugasan.filter((p) => p.peran === "KSBK" || p.peran === "KU")) hitung(pn);
+  for (const g of amanah.filter((g) => g[0].peran === "SBK" || g[0].peran === "SK")) k1Staf.set(g[0].id, hitung(g));
+  for (const g of amanah.filter((g) => g[0].peran === "KSBK" || g[0].peran === "KU")) hitung(g);
   return hasilPn;
 }

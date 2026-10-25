@@ -5,6 +5,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { kelompokAmanah, kunciAmanah } from "@/lib/amanah";
 import type { PeranSistem } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
 import { geserHariKerja, hariIni, periodeBerikut, periodeDari, tambahHari } from "@/lib/waktu";
@@ -60,7 +61,9 @@ function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: st
     peran: new Set<PeranSistem>(["pegawai", ...peran]),
     penugasan: milik,
     binaan: [],
+    daftarAmanah: kelompokAmanah(milik),
     amanah: milik[0] ?? null,
+    amanahPn: milik[0] ? milik.filter((p) => kunciAmanah(p) === kunciAmanah(milik[0])) : [],
     tim: [],
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amanahPengampu, pilihAmanah } from "./amanah";
+import { amanahPengampu, kelompokAmanah, pilihAmanah } from "./amanah";
 import { leluhurDari } from "./unit";
 
 // Kantor → Bidang 1 → SKUO 1; Kantor → Bidang 2; Staf Khusus di bawah Kantor.
@@ -21,6 +21,17 @@ describe("pindah amanah", () => {
     expect(pilihAmanah([sbk, ksbk], "pSbk")?.id).toBe("pSbk");
     expect(pilihAmanah([sbk, ksbk], "penugasan-lama")?.id).toBe("pKsbk");
     expect(pilihAmanah([], undefined)).toBeNull();
+  });
+
+  it("peran sama di bidang yang sama = satu amanah; beda peran atau beda bidang = pindah amanah", () => {
+    const sbkSkuo1 = { id: "a", peranKerja: "SBK" as const, unitId: "skuo1", bidangId: "b1" };
+    const sbkBidang1 = { id: "b", peranKerja: "SBK" as const, unitId: "b1", bidangId: "b1" };
+    const sbkBidang2 = { id: "c", peranKerja: "SBK" as const, unitId: "b2", bidangId: "b2" };
+    const ksbkBidang1 = { id: "d", peranKerja: "KSBK" as const, unitId: "b1", bidangId: "b1" };
+    const ids = (g: { id: string }[][]) => g.map((x) => x.map((p) => p.id));
+    expect(ids(kelompokAmanah([sbkSkuo1, sbkBidang1]))).toEqual([["a", "b"]]);
+    expect(ids(kelompokAmanah([sbkSkuo1, sbkBidang2]))).toEqual([["a"], ["c"]]);
+    expect(ids(kelompokAmanah([sbkSkuo1, ksbkBidang1, sbkBidang1]))).toEqual([["a", "b"], ["d"]]);
   });
 
   it("binaan dibagi ke amanah KSBK menurut unit; sisanya ke amanah bawaan", () => {

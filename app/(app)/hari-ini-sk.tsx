@@ -15,11 +15,11 @@ import { jamLokal, keUtc, labelPeriode, labelTanggal, LABEL_ZONA, periodeDari, r
 
 const BELUM_SELESAI = ["belum", "dikerjakan", "ditolak"] as const;
 
-export async function HariIniSk({ sesi, amanah, hariIni: today, sp }: { sesi: Sesi; amanah: NonNullable<Sesi["amanah"]>; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
+export async function HariIniSk({ sesi, hariIni: today, sp }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
   const db = await getDb();
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);
-  const pnIds = [amanah.id];
+  const pnIds = sesi.amanahPn.map((p) => p.id);
   const awalHari = keUtc(today, sesi.kantor);
   const akhirHari = keUtc(tambahHari(today, 1), sesi.kantor);
 

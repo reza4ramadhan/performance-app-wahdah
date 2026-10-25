@@ -8,6 +8,7 @@ import { DaftarIndikator } from "@/components/app/rincian-ikp";
 import { Cincin, JudulBagian, Kartu, Kepala, Kerangka, Kosong, Lencana, LencanaPredikat, PetakIkon } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode, liburPerKantor } from "@/lib/data/ikp";
+import { idPenugasan, unitPenugasan } from "@/lib/ikp/hitung";
 import { angka } from "@/lib/format";
 import { LABEL_PERAN_KERJA, LABEL_STATUS_PERIODE } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
@@ -82,14 +83,15 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
 
             {saya.penugasan
               .filter((p) => p.indikator.length)
-              // K1 tiap amanah berdiri sendiri; amanah aktif di atas.
-              .sort((a, b) => Number(b.penugasanId === sesi.amanah?.id) - Number(a.penugasanId === sesi.amanah?.id))
+              // K1 tiap amanah berdiri sendiri (rangkap di bidang yang sama = satu K1 gabungan); amanah aktif di atas.
+              .map((p) => ({ ...p, aktif: idPenugasan(p).includes(sesi.amanah?.id ?? "") }))
+              .sort((a, b) => Number(b.aktif) - Number(a.aktif))
               .map((p) => (
                 <Kartu key={p.penugasanId}>
                   <JudulBagian aksi={<span className="text-sm font-bold tabular-nums text-heading">K1 {angka(p.k1)}</span>}>
-                    {LABEL_PERAN_KERJA[p.peran]} · {namaUnit.get(p.unitId)}
+                    {LABEL_PERAN_KERJA[p.peran]} · {unitPenugasan(p).map((u) => namaUnit.get(u)).join(", ")}
                     {p.bobotAlokasi ? <span className="ml-2 align-middle"><Lencana nada="brand">bobot {p.bobotAlokasi}%</Lencana></span> : null}
-                    {saya.penugasan.length > 1 && p.penugasanId === sesi.amanah?.id ? <span className="ml-2 align-middle"><Lencana nada="mint">amanah aktif</Lencana></span> : null}
+                    {saya.penugasan.length > 1 && p.aktif ? <span className="ml-2 align-middle"><Lencana nada="mint">amanah aktif</Lencana></span> : null}
                   </JudulBagian>
                   <DaftarIndikator indikator={p.indikator} />
                   {!!p.tambahan && p.pokok != null && (

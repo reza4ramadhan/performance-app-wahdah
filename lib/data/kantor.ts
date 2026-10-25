@@ -3,6 +3,7 @@
 import "server-only";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { getDb, schema as s } from "../db";
+import { idPenugasan } from "../ikp/hitung";
 import { rataRata } from "../ikp/k1";
 import { PARAMETER } from "../ikp/tipe";
 import { hariIni, hariKerjaPeriode, periodeDari, rentangPeriode, tanggalLokal, type Kantor } from "../waktu";
@@ -51,7 +52,7 @@ export async function ringkasanKantor(kantorPengguna: Kantor) {
   for (const r of itemHari) tandai(r.pegawaiId, tanggalLokal(r.t, kantorOf.get(r.pegawaiId) ?? "makassar"));
   for (const r of jurnalHari) tandai(r.pegawaiId, r.d);
 
-  const k1PerPn = new Map(hasil.flatMap((h) => h.penugasan.map((p) => [p.penugasanId, p.k1] as const)));
+  const k1PerPn = new Map(hasil.flatMap((h) => h.penugasan.flatMap((p) => idPenugasan(p).map((id) => [id, p.k1] as const))));
 
   const perUnit = unit
     .map((u) => {

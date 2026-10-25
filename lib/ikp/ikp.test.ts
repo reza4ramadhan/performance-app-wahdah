@@ -180,7 +180,7 @@ describe("K1 koordinator & Staf Khusus", () => {
     expect(h.get("pS")!.k1).toBeCloseTo(((3 / 6) / 0.9) * 100 + 1.5);
   });
 
-  it("SBK di SKUO ikut bidang induknya; staf dengan dua SKUO memikul tiap kegiatan sekali", () => {
+  it("SBK di SKUO ikut bidang induknya; staf dengan dua SKUO satu bidang punya satu K1 gabungan", () => {
     // C memegang dua SKUO di bawah b1 (s1, s2). g1 (SKUO s2) dan g2 (SKUO s9 yang tidak ia pegang) dengan PJ = C.
     const ctx = konteks();
     ctx.penugasan.push(
@@ -188,12 +188,28 @@ describe("K1 koordinator & Staf Khusus", () => {
       { id: "pC2", pegawaiId: "C", peran: "SBK", unitId: "s2", bidangId: "b1", kantor: "makassar" },
     );
     ctx.kegiatan = ctx.kegiatan.map((k) => (k.id === "g1" || k.id === "g2" ? { ...k, penanggungJawabId: "C", skuoId: k.id === "g1" ? "s2" : "s9" } : k));
-    ctx.item.push(item({ penugasanId: "pC2", indikatorKode: "SBK-2a", kegiatanId: "g1", ...setuju("2026-10-19", "2026-10-19") }));
+    ctx.item.push(
+      item({ penugasanId: "pC2", indikatorKode: "SBK-2a", kegiatanId: "g1", ...setuju("2026-10-19", "2026-10-19") }),
+      // Surat dicatat di SKUO mana pun tetap masuk K1 yang sama.
+      item({ penugasanId: "pC1", indikatorKode: "SBK-1", ...setuju("2026-10-19", "2026-10-19") }),
+      item({ penugasanId: "pC2", indikatorKode: "SBK-1", ...setuju("2026-10-19", "2026-10-23") }),
+    );
     const h2 = hitungK1(ctx);
-    expect(ind(h2, "pC2", "SBK-2a")).toMatchObject({ target: 1, realisasi: 1 }); // g1 → SKUO s2
-    expect(ind(h2, "pC1", "SBK-2a")).toMatchObject({ target: 1, realisasi: 0 }); // g2 → penugasan pertama
+    expect(h2.get("pC1")).toBe(h2.get("pC2"));
+    expect(h2.get("pC1")!.penugasanIds).toEqual(["pC1", "pC2"]);
+    expect(ind(h2, "pC1", "SBK-2a")).toMatchObject({ target: 2, realisasi: 1 }); // g1 & g2, masing-masing sekali
+    expect(ind(h2, "pC1", "SBK-1")).toMatchObject({ target: 2, realisasi: 1 });
     expect(ind(h2, "pA", "SBK-2a").target).toBe(0);
-    expect(ind(h2, "pK", "KSBK-2").target).toBe(4); // A, B, C1, C2
+    expect(ind(h2, "pK", "KSBK-2").target).toBe(3); // A, B, C (sekali)
+  });
+
+  it("SBK di dua bidang berbeda: K1 tetap terpisah", () => {
+    const ctx = konteks();
+    ctx.penugasan.push({ id: "pA9", pegawaiId: "A", peran: "SBK", unitId: "b9", kantor: "makassar" });
+    const h2 = hitungK1(ctx);
+    expect(h2.get("pA")!.penugasanIds).toEqual(["pA"]);
+    expect(h2.get("pA9")!.penugasanIds).toEqual(["pA9"]);
+    expect(h2.get("pA")!.k1).toBeCloseTo(hitungK1(konteks()).get("pA")!.k1!);
   });
 
   it("item & tugas disetujui setelah batas verifikasi tidak dihitung; kewajiban bulanan jadi jatuh tempo", () => {
@@ -301,6 +317,21 @@ describe("IKP bulanan", () => {
     expect(a.k3).toBe(80);
     expect(a.penugasan.map((p) => p.k3)).toEqual([80, 80]);
     expect(a.ikp).not.toBeNull();
+  });
+
+  it("rangkap SBK di dua SKUO satu bidang: satu baris K1, dihitung sekali dalam rata-rata K1", () => {
+    const m = masukan();
+    for (const [id, unitId] of [["pA1", "s1"], ["pA2", "s2"]] as const) {
+      m.k1.penugasan.push({ id, pegawaiId: "A", peran: "SBK", unitId, bidangId: "b9", kantor: "makassar" });
+      m.penugasan.push({ id, pegawaiId: "A", peran: "SBK", unitId, koordinatorId: "K", penilaiK3Id: "K", bobotAlokasi: null });
+    }
+    m.k1.item.push(item({ penugasanId: "pA2", indikatorKode: "SBK-1", ...setuju("2026-10-19", "2026-10-23") }));
+    const a = cari(m, "A");
+    expect(a.penugasan.map((p) => [p.penugasanId, p.penugasanIds, p.unitIds])).toEqual([
+      ["pA", undefined, undefined],
+      ["pA1", ["pA1", "pA2"], ["s1", "s2"]],
+    ]);
+    expect(a.k1).toBeCloseTo((a.penugasan[0].k1! + a.penugasan[1].k1!) / 2);
   });
 
   it("penugasan tanpa penilai K3 ditandai", () => {

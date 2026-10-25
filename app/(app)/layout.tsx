@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Cangkang } from "@/components/app/cangkang";
+import { labelAmanah } from "@/lib/amanah";
 import { getDb } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
@@ -29,14 +30,14 @@ async function Navigasi() {
   const [param, minTanggal] = await Promise.all([paramIndikator(db), tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor)]);
   const { grup, kelola, labelKelola, tabUtama } = menuUntuk(sesi);
   // Catat item hanya untuk amanah aktif; pindah amanah lewat profil.
-  const penugasan = (sesi.amanah ? [sesi.amanah] : []).map((p) => ({
+  const penugasan = sesi.amanahPn.map((p) => ({
     id: p.id,
     label: `${p.peranKerja} · ${p.unitNama}`,
     indikator: indikatorAktif(p.peranKerja, param)
       .filter((d) => d.tipe === "item" && d.item && !d.otomatis)
       .map((d) => ({ kode: d.kode, pendek: d.pendek, nama: d.nama })),
   }));
-  const amanah = sesi.amanah ? `${sesi.amanah.peranKerja} · ${sesi.amanah.unitNama}` : null;
+  const amanah = sesi.amanahPn.length ? labelAmanah(sesi.amanahPn) : null;
   const peranFungsi = PERAN_MANUAL.filter((x) => sesi.peran.has(x)).map((x) => LABEL_PERAN_SISTEM[x]);
   return (
     <Cangkang

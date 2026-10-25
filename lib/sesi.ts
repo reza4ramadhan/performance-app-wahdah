@@ -9,7 +9,7 @@ import { cache } from "react";
 import type { Aktor } from "./akses";
 import { getAuth } from "./auth";
 import { getDb, schema as s } from "./db";
-import { amanahPengampu, COOKIE_AMANAH, pilihAmanah } from "./amanah";
+import { amanahPengampu, COOKIE_AMANAH, kelompokAmanah, kunciAmanah, pilihAmanah } from "./amanah";
 import type { PeranKerja, PeranSistem } from "./ikp/tipe";
 import { bidangDari, leluhurDari, wakaDari } from "./unit";
 import { hariIni, periodeBerikut, periodeDari, type Kantor } from "./waktu";
@@ -26,8 +26,12 @@ export type Sesi = Aktor & {
    * berlaku bulan ini atau bulan lalu (verifikasi bulan lalu masih berjalan sampai hari kerja ke-5).
    */
   binaan: Binaan[];
-  /** Amanah (penugasan) aktif yang dipilih lewat "Pindah Amanah"; null bila belum punya penugasan. */
+  /** Penugasan dikelompokkan per amanah (lib/amanah.ts kunciAmanah); "Pindah Amanah" hanya bila lebih dari satu. */
+  daftarAmanah: Sesi["penugasan"][];
+  /** Penugasan wakil amanah aktif yang dipilih lewat "Pindah Amanah"; null bila belum punya penugasan. */
   amanah: Sesi["penugasan"][number] | null;
+  /** Semua penugasan dalam amanah aktif (mis. SBK di dua SKUO satu bidang). Item, tugas, dan dashboard memakai ini. */
+  amanahPn: Sesi["penugasan"];
   /** Binaan yang dibawahi amanah aktif. Menu dan halaman tim memakai ini, bukan seluruh binaan. */
   tim: Binaan[];
 };
@@ -96,6 +100,8 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
   const amanah = pilihAmanah(penugasan, jar.get(COOKIE_AMANAH)?.value);
   const pengampu = amanahPengampu(penugasan, semuaBinaan, leluhurDari(unit));
   const binaan = semuaBinaan.map((b) => ({ ...b, amanahId: pengampu.get(b.id) ?? null }));
+  const amanahPn = amanah ? penugasan.filter((p) => kunciAmanah(p) === kunciAmanah(amanah)) : [];
+  const idAmanah = new Set(amanahPn.map((p) => p.id));
 
   return {
     userId: data.user.id,
@@ -106,8 +112,10 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
     peran: new Set<PeranSistem>(["pegawai", ...peran.map((p) => p.peran), ...peranTurunan(pn, binaan)]),
     penugasan,
     binaan,
+    daftarAmanah: kelompokAmanah(penugasan),
     amanah,
-    tim: binaan.filter((b) => b.amanahId === amanah?.id),
+    amanahPn,
+    tim: binaan.filter((b) => b.amanahId !== null && idAmanah.has(b.amanahId)),
   };
 });
 

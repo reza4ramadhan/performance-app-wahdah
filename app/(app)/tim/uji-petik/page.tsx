@@ -26,7 +26,7 @@ export default function HalamanUjiPetik() {
 
 async function Isi() {
   const sesi = await wajibSesi();
-  const unit = sesi.amanah?.peranKerja === "KSBK" ? [sesi.amanah] : [];
+  const unit = sesi.amanahPn.filter((p) => p.peranKerja === "KSBK");
   if (!unit.length) return <Kosong ikon={Archive} judul="Khusus KSBK" />;
   const kini = periodeDari(hariIni(sesi.kantor));
   const db = await getDb();

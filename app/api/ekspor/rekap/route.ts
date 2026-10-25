@@ -5,6 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode } from "@/lib/data/ikp";
+import { unitPenugasan } from "@/lib/ikp/hitung";
 import { bukuExcel, bulat2, responsExcel } from "@/lib/ekspor";
 import { LABEL_STATUS_PERIODE } from "@/lib/ikp/tipe";
 import { bacaSesi } from "@/lib/sesi";
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
       nip: pg.get(h.pegawaiId)?.nip ?? "",
       status: pg.get(h.pegawaiId)?.statusKepegawaian ?? "",
       kantor: pg.get(h.pegawaiId)?.kantor === "jakarta" ? "Jakarta" : "Makassar",
-      penugasan: h.penugasan.map((p) => `${p.peran} ${namaUnit.get(p.unitId)}${p.k1 !== null ? ` (${bulat2(p.k1)})` : ""}${p.bobotAlokasi ? ` [${p.bobotAlokasi}%]` : ""}`).join("; "),
+      penugasan: h.penugasan.map((p) => `${p.peran} ${unitPenugasan(p).map((u) => namaUnit.get(u)).join(" & ")}${p.k1 !== null ? ` (${bulat2(p.k1)})` : ""}${p.bobotAlokasi ? ` [${p.bobotAlokasi}%]` : ""}`).join("; "),
       k1: bulat2(h.k1),
       k2: bulat2(h.k2),
       k3: bulat2(h.k3),

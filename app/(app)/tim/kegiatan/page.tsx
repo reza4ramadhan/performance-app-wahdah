@@ -40,7 +40,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const db = await getDb();
   const unitSaya = sesi.peran.has("admin")
     ? await db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(eq(s.unit.jenis, "bidang"))
-    : [sesi.amanah].filter((p) => p?.peranKerja === "KSBK").map((p) => ({ id: p!.unitId, nama: p!.unitNama }));
+    : sesi.amanahPn.filter((p) => p.peranKerja === "KSBK").map((p) => ({ id: p.unitId, nama: p.unitNama }));
   if (!unitSaya.length) return <Kosong ikon={CalendarDays} judul="Khusus KSBK">Halaman ini untuk koordinator bidang.</Kosong>;
 
   const kini = periodeDari(hariIni(sesi.kantor));

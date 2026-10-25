@@ -34,12 +34,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const sp = await searchParams;
   const today = hariIni(sesi.kantor);
   // Staf Khusus punya dashboard sendiri yang berpusat pada tugas khusus.
-  if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} amanah={sesi.amanah} hariIni={today} sp={sp} />;
+  if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} hariIni={today} sp={sp} />;
   const db = await getDb();
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);
   // Dashboard mengikuti amanah aktif ("Pindah Amanah" di profil).
-  const amanah = sesi.amanah ? [sesi.amanah] : [];
+  const amanah = sesi.amanahPn;
   const pnIds = amanah.map((p) => p.id);
   const timIds = sesi.tim.map((b) => b.id);
   const awalHari = keUtc(today, sesi.kantor);

@@ -46,7 +46,11 @@ export type MasukanIkp = {
 export type Kategori = "umum" | "pimpinan" | "kepala_unit";
 
 export type HasilPenugasan = {
+  /** Penugasan wakil amanah. */
   penugasanId: string;
+  /** Amanah gabungan (rangkap peran sama di bidang yang sama): semua penugasan dan unitnya. Snapshot lama tidak memilikinya. */
+  penugasanIds?: string[];
+  unitIds?: string[];
   peran: PeranKerja;
   unitId: string;
   koordinatorId: string | null;
@@ -59,6 +63,10 @@ export type HasilPenugasan = {
   k3: number | null;
   k3Rincian: SkorK3 | null;
 };
+
+/** Semua penugasan dan unit sebuah baris K1 (amanah gabungan atau satu penugasan). */
+export const idPenugasan = (p: Pick<HasilPenugasan, "penugasanId" | "penugasanIds">) => p.penugasanIds ?? [p.penugasanId];
+export const unitPenugasan = (p: Pick<HasilPenugasan, "unitId" | "unitIds">) => p.unitIds ?? [p.unitId];
 
 export type HasilIkp = {
   pegawaiId: string;
@@ -110,22 +118,30 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
     // K3 per penilai: satu penilaian berlaku untuk semua penugasan yang ia nilai.
     const k3Penilai = new Map(m.k3.filter((k) => k.pegawaiId === pg.id).map((k) => [k.penilaiId, hitungK3(k.skor, adaLog)]));
 
-    const penugasan: HasilPenugasan[] = milik.map((p) => {
+    // Satu baris per amanah: penugasan yang K1-nya digabung (hitungK1) tampil dan dihitung sekali.
+    const penugasan: HasilPenugasan[] = [];
+    for (const p of milik) {
+      const h = k1.get(p.id);
+      const ids = h?.penugasanIds ?? [p.id];
+      if (ids[0] !== p.id && milik.some((x) => x.id === ids[0])) continue;
+      const anggota = milik.filter((x) => ids.includes(x.id));
       const n = p.penilaiK3Id ? k3Penilai.get(p.penilaiK3Id) : undefined;
-      return {
+      penugasan.push({
         penugasanId: p.id,
+        ...(anggota.length > 1 ? { penugasanIds: anggota.map((x) => x.id), unitIds: anggota.map((x) => x.unitId) } : {}),
         peran: p.peran,
         unitId: p.unitId,
         koordinatorId: p.koordinatorId,
-        bobotAlokasi: p.bobotAlokasi,
-        indikator: k1.get(p.id)?.indikator ?? [],
-        pokok: k1.get(p.id)?.pokok ?? null,
-        tambahan: k1.get(p.id)?.tambahan ?? 0,
-        k1: k1.get(p.id)?.k1 ?? null,
+        // Bobot amanah gabungan = jumlah bobot anggotanya (bila semua tertulis).
+        bobotAlokasi: anggota.every((x) => x.bobotAlokasi !== null) ? anggota.reduce((a, x) => a + x.bobotAlokasi!, 0) : null,
+        indikator: h?.indikator ?? [],
+        pokok: h?.pokok ?? null,
+        tambahan: h?.tambahan ?? 0,
+        k1: h?.k1 ?? null,
         k3: n?.k3 ?? null,
         k3Rincian: n?.rincian ?? null,
-      };
-    });
+      });
+    }
 
     // K2
     const abs = m.absensi.find((a) => a.pegawaiId === pg.id);

@@ -47,7 +47,7 @@ async function TombolUsulkan() {
 
 async function Isi() {
   const sesi = await wajibSesi();
-  const pnIds = sesi.amanah && (sesi.amanah.peranKerja === "SBK" || sesi.amanah.peranKerja === "SK") ? [sesi.amanah.id] : [];
+  const pnIds = sesi.amanahPn.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => p.id);
   if (!pnIds.length) return <Kosong ikon={ClipboardList} judul="Tugas khusus untuk SBK dan Staf Khusus" />;
   const today = hariIni(sesi.kantor);
   // Sepekan ke depan tampil per jadwal; yang lebih jauh cukup jadwal terdekat tiap tugas.

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
 import { Avatar, JudulBagian, Kartu, PetakIkon, TautanKecil } from "@/components/app/ui";
+import { labelAmanah } from "@/lib/amanah";
 import { angka, sapaan } from "@/lib/format";
 import { PARAMETER } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
@@ -20,9 +21,9 @@ export function SapaanHariIni({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: stri
           <p className="text-sm text-muted-foreground">{sapaan(jam)},</p>
           <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
-          {sesi.penugasan.length > 1 && sesi.amanah && (
+          {sesi.daftarAmanah.length > 1 && sesi.amanahPn.length > 0 && (
             <Link href="/akun#amanah" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
-              <ArrowLeftRight className="size-3.5" /> {sesi.amanah.peranKerja} · {sesi.amanah.unitNama}
+              <ArrowLeftRight className="size-3.5" /> {labelAmanah(sesi.amanahPn)}
             </Link>
           )}
         </div>

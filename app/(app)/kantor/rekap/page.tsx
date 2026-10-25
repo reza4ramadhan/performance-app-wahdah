@@ -11,6 +11,7 @@ import { ubahStatusPeriode } from "@/app/aksi/periode";
 import { punya } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode } from "@/lib/data/ikp";
+import { unitPenugasan } from "@/lib/ikp/hitung";
 import { angka } from "@/lib/format";
 import { LABEL_STATUS_PERIODE, STATUS_PERIODE } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
@@ -146,7 +147,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                   <td className={`${tabel.td} text-xs text-muted-foreground`}>
                     {h.penugasan.map((p) => (
                       <span key={p.penugasanId} className="block">
-                        {p.peran} · {namaUnit.get(p.unitId)} {p.k1 !== null && <strong className="text-foreground">({angka(p.k1)})</strong>}
+                        {p.peran} · {unitPenugasan(p).map((u) => namaUnit.get(u)).join(", ")} {p.k1 !== null && <strong className="text-foreground">({angka(p.k1)})</strong>}
                       </span>
                     ))}
                   </td>
