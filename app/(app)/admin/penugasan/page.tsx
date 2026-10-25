@@ -5,7 +5,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { CalendarX2 } from "lucide-react";
 import { ChipFilter } from "@/components/app/filter";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { TombolAksi } from "@/components/app/tombol-aksi";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { Input } from "@/components/ui/input";
@@ -56,16 +56,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   ]);
   const namaPegawai = new Map(pegawai.map((p) => [p.id, p.nama]));
   const perUnit = kelompokkan(rows, (r) => r.unit);
-  const pilihPegawai = (nama: string, nilai?: string | null, kosong = "—") => (
-    <select name={nama} className={kelasPilihan} defaultValue={nilai ?? ""}>
-      <option value="">{kosong}</option>
-      {pegawai.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.nama}
-        </option>
-      ))}
-    </select>
-  );
+  const pilihPegawai = (nama: string, nilai?: string | null, kosong = "—") => <PilihCari name={nama} opsi={pegawai} nilaiAwal={nilai} kosong={kosong} />;
 
   return (
     <>
