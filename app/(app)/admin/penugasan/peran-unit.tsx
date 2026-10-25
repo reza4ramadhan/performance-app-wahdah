@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
+import { PilihCari } from "@/components/app/pilih-cari";
 
 const PIMPINAN = ["KAKAN", "WAKA"];
 
@@ -13,16 +13,10 @@ export function PeranUnit({ peran, unit }: { peran: { nilai: string; label: stri
   const pimpinan = PIMPINAN.includes(peranKerja);
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-3">
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-heading">Peran kerja</span>
-        <select name="peranKerja" className={kelasPilihan} value={peranKerja} onChange={(e) => setPeranKerja(e.target.value)}>
-          {peran.map((p) => (
-            <option key={p.nilai} value={p.nilai}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <PilihCari name="peranKerja" opsi={peran.map((p) => ({ id: p.nilai, nama: p.label }))} nilaiAwal="SBK" kosong={null} saatBerubah={setPeranKerja} />
       </label>
       {pimpinan ? (
         <div>
@@ -32,14 +26,7 @@ export function PeranUnit({ peran, unit }: { peran: { nilai: string; label: stri
       ) : (
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-heading">Unit</span>
-          <select name="unitId" className={kelasPilihan} defaultValue="">
-            <option value="">Pilih…</option>
-            {unit.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nama}
-              </option>
-            ))}
-          </select>
+          <PilihCari name="unitId" opsi={unit} kosong="Pilih…" />
           <Galat nama="unitId" />
         </label>
       )}

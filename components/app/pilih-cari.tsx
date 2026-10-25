@@ -18,8 +18,25 @@ const normal = (x: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: string; opsi: Opsi[]; nilaiAwal?: string | null; kosong?: string }) {
+export function PilihCari({
+  name,
+  opsi,
+  nilaiAwal,
+  kosong = "—",
+  saatBerubah,
+}: {
+  name?: string;
+  opsi: Opsi[];
+  nilaiAwal?: string | null;
+  /** Label pilihan kosong; null = wajib memilih salah satu opsi. */
+  kosong?: string | null;
+  saatBerubah?: (id: string) => void;
+}) {
   const [nilai, setNilai] = useState(nilaiAwal ?? "");
+  const berubah = useRef(saatBerubah);
+  useEffect(() => {
+    berubah.current = saatBerubah;
+  });
   const [cari, setCari] = useState("");
   const [buka, setBuka] = useState(false);
   const [aktif, setAktif] = useState(0);
@@ -31,7 +48,7 @@ export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: str
   const kata = normal(cari).split(" ").filter(Boolean);
   const cocok = kata.length ? opsi.filter((o) => kata.every((k) => normal(o.nama).includes(k))) : opsi;
   // Baris pertama "kosong" (mis. Otomatis) hanya saat tidak mencari.
-  const baris: Opsi[] = kata.length ? cocok : [{ id: "", nama: kosong }, ...cocok];
+  const baris: Opsi[] = kata.length || kosong === null ? cocok : [{ id: "", nama: kosong }, ...cocok];
 
   // FormAksi mereset form setelah berhasil: kembalikan ke nilai awal.
   useEffect(() => {
@@ -40,6 +57,7 @@ export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: str
     const reset = () => {
       setNilai(nilaiAwal ?? "");
       setCari("");
+      berubah.current?.(nilaiAwal ?? "");
     };
     form.addEventListener("reset", reset);
     return () => form.removeEventListener("reset", reset);
@@ -53,6 +71,7 @@ export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: str
     setNilai(o.id);
     setCari("");
     setBuka(false);
+    if (o.id !== nilai) saatBerubah?.(o.id);
   };
 
   return (
@@ -67,7 +86,7 @@ export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: str
         aria-activedescendant={buka && baris[aktif] ? `${idDaftar}-${aktif}` : undefined}
         autoComplete="off"
         className={cn(kelasPilihan, "placeholder:text-foreground", !terpilih && "placeholder:text-muted-foreground")}
-        placeholder={terpilih?.nama ?? kosong}
+        placeholder={terpilih?.nama ?? kosong ?? ""}
         value={cari}
         onFocus={() => {
           setBuka(true);
@@ -118,7 +137,7 @@ export function PilihCari({ name, opsi, nilaiAwal, kosong = "—" }: { name: str
                 }}
                 onMouseMove={() => setAktif(i)}
                 className={cn(
-                  "flex min-h-10 cursor-pointer items-center rounded-lg px-3 text-sm",
+                  "flex min-h-10 cursor-pointer items-center rounded-lg px-3 py-2 text-sm",
                   i === aktif && "bg-primary/12",
                   o.id === nilai && "font-semibold text-heading",
                   !o.id && "text-muted-foreground",

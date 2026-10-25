@@ -17,6 +17,8 @@ import { petaWaka } from "@/lib/data/unit";
 import { kelompokkan } from "@/lib/format";
 import { LABEL_PERAN_KERJA, PERAN_KERJA } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
+import { leluhurDari } from "@/lib/unit";
+import { FilterUnit } from "./filter-unit";
 import { PeranUnit } from "./peran-unit";
 import { hariIni, labelPeriode, periodeBerikut, periodeDari } from "@/lib/waktu";
 
@@ -51,18 +53,30 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .where(kondisiPenugasanBerlaku(periode))
       .orderBy(asc(s.unit.nama), asc(s.pegawai.nama)),
     db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.pegawai).where(eq(s.pegawai.aktif, true)).orderBy(asc(s.pegawai.nama)),
-    db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).orderBy(asc(s.unit.nama)),
+    db.select({ id: s.unit.id, nama: s.unit.nama, jenis: s.unit.jenis, indukId: s.unit.indukId }).from(s.unit),
     petaWaka(db),
   ]);
   const namaPegawai = new Map(pegawai.map((p) => [p.id, p.nama]));
-  const perUnit = kelompokkan(rows, (r) => r.unit);
+  // Urutan nomor: 1., 1.1, 2., …, 10. (bukan 1., 10., 2.).
+  const urut = new Intl.Collator("id", { numeric: true }).compare;
+  unit.sort((a, b) => urut(a.nama, b.nama));
+  const bidang = unit.filter((u) => u.jenis === "bidang");
+  const skuo = unit.filter((u) => u.jenis === "skuo");
+  const skuoAktif = skuo.find((u) => u.id === sp.skuo)?.id ?? "";
+  const bidangAktif = skuo.find((u) => u.id === skuoAktif)?.indukId ?? bidang.find((u) => u.id === sp.bidang)?.id ?? "";
+  const saring = skuoAktif || bidangAktif;
+  const leluhur = leluhurDari(unit);
+  const tampil = saring ? rows.filter((r) => leluhur.get(r.pn.unitId)?.has(saring)) : rows;
+  const perUnit = new Map([...kelompokkan(tampil, (r) => r.unit)].sort(([a], [b]) => urut(a, b)));
   const pilihPegawai = (nama: string, nilai?: string | null, kosong = "—") => <PilihCari name={nama} opsi={pegawai} nilaiAwal={nilai} kosong={kosong} />;
 
   return (
     <>
-      <ChipFilter pilihan={pilihan.map((p) => ({ nilai: p, label: labelPeriode(p) }))} aktif={periode} href={(v) => `/admin/penugasan?periode=${v}`} />
+      <ChipFilter pilihan={pilihan.map((p) => ({ nilai: p, label: labelPeriode(p) }))} aktif={periode} href={(v) => `/admin/penugasan?${new URLSearchParams({ periode: v, ...(bidangAktif && { bidang: bidangAktif }), ...(skuoAktif && { skuo: skuoAktif }) })}`} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <section className="order-2 space-y-4 lg:order-1">
+          <FilterUnit bidang={bidang} skuo={skuo} periode={periode} bidangAktif={bidangAktif} skuoAktif={skuoAktif} />
+          {!perUnit.size && <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">{saring ? "Belum ada penugasan di unit ini" : "Belum ada penugasan"} pada {labelPeriode(periode)}.</p>}
           {[...perUnit].map(([u, xs]) => (
             <div key={u}>
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
