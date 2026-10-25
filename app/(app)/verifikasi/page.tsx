@@ -6,7 +6,8 @@ import { VerifikasiMassal } from "@/components/app/verifikasi-massal";
 import { kondisiAntrean } from "@/lib/data/antrean";
 import { liburPerKantor } from "@/lib/data/ikp";
 import { daftarItem } from "@/lib/data/item";
-import { daftarTugas, kondisiTugasMenunggu } from "@/lib/data/tugas";
+import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/data/tugas";
+import { ringkasanTugasTim } from "@/lib/format";
 import { getDb } from "@/lib/db";
 import { wajibPeran } from "@/lib/sesi";
 import { hariIni, hariKerjaAntara, labelTanggal, tanggalLokal } from "@/lib/waktu";
@@ -27,11 +28,16 @@ export default function HalamanVerifikasi() {
 async function Isi() {
   const sesi = await wajibPeran("koordinator", "keuangan", "sekretariat", "waka", "kepala");
   const db = await getDb();
-  const [items, libur, tugas] = await Promise.all([daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }), liburPerKantor(db), daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId))]);
+  const [items, libur, tugas, usulan] = await Promise.all([
+    daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
+    liburPerKantor(db),
+    daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+    jumlahUsulanMenunggu(sesi.pegawaiId),
+  ]);
   const today = hariIni(sesi.kantor);
-  const kartuTugas = tugas.length > 0 && (
+  const kartuTugas = (tugas.length > 0 || usulan > 0) && (
     <Kartu className="mb-4 p-2">
-      <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={`${tugas.length} tugas ditandai selesai, menunggu verifikasi Anda`} />
+      <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={ringkasanTugasTim(tugas.length, usulan)} />
     </Kartu>
   );
 

@@ -13,3 +13,11 @@ export function tanggalJadwal(frekuensi: FrekuensiTugas, mulai: string, akhir: s
   for (let t = mulai; t <= akhir; t = tambahHari(t, frekuensi === "harian" ? 1 : 7)) if (frekuensi === "pekanan" || isHariKerja(t, libur)) hasil.push(t);
   return hasil;
 }
+
+/** Batas usulan tugas Staf Khusus dalam satu kiriman sekaligus. */
+export const MAKS_USULAN = 30;
+
+/** Usulan sekaligus: satu baris satu tugas; penomoran atau butir di awal baris dibuang, baris ganda digabung. */
+export function pecahDaftarJudul(teks: string): string[] {
+  return [...new Set(teks.split(/\r?\n/).map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean))];
+}

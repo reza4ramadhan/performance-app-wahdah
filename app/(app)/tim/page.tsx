@@ -10,7 +10,8 @@ import { schema as s } from "@/lib/db";
 import { kondisiAntrean } from "@/lib/data/antrean";
 import { daftarItem } from "@/lib/data/item";
 import { anggotaTim } from "@/lib/data/tim";
-import { daftarTugas, kondisiTugasMenunggu } from "@/lib/data/tugas";
+import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/data/tugas";
+import { ringkasanTugasTim } from "@/lib/format";
 import { menuUntuk } from "@/lib/menu";
 import { wajibSesi } from "@/lib/sesi";
 import { labelTanggalPanjang, hariIni } from "@/lib/waktu";
@@ -29,10 +30,11 @@ async function Isi() {
   const sesi = await wajibSesi();
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
   if (!kelola) redirect("/");
-  const [tim, antrean, tugasMenunggu] = await Promise.all([
+  const [tim, antrean, tugasMenunggu, usulanMenunggu] = await Promise.all([
     anggotaTim(sesi),
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+    jumlahUsulanMenunggu(sesi.pegawaiId),
   ]);
   const pnTim = tim.flatMap((t) => t.penugasan.map((p) => p.id));
   const lewat = pnTim.length ? (await daftarItem(inArray(s.item.penugasanId, pnTim), { kantor: sesi.kantor, batas: 400 })).filter((i) => i.lewat) : [];
@@ -84,9 +86,9 @@ async function Isi() {
               )}
             </>
           )}
-          {tugasMenunggu.length > 0 && (
+          {(tugasMenunggu.length > 0 || usulanMenunggu > 0) && (
             <Kartu className="p-2">
-              <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={`${tugasMenunggu.length} tugas ditandai selesai, menunggu verifikasi Anda`} />
+              <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={ringkasanTugasTim(tugasMenunggu.length, usulanMenunggu)} />
             </Kartu>
           )}
           {!tim.length && antrean.length > 0 && (

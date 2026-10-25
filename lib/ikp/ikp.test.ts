@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hitungIkp, hitungK2, hitungK3, poinK4Bersih, type MasukanIkp } from "./hitung";
 import { hitungK1, paramDefault, skorIndikator, type ItemK1, type KonteksK1, type TugasK1 } from "./k1";
-import { tanggalJadwal } from "./tugas";
+import { pecahDaftarJudul, tanggalJadwal } from "./tugas";
 import { predikatDari, type SkorK3 } from "./tipe";
 import { keUtc } from "../waktu";
 
@@ -213,6 +213,11 @@ describe("jadwal tugas khusus", () => {
     expect(tanggalJadwal("sekali", "2026-10-21", "2026-10-30", libur)).toEqual(["2026-10-21"]);
     expect(tanggalJadwal("harian", "2026-10-21", "2026-10-26", libur)).toEqual(["2026-10-21", "2026-10-23", "2026-10-26"]);
     expect(tanggalJadwal("pekanan", "2026-10-07", "2026-10-28", libur)).toEqual(["2026-10-07", "2026-10-14", "2026-10-21", "2026-10-28"]);
+  });
+
+  it("usulan sekaligus: satu baris satu tugas, nomor/butir dibuang, baris kosong dan ganda dilewati", () => {
+    expect(pecahDaftarJudul("1. Patroli gedung\r\n- Cek CCTV\n\n  • Laporan piket  \n2) Cek CCTV\n* Kunci gerbang")).toEqual(["Patroli gedung", "Cek CCTV", "Laporan piket", "Kunci gerbang"]);
+    expect(pecahDaftarJudul("  \n ")).toEqual([]);
   });
 });
 

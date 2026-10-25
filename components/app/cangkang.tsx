@@ -17,6 +17,7 @@ export function Cangkang(p: {
   grup: GrupMenu[];
   kelola: boolean;
   labelKelola: string;
+  tabUtama: { href: string; label: string };
   nama: string;
   peran: string;
   penugasan: PenugasanCatat[];
@@ -46,7 +47,7 @@ export function Cangkang(p: {
     <>
       <DaftarkanSW />
       <Sidebar grup={p.grup} nama={p.nama} peran={p.peran} />
-      <NavBawah kelola={p.kelola} labelKelola={p.labelKelola} onCatat={bukaSheet} />
+      <NavBawah kelola={p.kelola} labelKelola={p.labelKelola} tabUtama={p.tabUtama} onCatat={bukaSheet} />
       <SheetCatat key={putaran} buka={buka} setBuka={setBuka} penugasan={p.penugasan} hariIni={p.hariIni} minTanggal={p.minTanggal} preset={preset} />
     </>
   );

@@ -3,7 +3,7 @@
 import type { Sesi } from "./sesi";
 
 export type NamaIkonMenu =
-  | "hari-ini" | "item" | "progres" | "tim" | "akun" | "jurnal" | "belajar" | "tugas" | "k4"
+  | "hari-ini" | "item" | "progres" | "tim" | "akun" | "jurnal" | "belajar" | "tugas" | "usulan" | "k4"
   | "verifikasi" | "kegiatan" | "catatan" | "k3" | "arsip" | "kantor" | "kalibrasi" | "rekap"
   | "absensi" | "pegawai" | "unit" | "penugasan" | "indikator" | "libur" | "periode";
 
@@ -19,6 +19,8 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   const ada = (...x: Parameters<typeof p.has>[0][]) => x.some((r) => p.has(r));
   const kerja = sesi.amanah?.peranKerja;
   const tugas = kerja === "SBK" || kerja === "SK";
+  // Staf Khusus tidak punya indikator item; K1-nya dari tugas khusus.
+  const sk = kerja === "SK";
   const ksbk = kerja === "KSBK";
   const pimpin = kerja === "WAKA" || kerja === "KAKAN";
   const adaTim = sesi.tim.length > 0;
@@ -28,10 +30,11 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
       judul: "Saya",
       item: [
         { href: "/", label: "Hari Ini", ikon: "hari-ini" },
-        { href: "/item", label: "Item", ikon: "item" },
+        ...(sk ? [] : [{ href: "/item", label: "Item", ikon: "item" as const }]),
+        ...(tugas ? [{ href: "/tugas", label: "Tugas khusus", ikon: "tugas" as const }] : []),
+        ...(sk ? [{ href: "/tugas/usulan", label: "Usulan tugas", ikon: "usulan" as const }] : []),
         { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
         { href: "/pengembangan-diri", label: "Pengembangan diri", ikon: "belajar" },
-        ...(tugas ? [{ href: "/tugas", label: "Tugas khusus", ikon: "tugas" as const }] : []),
         { href: "/progres", label: "Progres", ikon: "progres" },
         { href: "/k4", label: "Inovasi K4", ikon: "k4" },
       ],
@@ -89,5 +92,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   /** Tab ke-5 di ponsel: muncul bila punya peran selain pegawai biasa. */
   const kelola = grup.length > 1;
   const labelKelola = adaTim || ksbk || pimpin ? "Tim" : "Kelola";
-  return { grup, kelola, labelKelola };
+  /** Tab ke-2 di ponsel: Tugas untuk Staf Khusus, Item untuk yang lain. */
+  const tabUtama = sk ? ({ href: "/tugas", label: "Tugas" } as const) : ({ href: "/item", label: "Item" } as const);
+  return { grup, kelola, labelKelola, tabUtama };
 }

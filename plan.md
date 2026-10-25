@@ -156,7 +156,9 @@ Sebagian besar KSBK-1 dihitung dari jejak waktu yang sudah ada di aplikasi, sehi
 | SK-TK | Tugas khusus dari atasan (menggantikan DTR) | jadwal tugas yang jatuh tempo bulan ini | selesai ≤ tenggat dan disetujui atasan | ≥ 90% |
 | SK-JR | Jurnal | — | +0,15 per entri, maks. 5 (tambahan) | — |
 
-*Sementara:* rumus lengkap K1 Staf Khusus menyusul. Staf Khusus mengusulkan tugas kepada atasan diterapkan kemudian.
+*Sementara:* rumus lengkap K1 Staf Khusus menyusul.
+
+**Usulan tugas (Staf Khusus).** Staf Khusus bisa mengusulkan tugas kepada atasannya, satu per satu (judul + uraian) atau sekaligus banyak (satu baris satu tugas, frekuensi dan tenggat sama). Atasan menyetujui atau menolak (alasan wajib), per usulan atau satu kiriman sekaligus. Usulan yang disetujui otomatis menjadi tugas khusus dengan atasan sebagai pemberi tugas; usulan berulang yang tanggal mulainya sudah lewat dijadwalkan sejak hari disetujui. Dashboard Hari Ini Staf Khusus berpusat pada tugas: jadwal selesai / menunggu bulan ini, fokus hari ini, sepekan ke depan, usulan, dan jurnal.
 
 ### 6.3a Tugas Khusus (SBK dan Staf Khusus)
 Diberikan oleh koordinator penugasan (KSBK untuk SBK, atasan untuk Staf Khusus): judul, uraian, tenggat (tanggal + jam), frekuensi **Sekali / Harian / Pekanan**. Tugas berulang membuat satu jadwal per hari kerja (harian) atau per 7 hari (pekanan); tiap jadwal dinilai sendiri. Staf memilih status **Sementara dikerjakan** (wajib persentase) atau **Selesai**; waktu selesai dicatat server. Jadwal yang selesai wajib diverifikasi pemberi tugas.

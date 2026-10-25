@@ -49,7 +49,7 @@ const P = periodeDari(today);
 const id: Record<string, string> = {};
 const pn: Record<string, string> = {};
 
-function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: string; peranKerja: "SBK" | "KSBK"; unitId: string; bidangId?: string; koordinatorId: string | null }[] = []) {
+function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: string; peranKerja: "SBK" | "KSBK" | "SK"; unitId: string; bidangId?: string; koordinatorId: string | null }[] = []) {
   const milik = penugasan.map((p) => ({ ...p, unitNama: "Bidang Uji", bidangId: p.bidangId ?? p.unitId }));
   sesiAktif = {
     userId: `u-${pegawai}`,
@@ -306,6 +306,100 @@ describe("tugas khusus", () => {
     const [sekali] = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.judul, "Menyiapkan bahan rapat"));
     expect(await tugas.hapusTugasKhusus(sekali.id)).toMatchObject({ ok: true });
     expect(await db.select().from(s.tugasKhususJadwal).where(and(eq(s.tugasKhususJadwal.tugasId, sekali.id), eq(s.tugasKhususJadwal.status, "disetujui")))).toHaveLength(1);
+  });
+});
+
+describe("usulan tugas Staf Khusus", () => {
+  const pnSk = () => ({ id: pn.sk, peranKerja: "SK" as const, unitId: id.unitSk, koordinatorId: id.koord });
+  const isi = (o: Record<string, string> = {}) => ({ penugasanId: pn.sk, cara: "satu", judul: "Patroli keamanan gedung", frekuensi: "sekali", tanggalMulai: today, jamTenggat: "23:59", ...o });
+  const usulanSk = async () => (await getDb()).select().from(s.usulanTugas).where(eq(s.usulanTugas.penugasanId, pn.sk));
+
+  beforeAll(async () => {
+    const db = await getDb();
+    const [u] = await db.insert(s.unit).values({ jenis: "staf_khusus", nama: "Keamanan" }).returning();
+    const [p] = await db.insert(s.pegawai).values({ nama: "sk", nip: "sk-uji" }).returning();
+    const [x] = await db.insert(s.penugasan).values({ pegawaiId: p.id, peranKerja: "SK", unitId: u.id, koordinatorId: id.koord, periodeMulai: periodeBerikut(P, -1) }).returning();
+    id.sk = p.id;
+    id.unitSk = u.id;
+    pn.sk = x.id;
+  });
+
+  it("hanya amanah Staf Khusus yang bisa mengusulkan; satu per satu atau sekaligus banyak", async () => {
+    sebagai("staf", [], [{ id: pn.staf, peranKerja: "SBK", unitId: id.unit, koordinatorId: id.koord }]);
+    expect((await tugas.ajukanUsulanTugas(null, fd(isi({ penugasanId: pn.staf })))).ok).toBe(false);
+
+    sebagai("sk", [], [pnSk()]);
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ tanggalMulai: tambahHari(today, -1) })))).toMatchObject({ ok: false, galat: { tanggalMulai: expect.any(String) } });
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ cara: "banyak", judul: "", daftarJudul: " \n " })))).toMatchObject({ ok: false, galat: { daftarJudul: expect.any(String) } });
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ cara: "banyak", daftarJudul: "Patroli\nab" })))).toMatchObject({ ok: false, galat: { daftarJudul: expect.stringContaining("ab") } });
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ uraian: "Keliling gedung pagi dan sore" })))).toMatchObject({ ok: true });
+
+    const akhir = tambahHari(today, 9);
+    const banyak = isi({ cara: "banyak", judul: "", daftarJudul: "1. Cek CCTV\n2. Laporan piket\n- Cek CCTV", frekuensi: "harian", tanggalAkhir: akhir });
+    expect(await tugas.ajukanUsulanTugas(null, fd(banyak))).toMatchObject({ ok: true, pesan: "2 usulan tugas terkirim ke atasan." });
+
+    const rows = await usulanSk();
+    expect(rows.map((u) => u.judul).sort()).toEqual(["Cek CCTV", "Laporan piket", "Patroli keamanan gedung"]);
+    const kiriman = rows.filter((u) => u.frekuensi === "harian");
+    expect(new Set(kiriman.map((u) => u.kelompok)).size).toBe(1);
+    expect(kiriman[0]).toMatchObject({ status: "diajukan", tanggalAkhir: akhir, uraian: null });
+  });
+
+  it("hanya atasan yang memutuskan; usulan disetujui otomatis masuk daftar tugas dengan atasan sebagai pemberi tugas", async () => {
+    const rows = await usulanSk();
+    const kiriman = rows.filter((u) => u.frekuensi === "harian").map((u) => u.id);
+    const satu = rows.find((u) => u.frekuensi === "sekali")!;
+    const dataTugas = await import("@/lib/data/tugas");
+    expect(await dataTugas.jumlahUsulanMenunggu(id.koord)).toBe(3);
+    expect((await dataTugas.daftarUsulan(dataTugas.kondisiUsulanMenunggu(id.koord))).map((u) => u.stafNama)).toEqual(["sk", "sk", "sk"]);
+
+    sebagai("sk", ["koordinator"], [pnSk()]);
+    expect((await tugas.putuskanUsulan(kiriman, "setuju")).ok).toBe(false);
+    sebagai("koord2", ["koordinator"]);
+    expect((await tugas.putuskanUsulan(kiriman, "setuju")).ok).toBe(false);
+    sebagai("koord", ["koordinator"]);
+    expect((await tugas.putuskanUsulan([satu.id], "tolak")).ok).toBe(false); // alasan wajib
+    expect(await tugas.putuskanUsulan(kiriman, "setuju")).toMatchObject({ ok: true });
+    expect((await tugas.putuskanUsulan(kiriman, "setuju")).ok).toBe(false); // tidak membuat tugas dua kali
+    expect(await tugas.putuskanUsulan([satu.id], "tolak", "Sudah termasuk tugas piket")).toMatchObject({ ok: true });
+
+    const db = await getDb();
+    const sesudah = await usulanSk();
+    expect(sesudah.find((u) => u.id === satu.id)).toMatchObject({ status: "ditolak", alasanTolak: "Sudah termasuk tugas piket", diputusOleh: id.koord, tugasId: null });
+    const disetujui = sesudah.filter((u) => kiriman.includes(u.id));
+    expect(disetujui.every((u) => u.status === "disetujui" && u.tugasId)).toBe(true);
+
+    const tk = await db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.penugasanId, pn.sk));
+    expect(tk).toHaveLength(2);
+    expect(tk.every((t) => t.dibuatOleh === id.koord && t.frekuensi === "harian")).toBe(true);
+    const jadwal = await db.select().from(s.tugasKhususJadwal).where(inArray(s.tugasKhususJadwal.tugasId, tk.map((t) => t.id)));
+    expect(jadwal).toHaveLength(2 * tanggalJadwal("harian", today, tambahHari(today, 9), new Set()).length);
+
+    // Jadwal dari usulan diverifikasi atasan seperti tugas biasa.
+    sebagai("sk", [], [pnSk()]);
+    expect(await tugas.perbaruiTugas(jadwal[0].id, { status: "selesai" })).toMatchObject({ ok: true });
+    sebagai("koord", ["koordinator"]);
+    expect(await tugas.verifikasiTugas([jadwal[0].id], "setuju")).toMatchObject({ ok: true });
+
+    // Dashboard Staf Khusus: selesai / menunggu dihitung dari jadwal bulan ini.
+    const ringkas = await dataTugas.ringkasTugas([pn.sk], P);
+    expect(ringkas).toMatchObject({ disetujui: 1, diajukan: 0 });
+    expect(Object.values(ringkas).reduce((a, n) => a + n, 0)).toBe(jadwal.filter((j) => j.periodeId === P).length);
+    expect(await dataTugas.jumlahUsulanMenunggu(id.koord)).toBe(0);
+  });
+
+  it("staf hanya bisa membatalkan usulan yang belum diputuskan", async () => {
+    sebagai("sk", [], [pnSk()]);
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ judul: "Usulan yang dibatalkan" })))).toMatchObject({ ok: true });
+    const rows = await usulanSk();
+    const baru = rows.find((u) => u.judul === "Usulan yang dibatalkan")!;
+    const diputus = rows.find((u) => u.status === "ditolak")!;
+    expect((await tugas.batalkanUsulan(diputus.id)).ok).toBe(false);
+    sebagai("staf", [], [{ id: pn.staf, peranKerja: "SBK", unitId: id.unit, koordinatorId: id.koord }]);
+    expect((await tugas.batalkanUsulan(baru.id)).ok).toBe(false);
+    sebagai("sk", [], [pnSk()]);
+    expect(await tugas.batalkanUsulan(baru.id)).toMatchObject({ ok: true });
+    expect((await usulanSk()).some((u) => u.id === baru.id)).toBe(false);
   });
 });
 

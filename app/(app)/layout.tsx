@@ -27,7 +27,7 @@ async function Navigasi() {
   if (!sesi || sesi.harusGantiPassword) return null;
   const db = await getDb();
   const [param, minTanggal] = await Promise.all([paramIndikator(db), tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor)]);
-  const { grup, kelola, labelKelola } = menuUntuk(sesi);
+  const { grup, kelola, labelKelola, tabUtama } = menuUntuk(sesi);
   // Catat item hanya untuk amanah aktif; pindah amanah lewat profil.
   const penugasan = (sesi.amanah ? [sesi.amanah] : []).map((p) => ({
     id: p.id,
@@ -43,6 +43,7 @@ async function Navigasi() {
       grup={grup}
       kelola={kelola}
       labelKelola={labelKelola}
+      tabUtama={tabUtama}
       nama={sesi.nama}
       peran={[amanah, ...peranFungsi].filter(Boolean).join(" · ") || "Pegawai"}
       penugasan={penugasan.filter((p) => p.indikator.length)}

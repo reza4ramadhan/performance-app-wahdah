@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, House, ListChecks, Plus, UserRound, Users } from "lucide-react";
+import { ChartColumn, ClipboardCheck, House, ListChecks, Plus, UserRound, Users } from "lucide-react";
 import { IKON_MENU } from "./ikon-menu";
 import { cn } from "@/lib/utils";
 import type { GrupMenu } from "@/lib/menu";
@@ -40,7 +40,8 @@ export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string;
             <ul className="space-y-0.5">
               {g.item.map((m) => {
                 const Ikon = IKON_MENU[m.ikon];
-                const on = aktif(path, m.href);
+                // Hanya tautan paling spesifik yang aktif (mis. /tugas/usulan tidak ikut menyalakan /tugas).
+                const on = aktif(path, m.href) && !g.item.some((x) => x.href.length > m.href.length && aktif(path, x.href));
                 return (
                   <li key={m.href + m.label}>
                     <Link
@@ -73,11 +74,11 @@ export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string;
 }
 
 /** Navigasi bawah ponsel: 4 tab + tombol Catat di tengah (+ tab Tim/Kelola bila berperan). */
-export function NavBawah({ kelola, labelKelola, onCatat }: { kelola: boolean; labelKelola: string; onCatat: () => void }) {
+export function NavBawah({ kelola, labelKelola, tabUtama, onCatat }: { kelola: boolean; labelKelola: string; tabUtama: { href: string; label: string }; onCatat: () => void }) {
   const path = usePathname();
   const tab = [
     { href: "/", label: "Hari Ini", Ikon: House },
-    { href: "/item", label: "Item", Ikon: ListChecks },
+    { ...tabUtama, Ikon: tabUtama.href === "/tugas" ? ClipboardCheck : ListChecks },
     null,
     { href: "/progres", label: "Progres", Ikon: ChartColumn },
     ...(kelola ? [{ href: "/tim", label: labelKelola, Ikon: Users }] : []),

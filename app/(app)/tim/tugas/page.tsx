@@ -3,22 +3,22 @@ import { Suspense } from "react";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { ClipboardList, Trash2 } from "lucide-react";
 import { TombolAksi } from "@/components/app/tombol-aksi";
-import { FormTugasBaru, KartuTugas } from "@/components/app/tugas";
+import { FormTugasBaru, KartuTugas, KartuUsulan, PutusanTugas } from "@/components/app/tugas";
 import { Batang, JudulBagian, Kartu, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
-import { hapusTugasKhusus } from "@/app/aksi/tugas";
+import { hapusTugasKhusus, putuskanUsulan } from "@/app/aksi/tugas";
 import { getDb, schema as s } from "@/lib/db";
 import { anggotaTim } from "@/lib/data/tim";
-import { daftarTugas, kondisiTugasMenunggu } from "@/lib/data/tugas";
+import { daftarTugas, daftarUsulan, kondisiTugasMenunggu, kondisiUsulanMenunggu, type BarisUsulan } from "@/lib/data/tugas";
 import { LABEL_FREKUENSI_TUGAS, LABEL_PERAN_KERJA, type PeranKerja } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
-import { hariIni, labelTanggal, periodeDari, rentangPeriode } from "@/lib/waktu";
+import { hariIni, labelTanggal, periodeDari, rentangPeriode, tanggalLokal, type Kantor } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Tugas khusus staf" };
 
 export default function HalamanTugasStaf() {
   return (
     <>
-      <Kepala judul="Tugas khusus" kembali="/tim" sub="Beri tugas ber-tenggat kepada staf, lalu verifikasi yang ditandai selesai. Tugas selesai tepat waktu menambah K1 staf." />
+      <Kepala judul="Tugas khusus" kembali="/tim" sub="Beri tugas ber-tenggat kepada staf, putuskan usulan tugas dari Staf Khusus, lalu verifikasi yang ditandai selesai. Tugas selesai tepat waktu menambah K1 staf." />
       <Suspense fallback={<Kerangka />}>
         <Isi />
       </Suspense>
@@ -34,8 +34,9 @@ async function Isi() {
     t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && p.koordinatorId === sesi.pegawaiId).map((p) => ({ id: p.id, label: `${t.nama} · ${LABEL_PERAN_KERJA[p.peranKerja as PeranKerja]} ${p.unitNama}` })),
   );
   const db = await getDb();
-  const [menunggu, induk] = await Promise.all([
+  const [menunggu, usulan, induk] = await Promise.all([
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+    daftarUsulan(kondisiUsulanMenunggu(sesi.pegawaiId)),
     db
       .select({ t: s.tugasKhusus, staf: s.pegawai.nama })
       .from(s.tugasKhusus)
@@ -48,11 +49,26 @@ async function Isi() {
     ? await db.select({ tugasId: s.tugasKhususJadwal.tugasId, status: s.tugasKhususJadwal.status, persen: s.tugasKhususJadwal.persen }).from(s.tugasKhususJadwal).where(inArray(s.tugasKhususJadwal.tugasId, induk.map((x) => x.t.id)))
     : [];
 
-  if (!staf.length && !induk.length && !menunggu.length) return <Kosong ikon={ClipboardList} judul="Tidak ada SBK atau Staf Khusus di tim Anda" />;
+  // Usulan yang dikirim sekaligus diputuskan bersama.
+  const kelompok = [...new Set(usulan.map((u) => u.kelompok))].map((k) => usulan.filter((u) => u.kelompok === k));
+
+  if (!staf.length && !induk.length && !menunggu.length && !usulan.length) return <Kosong ikon={ClipboardList} judul="Tidak ada SBK atau Staf Khusus di tim Anda" />;
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
       <div className="order-2 space-y-5 lg:order-1">
+        {usulan.length > 0 && (
+          <section>
+            <JudulBagian>Usulan dari Staf Khusus · {usulan.length}</JudulBagian>
+            <ul className="space-y-4">
+              {kelompok.map((k) => (
+                <li key={k[0].kelompok}>
+                  <KelompokUsulan usulan={k} kantor={sesi.kantor} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {menunggu.length > 0 && (
           <section>
             <JudulBagian>Menunggu verifikasi · {menunggu.length}</JudulBagian>
@@ -111,5 +127,31 @@ async function Isi() {
         </Kartu>
       )}
     </div>
+  );
+}
+
+/** Satu kiriman usulan: bila lebih dari satu, bisa disetujui atau ditolak sekaligus. */
+function KelompokUsulan({ usulan, kantor }: { usulan: BarisUsulan[]; kantor: Kantor }) {
+  const u = usulan[0];
+  if (usulan.length === 1) return <KartuUsulan usulan={u} sebagai="atasan" tampilStaf />;
+  return (
+    <Kartu className="space-y-3 p-3.5">
+      <div>
+        <p className="text-[15px] font-semibold text-heading">
+          {u.stafNama} mengusulkan {usulan.length} tugas
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {u.unitNama} · dikirim {labelTanggal(tanggalLokal(u.dibuatPada, kantor))}
+        </p>
+      </div>
+      <PutusanTugas ids={usulan.map((x) => x.id)} aksi={putuskanUsulan} labelSetuju={`Setujui semua (${usulan.length})`} labelTolak="Tolak semua" />
+      <ul className="space-y-2 border-t border-border pt-3">
+        {usulan.map((x) => (
+          <li key={x.id}>
+            <KartuUsulan usulan={x} sebagai="atasan" />
+          </li>
+        ))}
+      </ul>
+    </Kartu>
   );
 }

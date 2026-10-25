@@ -1,20 +1,24 @@
 "use client";
 
-// Tugas khusus: kartu jadwal, pembaruan status oleh staf, form tugas baru, dan putusan pemberi tugas.
+// Tugas khusus: kartu jadwal, pembaruan status oleh staf, form tugas baru, putusan pemberi tugas,
+// serta usulan tugas dari Staf Khusus.
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ExternalLink, Pencil, X } from "lucide-react";
+import { Check, ExternalLink, ListChecks, ListPlus, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { perbaruiTugas, simpanTugasKhusus, verifikasiTugas } from "@/app/aksi/tugas";
-import type { BarisTugas } from "@/lib/data/tugas";
+import { ajukanUsulanTugas, batalkanUsulan, perbaruiTugas, putuskanUsulan, simpanTugasKhusus, verifikasiTugas } from "@/app/aksi/tugas";
+import type { HasilAksi } from "@/lib/aksi";
+import type { BarisTugas, BarisUsulan } from "@/lib/data/tugas";
+import { MAKS_USULAN, pecahDaftarJudul } from "@/lib/ikp/tugas";
 import { FREKUENSI_TUGAS, LABEL_FREKUENSI_TUGAS, LABEL_STATUS_TUGAS, type FrekuensiTugas, type StatusTugas } from "@/lib/ikp/tipe";
 import { cn } from "@/lib/utils";
 import { jamLokal, labelTanggal, LABEL_ZONA, tanggalLokal } from "@/lib/waktu";
 import { FormAksi, Galat } from "./form-aksi";
 import { Chip, Kolom, kelasPilihan, kelasTeks } from "./kolom";
+import { TombolAksi } from "./tombol-aksi";
 import { Batang, Lencana, type Nada } from "./ui";
 
 const NADA_STATUS: Record<StatusTugas, Nada> = { belum: "netral", dikerjakan: "brand", diajukan: "gold", disetujui: "mint", ditolak: "flame" };
@@ -134,15 +138,25 @@ function UbahStatusTugas({ tugas: t, tutup }: { tugas: BarisTugas; tutup: () => 
   );
 }
 
-/** Pemberi tugas: setujui atau tolak dengan alasan. */
-export function PutusanTugas({ ids }: { ids: string[] }) {
+/** Pemberi tugas: setujui atau tolak dengan alasan. Dipakai juga untuk usulan tugas (`aksi={putuskanUsulan}`). */
+export function PutusanTugas({
+  ids,
+  aksi = verifikasiTugas,
+  labelSetuju = "Setujui",
+  labelTolak = "Tolak",
+}: {
+  ids: string[];
+  aksi?: (ids: string[], keputusan: "setuju" | "tolak", alasan?: string) => Promise<HasilAksi>;
+  labelSetuju?: string;
+  labelTolak?: string;
+}) {
   const [tolak, setTolak] = useState(false);
   const [alasan, setAlasan] = useState("");
   const [proses, mulai] = useTransition();
   const router = useRouter();
   const kirim = (k: "setuju" | "tolak") =>
     mulai(async () => {
-      const r = await verifikasiTugas(ids, k, alasan);
+      const r = await aksi(ids, k, alasan);
       if (!r.ok) return void toast.error(r.pesan);
       toast.success(r.pesan);
       setTolak(false);
@@ -168,10 +182,10 @@ export function PutusanTugas({ ids }: { ids: string[] }) {
   return (
     <div className="flex gap-2">
       <Button className="flex-1" disabled={proses} onClick={() => kirim("setuju")}>
-        <Check className="size-4" /> Setujui
+        <Check className="size-4" /> {labelSetuju}
       </Button>
       <Button variant="outline" className="flex-1" disabled={proses} onClick={() => setTolak(true)}>
-        <X className="size-4" /> Tolak
+        <X className="size-4" /> {labelTolak}
       </Button>
     </div>
   );
@@ -204,6 +218,15 @@ export function FormTugasBaru({ staf, hariIni }: { staf: { id: string; label: st
         <span className="mb-1.5 block text-sm font-medium text-heading">Uraian (opsional)</span>
         <textarea name="uraian" rows={2} className={kelasTeks} placeholder="Arahan singkat, hasil yang diharapkan" />
       </label>
+      <IsianJadwal frekuensi={frekuensi} setFrekuensi={setFrekuensi} hariIni={hariIni} />
+    </FormAksi>
+  );
+}
+
+/** Frekuensi, tanggal, dan jam tenggat; dipakai form tugas baru dan form usulan. */
+function IsianJadwal({ frekuensi, setFrekuensi, hariIni }: { frekuensi: FrekuensiTugas; setFrekuensi: (f: FrekuensiTugas) => void; hariIni: string }) {
+  return (
+    <>
       <div>
         <span className="mb-1.5 block text-sm font-medium text-heading">Frekuensi</span>
         <input type="hidden" name="frekuensi" value={frekuensi} />
@@ -239,6 +262,142 @@ export function FormTugasBaru({ staf, hariIni }: { staf: { id: string; label: st
           {frekuensi === "harian" ? "Satu jadwal tiap hari kerja dalam rentang ini." : "Satu jadwal tiap 7 hari sejak tanggal mulai."} Tiap jadwal dinilai dan diverifikasi sendiri.
         </p>
       )}
-    </FormAksi>
+    </>
+  );
+}
+
+// ── Usulan tugas (Staf Khusus) ────────────────────────────────────────────────
+
+/** Staf Khusus mengusulkan tugas: satu per satu (dengan uraian) atau sekaligus banyak (satu baris satu tugas). */
+export function FormUsulanTugas({ penugasanId, hariIni }: { penugasanId: string; hariIni: string }) {
+  const [cara, setCara] = useState<"satu" | "banyak">("satu");
+  const [frekuensi, setFrekuensi] = useState<FrekuensiTugas>("sekali");
+  const [daftar, setDaftar] = useState("");
+  const [putaran, setPutaran] = useState(0);
+  const judul = pecahDaftarJudul(daftar);
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Cara mengisi">
+        {(
+          [
+            ["satu", "Satu per satu", ListPlus],
+            ["banyak", "Sekaligus banyak", ListChecks],
+          ] as const
+        ).map(([c, label, Ikon]) => (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={cara === c}
+            onClick={() => setCara(c)}
+            className={cn(
+              "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition",
+              cara === c ? "bg-card text-heading shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Ikon className="size-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      <FormAksi
+        key={`${cara}-${putaran}`}
+        aksi={ajukanUsulanTugas}
+        tombol={cara === "banyak" && judul.length > 1 ? `Ajukan ${judul.length} tugas` : "Ajukan ke atasan"}
+        tombolPenuh
+        className="space-y-3"
+        setelahBerhasil={() => {
+          setDaftar("");
+          setPutaran((x) => x + 1);
+        }}
+      >
+        <input type="hidden" name="penugasanId" value={penugasanId} />
+        <input type="hidden" name="cara" value={cara} />
+        {cara === "satu" ? (
+          <>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-heading">Judul tugas</span>
+              <Input name="judul" required placeholder="mis. Patroli keamanan gedung" />
+              <Galat nama="judul" />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-heading">Uraian (opsional)</span>
+              <textarea name="uraian" rows={2} className={kelasTeks} placeholder="Apa yang dikerjakan dan hasil yang diharapkan" />
+            </label>
+          </>
+        ) : (
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-heading">Daftar tugas</span>
+            <textarea
+              name="daftarJudul"
+              rows={6}
+              value={daftar}
+              onChange={(e) => setDaftar(e.target.value)}
+              className={kelasTeks}
+              placeholder={"Satu baris satu tugas, mis.\nPatroli keamanan gedung\nCek CCTV dan rekaman\nLaporan serah terima piket"}
+            />
+            <Galat nama="daftarJudul" />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Bisa ditempel dari catatan; nomor dan tanda butir di awal baris dibuang otomatis. Maks. {MAKS_USULAN} tugas. Frekuensi dan tenggat di bawah berlaku untuk semua.
+            </span>
+          </label>
+        )}
+        {cara === "banyak" && judul.length > 0 && (
+          <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+            <p className={cn("text-xs font-semibold", judul.length > MAKS_USULAN ? "text-destructive" : "text-muted-foreground")}>
+              {judul.length} tugas akan diajukan{judul.length > MAKS_USULAN ? ` (maks. ${MAKS_USULAN})` : ""}
+            </p>
+            <ol className="mt-1.5 max-h-48 list-decimal space-y-0.5 overflow-y-auto pl-5 text-sm text-heading">
+              {judul.map((j) => (
+                <li key={j}>{j}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <IsianJadwal frekuensi={frekuensi} setFrekuensi={setFrekuensi} hariIni={hariIni} />
+      </FormAksi>
+    </div>
+  );
+}
+
+const NADA_USULAN: Record<BarisUsulan["status"], Nada> = { diajukan: "gold", disetujui: "mint", ditolak: "flame" };
+const LABEL_USULAN: Record<BarisUsulan["status"], string> = { diajukan: "Menunggu persetujuan", disetujui: "Disetujui", ditolak: "Ditolak" };
+
+const labelRentang = (u: BarisUsulan) =>
+  `${LABEL_FREKUENSI_TUGAS[u.frekuensi]} · ${u.frekuensi === "sekali" ? `tenggat ${labelTanggal(u.tanggalMulai)}` : `${labelTanggal(u.tanggalMulai)}–${labelTanggal(u.tanggalAkhir)}`} pukul ${u.jamTenggat}`;
+
+/** Satu usulan. Staf bisa membatalkan selama belum diputuskan; atasan bisa menyetujui atau menolak. */
+export function KartuUsulan({ usulan: u, sebagai, tampilStaf = false }: { usulan: BarisUsulan; sebagai: "staf" | "atasan"; tampilStaf?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card p-3.5">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-heading">{u.judul}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {tampilStaf && `${u.stafNama} · `}
+            {labelRentang(u)}
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-1">
+          <Lencana nada={NADA_USULAN[u.status]}>{LABEL_USULAN[u.status]}</Lencana>
+          {sebagai === "staf" && u.status === "diajukan" && (
+            <TombolAksi aksi={batalkanUsulan.bind(null, u.id)} konfirmasi="Batalkan usulan ini?" varian="ghost" ukuran="icon" label="Batalkan usulan">
+              <Trash2 className="size-4" />
+            </TombolAksi>
+          )}
+        </span>
+      </div>
+      {u.uraian && <p className="mt-2 text-sm text-muted-foreground">{u.uraian}</p>}
+      {u.status === "ditolak" && u.alasanTolak && (
+        <p className="mt-2 text-xs font-medium text-flame-600">
+          Ditolak{u.pemutusNama ? ` ${u.pemutusNama}` : ""}: {u.alasanTolak}
+        </p>
+      )}
+      {sebagai === "atasan" && u.status === "diajukan" && (
+        <div className="mt-3">
+          <PutusanTugas ids={[u.id]} aksi={putuskanUsulan} />
+        </div>
+      )}
+    </div>
   );
 }

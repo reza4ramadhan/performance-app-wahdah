@@ -2,23 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, count, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
-import { ArrowLeftRight, BookOpen, CalendarDays, CircleAlert, CircleCheck, ClipboardCheck, Clock3, Gauge, Hourglass, ListChecks, NotebookPen, Users } from "lucide-react";
+import { BookOpen, CalendarDays, CircleAlert, CircleCheck, ClipboardCheck, Clock3, Gauge, Hourglass, ListChecks, NotebookPen, Users } from "lucide-react";
 import { KartuItem } from "@/components/app/baris-item";
-import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
+import { BagianJurnal, PanelPengembanganDiri, SapaanHariIni } from "@/components/app/hari-ini";
 import { KartuKegiatan } from "@/components/app/kegiatan-skuo";
 import { TombolCatat } from "@/components/app/tombol-catat";
 import { KartuTugas } from "@/components/app/tugas";
-import { Avatar, BarisTautan, Cincin, JudulBagian, Kartu, Kerangka, Kosong, Lencana, PetakIkon, Statistik, TautanKecil } from "@/components/app/ui";
+import { BarisTautan, Cincin, JudulBagian, Kartu, Kerangka, Kosong, Lencana, PetakIkon, Statistik, TautanKecil } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { daftarItem, kondisiItemPenugasan } from "@/lib/data/item";
-import { daftarTugas, kondisiTugasMenunggu, kondisiTugasPenugasan } from "@/lib/data/tugas";
-import { angka, sapaan } from "@/lib/format";
+import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu, kondisiTugasPenugasan } from "@/lib/data/tugas";
 import { pemikulKegiatan } from "@/lib/ikp/k1";
-import { PARAMETER } from "@/lib/ikp/tipe";
 import { pimpinan } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
-import { hariIni, jamLokal, keUtc, labelPeriode, labelTanggalPanjang, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
+import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
+import { HariIniSk } from "./hari-ini-sk";
 
 export const metadata: Metadata = { title: "Hari Ini" };
 
@@ -33,8 +32,10 @@ export default function HariIni(props: PageProps<"/">) {
 async function Isi({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesi = await wajibSesi();
   const sp = await searchParams;
-  const db = await getDb();
   const today = hariIni(sesi.kantor);
+  // Staf Khusus punya dashboard sendiri yang berpusat pada tugas khusus.
+  if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} amanah={sesi.amanah} hariIni={today} sp={sp} />;
+  const db = await getDb();
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);
   // Dashboard mengikuti amanah aktif ("Pindah Amanah" di profil).
@@ -43,12 +44,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const timIds = sesi.tim.map((b) => b.id);
   const awalHari = keUtc(today, sesi.kantor);
   const akhirHari = keUtc(tambahHari(today, 1), sesi.kantor);
-  // SBK: dashboard berisi Kegiatan SKUO, Tugas Khusus, dan Jurnal. Staf Khusus: Tugas Khusus dan Jurnal.
+  // SBK: dashboard berisi Kegiatan SKUO, Tugas Khusus, dan Jurnal.
   const pnSbk = amanah.filter((p) => p.peranKerja === "SBK");
   const pnTugas = amanah.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => p.id);
   const bidangSbk = [...new Set(pnSbk.map((p) => p.bidangId ?? p.unitId))];
 
-  const [perStatus, terbuka, isiHariIni, jurnalHariIni, jurnalBulanIni, pdBulanIni, kegiatanSaya, tugas, tim, tugasMenunggu] = await Promise.all([
+  const [perStatus, terbuka, isiHariIni, jurnalHariIni, jurnalBulanIni, pdBulanIni, kegiatanSaya, tugas, tim, tugasMenunggu, usulanMenunggu] = await Promise.all([
     db
       .select({ status: s.item.status, n: count() })
       .from(s.item)
@@ -84,6 +85,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     timIds.length
       ? db.select({ n: count() }).from(s.tugasKhususJadwal).innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId)).where(kondisiTugasMenunggu(sesi.pegawaiId))
       : Promise.resolve(null),
+    timIds.length ? jumlahUsulanMenunggu(sesi.pegawaiId) : Promise.resolve(0),
   ]);
 
   // Kartu kegiatan: yang akan datang, atau yang sudah lewat tetapi masih punya pekerjaan terbuka (SPB, arsip).
@@ -114,31 +116,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const selesai = n("diajukan") + n("disetujui");
   const lewat = [...terbuka, ...terbukaKeg].filter((i) => i.lewat).length;
   const sudahIsi = isiHariIni[0].n > 0 || jurnalHariIni.length > 0;
-  const poinJurnal = Math.min(PARAMETER.tambahan.maks, jurnalBulanIni[0].n * PARAMETER.tambahan.poin);
-  const menungguTim = (tim?.[0].n ?? 0) + (tugasMenunggu?.[0].n ?? 0);
-  const jam = Number(jamLokal(new Date(), sesi.kantor).slice(0, 2));
-  const namaPanggil = sesi.nama.replace(/^(Ust\.|Ustadz|Ustadzah)\s+/i, "").split(" ")[0];
+  const menungguTim = (tim?.[0].n ?? 0) + (tugasMenunggu?.[0].n ?? 0) + usulanMenunggu;
 
   return (
     <>
-      <header className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{sapaan(jam)},</p>
-          <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(today)}</p>
-          {sesi.penugasan.length > 1 && sesi.amanah && (
-            <Link href="/akun#amanah" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
-              <ArrowLeftRight className="size-3.5" /> {sesi.amanah.peranKerja} · {sesi.amanah.unitNama}
-            </Link>
-          )}
-        </div>
-        <Link href="/akun" aria-label="Akun">
-          <Avatar nama={sesi.nama} ukuran="lg" className="ring-2 ring-card shadow-sm" />
-        </Link>
-      </header>
-
-      {sp.password === "diganti" && <p className="mb-4 rounded-xl bg-mint-500/12 px-4 py-3 text-sm font-medium text-mint-700 dark:text-mint-100">Password berhasil diganti.</p>}
-      {sp.akses === "ditolak" && <p className="mb-4 rounded-xl bg-flame-500/10 px-4 py-3 text-sm font-medium text-flame-700 dark:text-flame-100">Halaman itu tidak tersedia untuk peran Anda.</p>}
+      <SapaanHariIni sesi={sesi} hariIni={today} sp={sp} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <div className="space-y-5">
@@ -229,22 +211,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
           )}
 
           {/* 3. Jurnal hari ini */}
-          <section>
-            <JudulBagian aksi={<TautanKecil href="/jurnal">Semua jurnal</TautanKecil>}>Jurnal hari ini</JudulBagian>
-            <Kartu>
-              <p className="text-xs text-muted-foreground">
-                Pekerjaan di luar indikator · {jurnalBulanIni[0].n} entri bulan ini
-                {pnTugas.length > 0 && <> · +{angka(poinJurnal)} poin K1 (maks. {PARAMETER.tambahan.maks})</>}
-              </p>
-              {jurnalHariIni.map((j) => (
-                <p key={j.id} className="border-b border-border/60 py-2 text-sm last:border-0">
-                  {j.uraian}
-                  {j.pemberiTugas && <span className="text-muted-foreground"> · {j.pemberiTugas}</span>}
-                </p>
-              ))}
-              <FormJurnalCepat tanggal={today} />
-            </Kartu>
-          </section>
+          <BagianJurnal hariIni={today} entri={jurnalHariIni} jumlahBulanIni={jurnalBulanIni[0].n} poin={pnTugas.length > 0} />
 
           {/* Item lain yang masih terbuka */}
           {(terbuka.length > 0 || !pnSbk.length) && (
@@ -282,18 +249,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
             </Kartu>
           )}
 
-          <details className="group rounded-2xl border border-border/70 bg-card">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4">
-              <PetakIkon ikon={BookOpen} nada="mint" />
-              <span className="flex-1">
-                <span className="block text-[15px] font-semibold text-heading">Pengembangan diri</span>
-                <span className="block text-xs text-muted-foreground">{pdBulanIni[0].n ? `${pdBulanIni[0].n} catatan bulan ini` : "Belum ada catatan bulan ini (skor K3 maks. 2)"}</span>
-              </span>
-            </summary>
-            <div className="border-t border-border px-4 pb-4">
-              <FormPdCepat tanggal={today} />
-            </div>
-          </details>
+          <PanelPengembanganDiri hariIni={today} jumlahBulanIni={pdBulanIni[0].n} />
         </aside>
       </div>
     </>

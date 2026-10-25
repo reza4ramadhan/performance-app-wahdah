@@ -282,6 +282,31 @@ export const tugasKhususJadwal = pgTable(
   (t) => [index("tugas_jadwal_tugas_idx").on(t.tugasId), index("tugas_jadwal_periode_idx").on(t.periodeId, t.status)],
 );
 
+/** Usulan tugas dari Staf Khusus kepada koordinatornya; bila disetujui menjadi tugas khusus. */
+export const usulanTugas = pgTable(
+  "usulan_tugas",
+  {
+    id: id(),
+    penugasanId: text("penugasan_id").notNull().references(() => penugasan.id, { onDelete: "cascade" }),
+    /** Usulan yang dikirim sekaligus berbagi satu kelompok. */
+    kelompok: text("kelompok").notNull(),
+    judul: text("judul").notNull(),
+    uraian: text("uraian"),
+    frekuensi: text("frekuensi", { enum: ["sekali", "harian", "pekanan"] }).notNull(),
+    tanggalMulai: date("tanggal_mulai").notNull(),
+    tanggalAkhir: date("tanggal_akhir").notNull(),
+    jamTenggat: text("jam_tenggat").notNull(),
+    status: text("status", { enum: ["diajukan", "disetujui", "ditolak"] }).notNull().default("diajukan"),
+    alasanTolak: text("alasan_tolak"),
+    diputusOleh: text("diputus_oleh").references(() => pegawai.id),
+    diputusPada: tz("diputus_pada"),
+    /** Tugas khusus yang terbentuk saat disetujui. */
+    tugasId: text("tugas_id").references(() => tugasKhusus.id, { onDelete: "set null" }),
+    dibuatPada: dibuat(),
+  },
+  (t) => [index("usulan_tugas_penugasan_idx").on(t.penugasanId, t.status)],
+);
+
 // ── Penilaian ─────────────────────────────────────────────────────────────────
 
 export const catatanPerilaku = pgTable("catatan_perilaku", {

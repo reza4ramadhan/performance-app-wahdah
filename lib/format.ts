@@ -44,3 +44,8 @@ export function kelompokkan<T, K>(xs: T[], kunci: (x: T) => K): Map<K, T[]> {
   }
   return m;
 }
+
+/** Baris ringkas tugas khusus yang menunggu atasan: verifikasi jadwal dan persetujuan usulan. */
+export function ringkasanTugasTim(tugas: number, usulan: number) {
+  return [tugas && `${tugas} tugas ditandai selesai, menunggu verifikasi Anda`, usulan && `${usulan} usulan tugas menunggu persetujuan`].filter(Boolean).join(" · ");
+}

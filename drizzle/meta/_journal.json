@@ -43,6 +43,13 @@
       "when": 1792944642728,
       "tag": "0005_k4_amanah",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792947211254,
+      "tag": "0006_usulan_tugas",
+      "breakpoints": true
     }
   ]
 }

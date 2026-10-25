@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { and, eq, gt, lte } from "drizzle-orm";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ListPlus } from "lucide-react";
 import { KartuTugas } from "@/components/app/tugas";
+import { Button } from "@/components/ui/button";
 import { JudulBagian, Kepala, Kerangka, Kosong } from "@/components/app/ui";
 import { schema as s } from "@/lib/db";
 import { daftarTugas, kondisiTugasPenugasan } from "@/lib/data/tugas";
@@ -14,11 +16,32 @@ export const metadata: Metadata = { title: "Tugas khusus" };
 export default function HalamanTugas() {
   return (
     <>
-      <Kepala judul="Tugas khusus" sub="Tugas dari koordinator atau atasan. Perbarui progresnya; tandai selesai sebelum tenggat lalu tunggu verifikasi pemberi tugas." />
+      <Kepala
+        judul="Tugas khusus"
+        sub="Tugas dari koordinator atau atasan. Perbarui progresnya; tandai selesai sebelum tenggat lalu tunggu verifikasi pemberi tugas."
+        aksi={
+          <Suspense>
+            <TombolUsulkan />
+          </Suspense>
+        }
+      />
       <Suspense fallback={<Kerangka />}>
         <Isi />
       </Suspense>
     </>
+  );
+}
+
+/** Staf Khusus bisa mengusulkan tugas sendiri kepada atasannya. */
+async function TombolUsulkan() {
+  const sesi = await wajibSesi();
+  if (sesi.amanah?.peranKerja !== "SK") return null;
+  return (
+    <Button asChild size="sm">
+      <Link href="/tugas/usulan">
+        <ListPlus className="size-4" /> Usulkan
+      </Link>
+    </Button>
   );
 }
 
@@ -40,7 +63,7 @@ async function Isi() {
   if (!aktif.length && !menunggu.length && !selesai.length && !akanDatang.length)
     return (
       <Kosong ikon={ClipboardList} judul="Belum ada tugas khusus">
-        Tugas dari koordinator akan muncul di sini beserta tenggatnya.
+        {sesi.amanah?.peranKerja === "SK" ? "Tugas dari atasan dan usulan Anda yang disetujui akan muncul di sini beserta tenggatnya." : "Tugas dari koordinator akan muncul di sini beserta tenggatnya."}
       </Kosong>
     );
 
