@@ -217,6 +217,32 @@ describe("kegiatan SKUO & item otomatis", () => {
     expect(await tim.hapusKegiatan(rapat.id)).toMatchObject({ ok: true });
     expect(await db.select().from(s.item).where(eq(s.item.kegiatanId, rapat.id))).toHaveLength(0);
   });
+
+  it("kegiatan lama tanpa item otomatis: diisi dari kartu dashboard, item dilengkapi tanpa ganda", async () => {
+    const db = await getDb();
+    const { buatItemOtomatis } = await import("@/lib/data/kegiatan");
+    // Kegiatan dibuat sebelum item otomatis ada; pengingat sempat dicatat manual tanpa nomor.
+    const [lama] = await db
+      .insert(s.kegiatan)
+      .values({ unitId: id.unit, nama: "Kegiatan Lama", tanggal: today, skuoId: id.skuo, penanggungJawabId: id.staf, perluSpp: true, perluSpb: true, dibuatOleh: id.koord })
+      .returning();
+    await db.insert(s.item).values({ penugasanId: pn.staf, indikatorKode: "SBK-3", kegiatanId: lama.id, periodeId: P, data: { saluran: "Grup" }, tglMasuk: new Date(), status: "terbuka", dibuatOleh: id.staf });
+
+    sebagai("staf", [], [{ id: pn.staf, peranKerja: "SBK", unitId: id.unit, koordinatorId: id.koord }]);
+    const isian = { selesai: today, linkBukti: "https://x.id", data: { nomor: "SPB-9" } };
+    expect(await item.isiItemKegiatan(lama.id, "SBK-4", null, isian)).toMatchObject({ ok: false });
+    expect(await item.isiItemKegiatan(lama.id, "SBK-2b", null, isian)).toMatchObject({ ok: true });
+
+    const semua = await db.select().from(s.item).where(eq(s.item.kegiatanId, lama.id));
+    expect(semua.map((i) => `${i.indikatorKode}${i.data.ke ?? ""}`).sort()).toEqual(["SBK-2a", "SBK-2b", "SBK-31", "SBK-32"]);
+    expect(semua.find((i) => i.indikatorKode === "SBK-2b")).toMatchObject({ status: "diajukan", data: { nomor: "SPB-9" } });
+    expect(semua.find((i) => i.data.saluran === "Grup")?.data.ke).toBe("1");
+    expect(await buatItemOtomatis(db, [lama], id.koord)).toBe(0);
+
+    // Bukan penanggung jawab: tidak bisa mengisi.
+    sebagai("staf2", [], [{ id: pn.staf2, peranKerja: "SBK", unitId: id.unit, koordinatorId: id.koord }]);
+    expect(await item.isiItemKegiatan(lama.id, "SBK-2a", null, isian)).toMatchObject({ ok: false });
+  });
 });
 
 describe("tugas khusus", () => {

@@ -6,6 +6,7 @@ import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
 import { periodeTerbuka, tanggalPalingAwal } from "@/lib/data/batas";
+import { buatItemOtomatis } from "@/lib/data/kegiatan";
 import { paramIndikator } from "@/lib/data/ikp";
 import { periksaIsian, skemaItem, type IsianItem } from "@/lib/ikp/form-item";
 import { indikatorDari } from "@/lib/ikp/katalog";
@@ -138,6 +139,27 @@ export async function ubahItem(id: string, input: unknown): Promise<HasilAksi> {
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: row.status === "ditolak" ? "perbaiki" : "ubah", entitas: "item", entitasId: id, sebelum: row, sesudah: baru });
   refresh();
   return berhasil(status === "diajukan" ? "Item diajukan untuk verifikasi." : "Perubahan tersimpan.", id);
+}
+
+/**
+ * Isi pekerjaan otomatis dari kartu kegiatan di dashboard (Pengingat, SPP, SPB).
+ * Bila itemnya belum ada (kegiatan dibuat sebelum item otomatis), item kegiatan dilengkapi dulu.
+ */
+export async function isiItemKegiatan(kegiatanId: string, kode: string, ke: string | null, input: unknown): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  if (!indikatorDari(kode)?.otomatis) return gagal("Pekerjaan ini dicatat lewat + Catat.");
+  const db = await getDb();
+  const [k] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.id, kegiatanId));
+  if (!k || k.penanggungJawabId !== sesi.pegawaiId) return gagal("Kegiatan tidak ditemukan.");
+  if (!(await cekPeriode(periodeDari(k.tanggal)))) return gagal("Periode kegiatan ini sudah dikunci.");
+  await buatItemOtomatis(db, [k], sesi.pegawaiId);
+  const milik = await db
+    .select()
+    .from(s.item)
+    .where(and(eq(s.item.kegiatanId, k.id), eq(s.item.indikatorKode, kode), inArray(s.item.penugasanId, sesi.penugasan.map((p) => p.id).concat("-"))));
+  const row = milik.find((i) => (i.data.ke ?? "") === (ke ?? ""));
+  if (!row) return gagal("Pekerjaan ini tidak berlaku untuk kegiatan tersebut.");
+  return ubahItem(row.id, input);
 }
 
 /** Tandai selesai: tanggal selesai + link bukti wajib. */

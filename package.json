@@ -12,7 +12,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "buat-admin": "tsx scripts/buat-admin.ts",
-    "impor:struktur": "tsx scripts/impor-struktur.ts"
+    "impor:struktur": "tsx scripts/impor-struktur.ts",
+    "lengkapi:kegiatan": "tsx --conditions=react-server scripts/lengkapi-item-kegiatan.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.10",

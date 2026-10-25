@@ -10,6 +10,7 @@ import { TombolCatat } from "@/components/app/tombol-catat";
 import { KartuTugas } from "@/components/app/tugas";
 import { Avatar, BarisTautan, Cincin, JudulBagian, Kartu, Kerangka, Kosong, Lencana, PetakIkon, Statistik, TautanKecil } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
+import { tanggalPalingAwal } from "@/lib/data/batas";
 import { daftarItem, kondisiItemPenugasan } from "@/lib/data/item";
 import { daftarTugas, kondisiTugasMenunggu, kondisiTugasPenugasan } from "@/lib/data/tugas";
 import { angka, sapaan } from "@/lib/format";
@@ -83,9 +84,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   ]);
 
   // Kartu kegiatan: yang akan datang, atau yang sudah lewat tetapi masih punya pekerjaan terbuka (SPB, arsip).
-  const itemKeg = kegiatanSaya.length
-    ? await daftarItem(and(inArray(s.item.kegiatanId, kegiatanSaya.map((x) => x.k.id)), inArray(s.item.penugasanId, pnSbk.map((p) => p.id))), { kantor: sesi.kantor, batas: 500 })
-    : [];
+  const [itemKeg, minTanggal] = kegiatanSaya.length
+    ? await Promise.all([
+        daftarItem(and(inArray(s.item.kegiatanId, kegiatanSaya.map((x) => x.k.id)), inArray(s.item.penugasanId, pnSbk.map((p) => p.id))), { kantor: sesi.kantor, batas: 500 }),
+        tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
+      ])
+    : [[], today];
   const terbukaKeg = itemKeg.filter((i) => i.status === "terbuka" || i.status === "ditolak");
   const kartuKegiatan = kegiatanSaya
     .filter(({ k }) => k.tanggal >= tambahHari(today, -7) || terbukaKeg.some((i) => i.kegiatanId === k.id))
@@ -186,7 +190,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                 <ul className="space-y-3">
                   {kartuKegiatan.map((x) => (
                     <li key={x.kegiatan.id}>
-                      <KartuKegiatan kegiatan={x.kegiatan} items={x.items} hariIni={today} />
+                      <KartuKegiatan kegiatan={x.kegiatan} items={x.items} hariIni={today} kantor={sesi.kantor} minTanggal={minTanggal} />
                     </li>
                   ))}
                 </ul>

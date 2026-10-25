@@ -1,46 +1,51 @@
 // Kartu Kegiatan SKUO di dashboard SBK: daftar pekerjaan satu kegiatan.
 // Pengingat 1 & 2, SPP, SPB dibuat otomatis; Layanan dan Arsip ditambah staf dari kartu ini.
 
-import Link from "next/link";
-import { CircleDashed } from "lucide-react";
 import type { BarisItem } from "@/lib/data/item";
+import { indikatorDari } from "@/lib/ikp/katalog";
 import { PARAMETER } from "@/lib/ikp/tipe";
-import { cn } from "@/lib/utils";
-import { labelTanggalPanjang } from "@/lib/waktu";
-import { IKON_STATUS } from "./baris-item";
+import { jamLokal, labelTanggalPanjang, tanggalLokal, type Kantor } from "@/lib/waktu";
+import { BarisPekerjaan, type ItemPekerjaan } from "./isi-pekerjaan";
 import { TombolCatat } from "./tombol-catat";
-import { Lencana, LencanaStatus } from "./ui";
+import { Lencana } from "./ui";
 
 export type KegiatanSkuo = { id: string; nama: string; tanggal: string; skuoNama: string | null; perluSpp: boolean; perluSpb: boolean; penugasanId: string };
 
-function BarisPekerjaan({ label, item, ket }: { label: string; item?: BarisItem; ket?: string }) {
-  const { Ikon, warna } = item ? IKON_STATUS[item.status] : { Ikon: CircleDashed, warna: "text-muted-foreground/50" };
-  const isi = (
-    <>
-      <Ikon className={cn("size-5 shrink-0", warna)} strokeWidth={1.9} aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
-        {label}
-        {ket && <span className="font-normal text-muted-foreground"> · {ket}</span>}
-      </span>
-      {item ? item.sisa ? <Lencana nada={item.sisa.nada}>{item.sisa.teks}</Lencana> : <LencanaStatus status={item.status} /> : <Lencana>Belum ada</Lencana>}
-    </>
-  );
-  return item ? (
-    <Link href={`/item/${item.id}`} className="flex min-h-11 items-center gap-2.5 rounded-xl px-2 transition hover:bg-muted/60 active:bg-muted">
-      {isi}
-    </Link>
-  ) : (
-    <div className="flex min-h-11 items-center gap-2.5 px-2">{isi}</div>
-  );
+/** Item → nilai awal sheet isian (tanggal dalam zona kantor). */
+function keItemPekerjaan(i: BarisItem | undefined, kantor: Kantor): ItemPekerjaan | undefined {
+  if (!i) return undefined;
+  const bentuk = indikatorDari(i.indikatorKode)?.item;
+  const fmt = (d: Date | null, jenis: "tanggal" | "waktu" | undefined) => (d ? (jenis === "waktu" ? `${tanggalLokal(d, kantor)}T${jamLokal(d, kantor)}` : tanggalLokal(d, kantor)) : "");
+  return {
+    id: i.id,
+    status: i.status,
+    sisa: i.sisa,
+    alasanTolak: i.alasanTolak,
+    awal: {
+      kegiatanId: i.kegiatanId ?? "",
+      masuk: fmt(i.tglMasuk, bentuk?.masuk?.jenis),
+      selesai: fmt(i.tglSelesai, bentuk?.selesai.jenis),
+      linkBukti: i.linkBukti ?? "",
+      data: i.data,
+      sudahSelesai: !!i.tglSelesai,
+    },
+  };
 }
 
-export function KartuKegiatan({ kegiatan: k, items, hariIni }: { kegiatan: KegiatanSkuo; items: BarisItem[]; hariIni: string }) {
+export function KartuKegiatan({ kegiatan: k, items, hariIni, kantor, minTanggal }: { kegiatan: KegiatanSkuo; items: BarisItem[]; hariIni: string; kantor: Kantor; minTanggal: string }) {
   const dari = (kode: string) => items.filter((i) => i.indikatorKode === kode);
   const pengingat = dari("SBK-3");
-  const layanan = dari("SBK-4");
-  const arsip = dari("SBK-5");
-  const selesai = items.filter((i) => i.status === "diajukan" || i.status === "disetujui").length;
+  // Baris tetap: pekerjaan otomatis selalu tampil, meski itemnya belum terbentuk (kegiatan lama).
+  const baris = [
+    ...PARAMETER.pengingatHMinus.map((h, n) => ({ kunci: `p${n}`, label: `Pengingat ${n + 1}`, ket: `≤ H-${h}`, kode: "SBK-3", ke: String(n + 1), item: pengingat.find((i) => i.data.ke === String(n + 1)) })),
+    ...(k.perluSpp ? [{ kunci: "spp", label: "SPP", kode: "SBK-2a", item: dari("SBK-2a")[0] }] : []),
+    ...(k.perluSpb ? [{ kunci: "spb", label: "SPB", kode: "SBK-2b", item: dari("SBK-2b")[0] }] : []),
+    ...dari("SBK-4").map((i) => ({ kunci: i.id, label: "Layanan", ket: i.data.jenis, kode: i.indikatorKode, item: i })),
+    ...dari("SBK-5").map((i) => ({ kunci: i.id, label: "Arsip", ket: i.data.judul || i.data.jenis, kode: i.indikatorKode, item: i })),
+  ];
+  const selesai = baris.filter((b) => b.item?.status === "diajukan" || b.item?.status === "disetujui").length;
   const selisih = Math.round((Date.parse(k.tanggal) - Date.parse(hariIni)) / 86_400_000);
+  const keg = { id: k.id, nama: k.nama, tanggal: k.tanggal };
 
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-3.5">
@@ -55,21 +60,13 @@ export function KartuKegiatan({ kegiatan: k, items, hariIni }: { kegiatan: Kegia
         <span className="flex shrink-0 flex-col items-end gap-1">
           <Lencana nada={selisih < 0 ? "netral" : selisih <= 2 ? "gold" : "brand"}>{selisih > 0 ? `H-${selisih}` : selisih === 0 ? "Hari H" : `H+${-selisih}`}</Lencana>
           <span className="text-xs tabular-nums text-muted-foreground">
-            {selesai}/{items.length} selesai
+            {selesai}/{baris.length} selesai
           </span>
         </span>
       </div>
       <div className="divide-y divide-border/60">
-        {PARAMETER.pengingatHMinus.map((h, n) => (
-          <BarisPekerjaan key={h} label={`Pengingat ${n + 1}`} ket={`≤ H-${h}`} item={pengingat.find((i) => i.data.ke === String(n + 1))} />
-        ))}
-        {k.perluSpp && <BarisPekerjaan label="SPP" item={dari("SBK-2a")[0]} />}
-        {k.perluSpb && <BarisPekerjaan label="SPB" item={dari("SBK-2b")[0]} />}
-        {layanan.map((i) => (
-          <BarisPekerjaan key={i.id} label="Layanan" ket={i.data.jenis} item={i} />
-        ))}
-        {arsip.map((i) => (
-          <BarisPekerjaan key={i.id} label="Arsip" ket={i.data.judul || i.data.jenis} item={i} />
+        {baris.map(({ kunci, item, ...b }) => (
+          <BarisPekerjaan key={kunci} {...b} item={keItemPekerjaan(item, kantor)} kegiatan={keg} hariIni={hariIni} minTanggal={minTanggal} />
         ))}
       </div>
       <div className="mt-2 flex flex-wrap gap-2 px-1">
