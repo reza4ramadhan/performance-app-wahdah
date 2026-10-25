@@ -4,6 +4,7 @@ import "server-only";
 import { and, asc, count, desc, eq, gt, inArray, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb, schema as s } from "../db";
+import { labelSisaTugas } from "../ikp/tenggat";
 import type { FrekuensiTugas, StatusTugas } from "../ikp/tipe";
 import type { Kantor } from "../waktu";
 
@@ -30,6 +31,8 @@ export type BarisTugas = {
   pemberiNama: string;
   /** Belum selesai dan tenggat sudah lewat. */
   lewat: boolean;
+  /** Sisa waktu menuju tenggat, dihitung di server agar sama saat hidrasi. */
+  sisa: { teks: string; nada: "netral" | "gold" | "flame" };
 };
 
 const pemberi = alias(s.pegawai, "pemberi");
@@ -68,6 +71,7 @@ export async function daftarTugas(where: SQL | undefined, batas = 300): Promise<
     pemberiId: r.t.dibuatOleh,
     pemberiNama: r.pemberiNama,
     lewat: (r.j.status === "belum" || r.j.status === "dikerjakan" || r.j.status === "ditolak") && r.j.tenggat.getTime() < kini,
+    sisa: labelSisaTugas(r.j.tenggat, r.kantor as Kantor, kini),
   }));
 }
 

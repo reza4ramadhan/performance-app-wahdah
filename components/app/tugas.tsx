@@ -3,7 +3,7 @@
 // Tugas khusus: kartu jadwal, pembaruan status oleh staf, form tugas baru, putusan pemberi tugas,
 // serta usulan tugas dari Staf Khusus.
 
-import { useState, useTransition } from "react";
+import { useLayoutEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, ExternalLink, ListChecks, ListPlus, Pencil, Trash2, X } from "lucide-react";
@@ -29,7 +29,12 @@ const labelTenggat = (t: BarisTugas) => `${labelTanggal(tanggalLokal(t.tenggat, 
 /** Satu jadwal tugas khusus. Staf bisa memperbarui; pemberi tugas bisa memverifikasi. */
 export function KartuTugas({ tugas: t, sebagai, tampilStaf = false }: { tugas: BarisTugas; sebagai: "staf" | "pemberi"; tampilStaf?: boolean }) {
   const [buka, setBuka] = useState(false);
+  // Halaman disimpan <Activity> saat pindah menu; tutup form agar tidak terbuka sendiri ketika kembali.
+  useLayoutEffect(() => () => setBuka(false), []);
   const bisaUbah = sebagai === "staf" && (t.status === "belum" || t.status === "dikerjakan" || t.status === "ditolak");
+  // Tugas yang belum disentuh menampilkan sisa waktu; bila sudah lewat cukup lencana "Lewat tenggat".
+  const lencana: [string, Nada] | null =
+    t.status === "belum" ? (t.lewat ? null : [t.sisa.teks, t.sisa.nada]) : [t.status === "dikerjakan" ? `${t.persen}%` : LABEL_STATUS_TUGAS[t.status], NADA_STATUS[t.status]];
   return (
     <div id={t.id} className="rounded-2xl border border-border/70 bg-card p-3.5">
       <div className="flex items-start gap-3">
@@ -41,7 +46,7 @@ export function KartuTugas({ tugas: t, sebagai, tampilStaf = false }: { tugas: B
           </p>
         </div>
         <span className="flex shrink-0 flex-col items-end gap-1">
-          <Lencana nada={NADA_STATUS[t.status]}>{t.status === "dikerjakan" ? `${t.persen}%` : LABEL_STATUS_TUGAS[t.status]}</Lencana>
+          {lencana && <Lencana nada={lencana[1]}>{lencana[0]}</Lencana>}
           {t.lewat && <Lencana nada="flame">Lewat tenggat</Lencana>}
         </span>
       </div>
