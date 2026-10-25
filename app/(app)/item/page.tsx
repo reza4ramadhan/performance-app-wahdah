@@ -39,7 +39,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const sp = await searchParams;
   const status = String(sp.status ?? "aktif") === "terbuka" ? "aktif" : String(sp.status ?? "aktif");
   const q = String(sp.q ?? "").trim();
-  const pnIds = sesi.penugasan.map((p) => p.id);
+  const pnIds = sesi.amanah ? [sesi.amanah.id] : [];
   const milik = inArray(s.item.penugasanId, pnIds.length ? pnIds : ["-"]);
 
   const daftarStatus: StatusItem[] =

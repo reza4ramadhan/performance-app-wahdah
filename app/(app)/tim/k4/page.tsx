@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { ExternalLink, Lightbulb } from "lucide-react";
 import { PeriksaK4 } from "@/components/app/putusan-k4";
 import { Kartu, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
@@ -24,15 +24,21 @@ export default function HalamanPeriksaK4() {
 async function Isi() {
   const sesi = await wajibSesi();
   const db = await getDb();
-  // Pengajuan dari pegawai yang punya penugasan dengan koordinator = saya.
-  const staf = await db.selectDistinct({ id: s.penugasan.pegawaiId }).from(s.penugasan).where(eq(s.penugasan.koordinatorId, sesi.pegawaiId));
-  const ids = staf.map((x) => x.id).filter((id) => id !== sesi.pegawaiId);
-  const daftar = ids.length
+  // Pengajuan untuk amanah binaan amanah aktif (atasan = penilai K3 amanah itu). Pengajuan lama tanpa amanah:
+  // dari pegawai yang punya penugasan dengan koordinator = saya.
+  const pnTim = sesi.tim.filter((b) => b.pegawaiId !== sesi.pegawaiId).map((b) => b.id);
+  const stafLama = [...new Set(sesi.tim.filter((b) => b.koordinatorId === sesi.pegawaiId && b.pegawaiId !== sesi.pegawaiId).map((b) => b.pegawaiId))];
+  const daftar = pnTim.length
     ? await db
         .select({ k: s.k4Pengajuan, nama: s.pegawai.nama })
         .from(s.k4Pengajuan)
         .innerJoin(s.pegawai, eq(s.pegawai.id, s.k4Pengajuan.diajukanOleh))
-        .where(and(inArray(s.k4Pengajuan.diajukanOleh, ids), eq(s.k4Pengajuan.status, "diajukan")))
+        .where(
+          and(
+            eq(s.k4Pengajuan.status, "diajukan"),
+            or(inArray(s.k4Pengajuan.penugasanId, pnTim), stafLama.length ? and(isNull(s.k4Pengajuan.penugasanId), inArray(s.k4Pengajuan.diajukanOleh, stafLama)) : undefined),
+          ),
+        )
     : [];
   if (!daftar.length) return <Kosong ikon={Lightbulb} judul="Tidak ada pengajuan yang menunggu" />;
   return (

@@ -60,6 +60,7 @@ async function Isi() {
             diajukan: i.diajukanPada ? labelTanggal(tanggalLokal(i.diajukanPada, sesi.kantor)) : "—",
             selesai: i.tglSelesai ? labelTanggal(tanggalLokal(i.tglSelesai, sesi.kantor)) : "—",
             linkBukti: i.linkBukti,
+            milikSendiri: i.pemilikId === sesi.pegawaiId,
             lambat: !!i.diajukanPada && hariKerjaAntara(tanggalLokal(i.diajukanPada, sesi.kantor), today, libur(sesi.kantor)) > 1,
           }))}
       />

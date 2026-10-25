@@ -10,11 +10,18 @@ export type NamaIkonMenu =
 export type ItemMenu = { href: string; label: string; ikon: NamaIkonMenu; sub?: string };
 export type GrupMenu = { judul: string; item: ItemMenu[] };
 
-export function menuUntuk(sesi: Pick<Sesi, "peran" | "penugasan">) {
+/**
+ * Menu kerja mengikuti amanah aktif ("Pindah Amanah"); menu fungsi (Sekretariat, Personalia, Keuangan, Admin)
+ * selalu tampil.
+ */
+export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   const p = sesi.peran;
   const ada = (...x: Parameters<typeof p.has>[0][]) => x.some((r) => p.has(r));
-  const tugas = sesi.penugasan.some((x) => x.peranKerja === "SBK" || x.peranKerja === "SK");
-  const ksbk = sesi.penugasan.some((x) => x.peranKerja === "KSBK");
+  const kerja = sesi.amanah?.peranKerja;
+  const tugas = kerja === "SBK" || kerja === "SK";
+  const ksbk = kerja === "KSBK";
+  const pimpin = kerja === "WAKA" || kerja === "KAKAN";
+  const adaTim = sesi.tim.length > 0;
 
   const grup: GrupMenu[] = [
     {
@@ -31,7 +38,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "penugasan">) {
     },
   ];
 
-  if (ada("koordinator")) {
+  if (adaTim || ksbk) {
     grup.push({
       judul: "Tim",
       item: [
@@ -40,7 +47,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "penugasan">) {
         ...(ksbk ? [{ href: "/tim/kegiatan", label: "Kegiatan bulanan", ikon: "kegiatan" as const }] : []),
         { href: "/tim/catatan", label: "Catatan perilaku", ikon: "catatan" },
         { href: "/tim/k3", label: "Penilaian K3", ikon: "k3" },
-        { href: "/tim/tugas", label: "Tugas khusus staf", ikon: "tugas" },
+        ...(sesi.tim.some((b) => b.peranKerja === "SBK" || b.peranKerja === "SK") ? [{ href: "/tim/tugas", label: "Tugas khusus staf", ikon: "tugas" as const }] : []),
         { href: "/tim/jurnal", label: "Jurnal staf", ikon: "jurnal" },
         ...(ksbk ? [{ href: "/tim/uji-petik", label: "Uji petik arsip", ikon: "arsip" as const }] : []),
         { href: "/tim/k4", label: "Periksa K4", ikon: "k4" },
@@ -50,16 +57,15 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "penugasan">) {
     grup.push({ judul: "Verifikasi", item: [{ href: "/verifikasi", label: "Verifikasi", ikon: "verifikasi" }] });
   }
 
-  if (ada("waka", "kepala", "sekretariat", "admin")) {
+  if (pimpin || ada("sekretariat", "admin")) {
     grup.push({
       judul: "Kantor",
       item: [
         { href: "/kantor", label: "Dashboard kantor", ikon: "kantor" },
-        ...(ada("waka") && !ada("koordinator") ? [{ href: "/tim/k3", label: "Penilaian K3 (KSBK)", ikon: "k3" as const }] : []),
-        ...(ada("waka", "kepala", "sekretariat") ? [{ href: "/kantor/kalibrasi", label: "Kalibrasi K3", ikon: "kalibrasi" as const }] : []),
-        ...(ada("waka", "kepala") ? [{ href: "/kantor/k4", label: "Penetapan K4", ikon: "k4" as const }] : []),
+        ...(pimpin || ada("sekretariat") ? [{ href: "/kantor/kalibrasi", label: "Kalibrasi K3", ikon: "kalibrasi" as const }] : []),
+        ...(pimpin ? [{ href: "/kantor/k4", label: "Penetapan K4", ikon: "k4" as const }] : []),
         { href: "/kantor/rekap", label: "Rekap IKP", ikon: "rekap" },
-        ...(!ada("koordinator") ? [{ href: "/tim/jurnal", label: "Jurnal pegawai", ikon: "jurnal" as const }] : []),
+        ...(!adaTim ? [{ href: "/tim/jurnal", label: "Jurnal pegawai", ikon: "jurnal" as const }] : []),
       ],
     });
   }
@@ -82,6 +88,6 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "penugasan">) {
 
   /** Tab ke-5 di ponsel: muncul bila punya peran selain pegawai biasa. */
   const kelola = grup.length > 1;
-  const labelKelola = ada("koordinator", "waka", "kepala") ? "Tim" : "Kelola";
+  const labelKelola = adaTim || ksbk || pimpin ? "Tim" : "Kelola";
   return { grup, kelola, labelKelola };
 }

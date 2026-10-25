@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, count, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
-import { BookOpen, CalendarDays, CircleAlert, CircleCheck, ClipboardCheck, Clock3, Gauge, Hourglass, ListChecks, NotebookPen, Users } from "lucide-react";
+import { ArrowLeftRight, BookOpen, CalendarDays, CircleAlert, CircleCheck, ClipboardCheck, Clock3, Gauge, Hourglass, ListChecks, NotebookPen, Users } from "lucide-react";
 import { KartuItem } from "@/components/app/baris-item";
 import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
 import { KartuKegiatan } from "@/components/app/kegiatan-skuo";
@@ -37,12 +37,15 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const today = hariIni(sesi.kantor);
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);
-  const pnIds = sesi.penugasan.map((p) => p.id);
+  // Dashboard mengikuti amanah aktif ("Pindah Amanah" di profil).
+  const amanah = sesi.amanah ? [sesi.amanah] : [];
+  const pnIds = amanah.map((p) => p.id);
+  const timIds = sesi.tim.map((b) => b.id);
   const awalHari = keUtc(today, sesi.kantor);
   const akhirHari = keUtc(tambahHari(today, 1), sesi.kantor);
   // SBK: dashboard berisi Kegiatan SKUO, Tugas Khusus, dan Jurnal. Staf Khusus: Tugas Khusus dan Jurnal.
-  const pnSbk = sesi.penugasan.filter((p) => p.peranKerja === "SBK");
-  const pnTugas = sesi.penugasan.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => p.id);
+  const pnSbk = amanah.filter((p) => p.peranKerja === "SBK");
+  const pnTugas = amanah.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => p.id);
   const bidangSbk = [...new Set(pnSbk.map((p) => p.bidangId ?? p.unitId))];
 
   const [perStatus, terbuka, isiHariIni, jurnalHariIni, jurnalBulanIni, pdBulanIni, kegiatanSaya, tugas, tim, tugasMenunggu] = await Promise.all([
@@ -71,14 +74,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     pnTugas.length
       ? daftarTugas(and(kondisiTugasPenugasan(pnTugas, ["belum", "dikerjakan", "ditolak", "diajukan"]), lte(s.tugasKhususJadwal.tenggat, keUtc(tambahHari(today, 8), sesi.kantor))), 8)
       : Promise.resolve([]),
-    sesi.peran.has("koordinator")
+    timIds.length
       ? db
           .select({ n: count() })
           .from(s.item)
           .innerJoin(s.penugasan, eq(s.penugasan.id, s.item.penugasanId))
-          .where(and(eq(s.penugasan.koordinatorId, sesi.pegawaiId), eq(s.item.status, "diajukan"), ne(s.item.indikatorKode, "KSBK-3")))
+          .where(and(eq(s.penugasan.koordinatorId, sesi.pegawaiId), inArray(s.penugasan.id, timIds), eq(s.item.status, "diajukan"), ne(s.item.indikatorKode, "KSBK-3")))
       : Promise.resolve(null),
-    sesi.peran.has("koordinator")
+    timIds.length
       ? db.select({ n: count() }).from(s.tugasKhususJadwal).innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId)).where(kondisiTugasMenunggu(sesi.pegawaiId))
       : Promise.resolve(null),
   ]);
@@ -123,6 +126,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
           <p className="text-sm text-muted-foreground">{sapaan(jam)},</p>
           <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(today)}</p>
+          {sesi.penugasan.length > 1 && sesi.amanah && (
+            <Link href="/akun#amanah" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
+              <ArrowLeftRight className="size-3.5" /> {sesi.amanah.peranKerja} · {sesi.amanah.unitNama}
+            </Link>
+          )}
         </div>
         <Link href="/akun" aria-label="Akun">
           <Avatar nama={sesi.nama} ukuran="lg" className="ring-2 ring-card shadow-sm" />

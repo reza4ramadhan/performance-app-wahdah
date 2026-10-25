@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
+import { ArrowLeftRight, BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
 import { PanduanPasang, SakelarNotifikasi } from "@/components/app/pwa";
 import { Avatar, BarisTautan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
-import { keluar } from "@/app/aksi/akun";
+import { keluar, pindahAmanah } from "@/app/aksi/akun";
 import { getDb, schema as s } from "@/lib/db";
 import { liburPerKantor } from "@/lib/data/ikp";
 import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM } from "@/lib/ikp/tipe";
@@ -31,13 +31,27 @@ async function Isi() {
   const tz = sesi.kantor === "makassar" ? "Asia/Makassar" : "Asia/Jakarta";
   const pnIds = sesi.penugasan.map((p) => p.id).concat("-");
 
-  const [[pg], [nItem], hariItem, hariJurnal, libur] = await Promise.all([
+  const binaanSaya = sesi.binaan.filter((b) => b.koordinatorId === sesi.pegawaiId).map((b) => b.id);
+  const [[pg], [nItem], hariItem, hariJurnal, libur, menunggu] = await Promise.all([
     db.select().from(s.pegawai).where(eq(s.pegawai.id, sesi.pegawaiId)),
     db.select({ n: count() }).from(s.item).where(and(inArray(s.item.penugasanId, pnIds), eq(s.item.periodeId, periode))),
     db.selectDistinct({ d: sql<string>`(${s.item.dibuatPada} at time zone ${tz})::date::text` }).from(s.item).where(inArray(s.item.penugasanId, pnIds)),
     db.selectDistinct({ d: s.jurnal.tanggal }).from(s.jurnal).where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, geserHariKerja(today, -60, new Set())), lte(s.jurnal.tanggal, akhir))),
     liburPerKantor(db),
+    // Antrean verifikasi per penugasan binaan, agar profil menunjukkan amanah lain yang perlu dibuka.
+    binaanSaya.length
+      ? db
+          .select({ pn: s.item.penugasanId, n: count() })
+          .from(s.item)
+          .where(and(inArray(s.item.penugasanId, binaanSaya), eq(s.item.status, "diajukan")))
+          .groupBy(s.item.penugasanId)
+      : [],
   ]);
+  const antreanAmanah = new Map<string, number>();
+  for (const m of menunggu) {
+    const a = sesi.binaan.find((b) => b.id === m.pn)?.amanahId;
+    if (a) antreanAmanah.set(a, (antreanAmanah.get(a) ?? 0) + m.n);
+  }
   const terisi = new Set([...hariItem.map((x) => x.d), ...hariJurnal.map((x) => x.d)]);
   const hkBulan = hariKerjaPeriode(periode, libur(sesi.kantor), today);
   // Beruntun: hari kerja berturut-turut terisi sampai hari ini (hari ini boleh belum diisi).
@@ -48,8 +62,9 @@ async function Isi() {
     beruntun++;
     if (beruntun > 300) break;
   }
-  const bisaTugas = sesi.penugasan.some((p) => p.peranKerja === "SBK" || p.peranKerja === "SK");
+  const bisaTugas = sesi.amanah?.peranKerja === "SBK" || sesi.amanah?.peranKerja === "SK";
   const peran = [...sesi.peran].filter((p) => p !== "pegawai");
+  const rangkap = sesi.penugasan.length > 1;
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
@@ -84,16 +99,33 @@ async function Isi() {
         </dl>
       </section>
 
-      <Kartu>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Penugasan bulan ini</p>
-        <ul className="space-y-1.5 text-sm">
-          {sesi.penugasan.map((p) => (
-            <li key={p.id} className="flex justify-between gap-3">
-              <span className="text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
-              <span className="text-right text-muted-foreground">{p.unitNama}</span>
-            </li>
-          ))}
-          {!sesi.penugasan.length && <li className="text-muted-foreground">Belum ada penugasan. Hubungi Admin.</li>}
+      <Kartu id="amanah">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{rangkap ? "Pindah amanah" : "Amanah bulan ini"}</p>
+        {rangkap && <p className="mb-2 text-sm text-muted-foreground">Menu, dashboard, item, dan tim mengikuti amanah yang aktif.</p>}
+        <ul className="divide-y divide-border text-sm">
+          {sesi.penugasan.map((p) => {
+            const aktif = p.id === sesi.amanah?.id;
+            const n = antreanAmanah.get(p.id) ?? 0;
+            return (
+              <li key={p.id} className="flex min-h-14 items-center gap-3 py-2">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{p.unitNama}</span>
+                </span>
+                {n > 0 && <Lencana nada="gold">{n} menunggu verifikasi</Lencana>}
+                {aktif ? (
+                  rangkap && <Lencana nada="brand">Aktif</Lencana>
+                ) : (
+                  <form action={pindahAmanah.bind(null, p.id)}>
+                    <Button type="submit" variant="outline" size="sm" className="rounded-xl">
+                      <ArrowLeftRight className="size-4" /> Pindah
+                    </Button>
+                  </form>
+                )}
+              </li>
+            );
+          })}
+          {!sesi.penugasan.length && <li className="py-2 text-muted-foreground">Belum ada penugasan. Hubungi Admin.</li>}
         </ul>
         {peran.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">

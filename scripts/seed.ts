@@ -7,8 +7,10 @@ import { buatAkun, buatAuth } from "../lib/auth-config";
 import { buatDb } from "../lib/db/koneksi";
 import * as s from "../lib/db/schema";
 import { sinkronKatalog } from "../lib/ikp/sinkron";
+import { penilaiK3 } from "../lib/akses";
 import { tanggalJadwal } from "../lib/ikp/tugas";
-import type { PeranSistem, SkorK3 } from "../lib/ikp/tipe";
+import type { PeranManual, SkorK3 } from "../lib/ikp/tipe";
+import { wakaDari } from "../lib/unit";
 import { geserHariKerja, hariIni, hariKerjaPeriode, keUtc, periodeBerikut, periodeDari, rentangPeriode, tambahHari } from "../lib/waktu";
 
 const { values: arg } = parseArgs({ options: { paksa: { type: "boolean", default: false } } });
@@ -55,7 +57,7 @@ async function main() {
   const keamanan = await unit("staf_khusus", "Staf Khusus Keamanan", kantor.id);
 
   // ── Pegawai + akun ──
-  type Org = { nama: string; nip: string; hp: string; status: string; kantor?: "makassar" | "jakarta"; peran: PeranSistem[] };
+  type Org = { nama: string; nip: string; hp: string; status: string; kantor?: "makassar" | "jakarta"; peran: PeranManual[] };
   const orang = async (o: Org) => {
     const [pg] = await db
       .insert(s.pegawai)
@@ -66,18 +68,18 @@ async function main() {
     return pg;
   };
 
-  const kk = await orang({ nama: "Ust. Contoh Kepala Kantor", nip: "1001", hp: "081100001001", status: "Mutafarrigh", peran: ["kepala"] });
-  const waka = await orang({ nama: "Contoh Wakil Kepala I", nip: "1002", hp: "081100001002", status: "Mutafarrigh", peran: ["waka"] });
+  const kk = await orang({ nama: "Ust. Contoh Kepala Kantor", nip: "1001", hp: "081100001001", status: "Mutafarrigh", peran: [] });
+  const waka = await orang({ nama: "Contoh Wakil Kepala I", nip: "1002", hp: "081100001002", status: "Mutafarrigh", peran: [] });
   const sekr = await orang({ nama: "Fatimah Sekretariat", nip: "1003", hp: "081100001003", status: "Mutafarrigh", peran: ["sekretariat"] });
   const pers = await orang({ nama: "Rahmat Personalia", nip: "1004", hp: "081100001004", status: "Kontrak", peran: ["personalia"] });
   const keu = await orang({ nama: "Nurul Keuangan", nip: "1005", hp: "081100001005", status: "Kontrak", peran: ["keuangan"] });
   const adm = await orang({ nama: "Yusuf Data & Monev", nip: "1006", hp: "081100001006", status: "Mutafarrigh", peran: ["admin"] });
-  const ahmad = await orang({ nama: "Ahmad Fauzan", nip: "2001", hp: "081200002001", status: "Mutafarrigh", peran: ["koordinator"] });
+  const ahmad = await orang({ nama: "Ahmad Fauzan", nip: "2001", hp: "081200002001", status: "Mutafarrigh", peran: [] });
   const budi = await orang({ nama: "Budi Santoso", nip: "2002", hp: "081200002002", status: "Kontrak", peran: [] });
   const citra = await orang({ nama: "Citra Lestari", nip: "2003", hp: "081200002003", status: "Muta'awin", peran: [] });
-  const dani = await orang({ nama: "Dani Pratama", nip: "2004", hp: "081200002004", status: "Mutafarrigh", kantor: "jakarta", peran: ["koordinator"] });
+  const dani = await orang({ nama: "Dani Pratama", nip: "2004", hp: "081200002004", status: "Mutafarrigh", kantor: "jakarta", peran: [] });
   const eka = await orang({ nama: "Eka Wulandari", nip: "2005", hp: "081200002005", status: "Kontrak", kantor: "jakarta", peran: [] });
-  const fajar = await orang({ nama: "Fajar Hidayat", nip: "2006", hp: "081200002006", status: "Mutafarrigh", peran: ["koordinator"] });
+  const fajar = await orang({ nama: "Fajar Hidayat", nip: "2006", hp: "081200002006", status: "Mutafarrigh", peran: [] });
   const hasan = await orang({ nama: "Hasan Basri", nip: "2007", hp: "081200002007", status: "Kontrak", peran: [] });
 
   for (const u of [bk1, bk2, setjen, lu, keamanan]) await db.update(s.unit).set({ wakaId: waka.id }).where((await import("drizzle-orm")).eq(s.unit.id, u.id));
@@ -88,6 +90,8 @@ async function main() {
   await pn(kk.id, "KAKAN", kantor.id, null);
   await pn(waka.id, "WAKA", kantor.id, kk.id);
   await pn(ahmad.id, "KSBK", bk1.id, waka.id);
+  // Rangkap jabatan: Ahmad juga SBK di SKUO bidangnya sendiri, koordinator dirinya; K3-nya naik ke WaKa.
+  await pn(ahmad.id, "SBK", skuo1.id, ahmad.id);
   const pBudi = await pn(budi.id, "SBK", bk1.id, ahmad.id);
   const pCitra1 = await pn(citra.id, "SBK", bk1.id, ahmad.id, 60);
   await pn(dani.id, "KSBK", bk2.id, waka.id);
@@ -238,9 +242,15 @@ async function main() {
     }),
   );
   const skor = (v: number[]): SkorK3 => ({ akhlak: v[0], profesional: v[1], inovatif: v[2], kolaboratif: v[3], rasaMemiliki: v[4], pengembanganDiri: v[5] });
-  const k3Lalu = (await db.select().from(s.penugasan)).filter((p) => p.koordinatorId && p.peranKerja !== "WAKA");
+  // Satu penilaian per pegawai per penilai efektif (rangkap jabatan dinilai WaKa sekali saja).
+  const wakaUnit = wakaDari(await db.select().from(s.unit));
+  const k3Lalu = new Map<string, { pegawaiId: string; penilaiId: string }>();
+  for (const p of await db.select().from(s.penugasan)) {
+    const penilai = p.peranKerja === "WAKA" || p.peranKerja === "KAKAN" ? null : penilaiK3(p, wakaUnit.get(p.unitId) ?? null);
+    if (penilai) k3Lalu.set(`${p.pegawaiId}:${penilai}`, { pegawaiId: p.pegawaiId, penilaiId: penilai });
+  }
   await db.insert(s.penilaianK3).values(
-    k3Lalu.map((p) => ({ periodeId: lalu, penugasanId: p.id, penilaiId: p.koordinatorId!, skor: skor([4, 4, 3, 4, 4, 3].map((v) => (acak() < 0.2 ? v - 1 : v))), contoh: {}, status: "dikirim" as const })),
+    [...k3Lalu.values()].map((k) => ({ periodeId: lalu, ...k, skor: skor([4, 4, 3, 4, 4, 3].map((v) => (acak() < 0.2 ? v - 1 : v))), contoh: {}, status: "dikirim" as const })),
   );
 
   console.log(`Seed selesai (${jenis}). Periode ${periode} berjalan, ${lalu} contoh rekap.`);

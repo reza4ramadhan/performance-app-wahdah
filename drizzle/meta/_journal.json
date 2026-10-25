@@ -22,6 +22,27 @@
       "when": 1792743016303,
       "tag": "0002_tugas_khusus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792943541483,
+      "tag": "0003_k3_per_penilai",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792943549619,
+      "tag": "0004_k3_hapus_penugasan",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792944642728,
+      "tag": "0005_k4_amanah",
+      "breakpoints": true
     }
   ]
 }

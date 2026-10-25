@@ -13,9 +13,13 @@ const tidak = (alasan: string): Keputusan => ({ boleh: false, alasan });
 export const punya = (a: Aktor, ...peran: PeranSistem[]) => peran.some((p) => a.peran.has(p));
 export const pimpinan = (a: Aktor) => punya(a, ...PERAN_PIMPINAN);
 
-/** Verifikasi item: tidak boleh milik sendiri; verifikator sesuai indikator. */
+/**
+ * Verifikasi item: verifikator sesuai indikator. Item milik sendiri hanya boleh diverifikasi bila ia
+ * sendiri koordinator penugasan itu (rangkap jabatan, mis. KSBK yang juga SBK di SKUO bidangnya).
+ */
 export function bolehVerifikasiItem(a: Aktor, item: { pemilikId: string; koordinatorId: string | null; verifikator: Verifikator }): Keputusan {
-  if (item.pemilikId === a.pegawaiId) return tidak("Tidak bisa memverifikasi item milik sendiri.");
+  const rangkap = item.verifikator === "koordinator" && item.koordinatorId === a.pegawaiId;
+  if (item.pemilikId === a.pegawaiId && !rangkap) return tidak("Tidak bisa memverifikasi item milik sendiri.");
   switch (item.verifikator) {
     case "koordinator":
       return item.koordinatorId === a.pegawaiId ? ya : tidak("Hanya koordinator penugasan ini yang bisa memverifikasi.");
@@ -26,10 +30,19 @@ export function bolehVerifikasiItem(a: Aktor, item: { pemilikId: string; koordin
   }
 }
 
-/** Penilaian K3: hanya koordinator penugasan, tidak untuk diri sendiri. */
-export function bolehNilaiK3(a: Aktor, pn: { pegawaiId: string; koordinatorId: string | null }): Keputusan {
-  if (pn.pegawaiId === a.pegawaiId) return tidak("Tidak bisa menilai K3 diri sendiri.");
-  return pn.koordinatorId === a.pegawaiId ? ya : tidak("Hanya koordinator penugasan ini yang bisa menilai K3.");
+/**
+ * Penilai K3 sebuah penugasan: koordinatornya, kecuali bila koordinator = pegawai itu sendiri
+ * (rangkap jabatan); maka penilaian naik ke WaKa unit/bidangnya.
+ */
+export function penilaiK3(pn: { pegawaiId: string; koordinatorId: string | null }, wakaUnit: string | null): string | null {
+  if (pn.koordinatorId !== pn.pegawaiId) return pn.koordinatorId;
+  return wakaUnit && wakaUnit !== pn.pegawaiId ? wakaUnit : null;
+}
+
+/** Penilaian K3: hanya penilai salah satu penugasan pegawai itu, tidak untuk diri sendiri. */
+export function bolehNilaiK3(a: Aktor, pegawaiId: string, penilai: readonly (string | null)[]): Keputusan {
+  if (pegawaiId === a.pegawaiId) return tidak("Tidak bisa menilai K3 diri sendiri.");
+  return penilai.includes(a.pegawaiId) ? ya : tidak("Hanya koordinator penugasan pegawai ini yang bisa menilai K3.");
 }
 
 /** Melihat data pegawai lain: diri sendiri, anggota tim, atau pimpinan/Sekretariat/Admin. */

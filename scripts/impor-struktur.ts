@@ -15,7 +15,7 @@ import { buatDb } from "../lib/db/koneksi";
 import { eq } from "drizzle-orm";
 import * as s from "../lib/db/schema";
 import { sinkronKatalog } from "../lib/ikp/sinkron";
-import { PERAN_KERJA, PERAN_SISTEM } from "../lib/ikp/tipe";
+import { PERAN_KERJA, PERAN_MANUAL, PERAN_SISTEM, type PeranManual } from "../lib/ikp/tipe";
 
 const { values: a } = parseArgs({ options: { folder: { type: "string", default: "./impor" }, tulis: { type: "boolean", default: false } } });
 const baca = (nama: string) => {
@@ -95,7 +95,8 @@ async function tulis() {
     pgId.set(login, p.id);
     if (r.nip) pgId.set(nomor(r.nip), p.id);
     if (r.no_hp) pgId.set(nomor(r.no_hp), p.id);
-    const peran = (r.peran_sistem ?? "").split(/[;|]/).map((x) => x.trim()).filter((x) => x && x !== "pegawai") as (typeof PERAN_SISTEM)[number][];
+    // Koordinator/WaKa/Kepala Kantor diturunkan dari penugasan; hanya peran fungsi yang disimpan.
+    const peran = (r.peran_sistem ?? "").split(/[;|]/).map((x) => x.trim()).filter((x): x is PeranManual => (PERAN_MANUAL as readonly string[]).includes(x));
     if (peran.length) await db.insert(s.peranSistem).values(peran.map((x) => ({ pegawaiId: p.id, peran: x })));
     const kata = pw();
     await buatAkun(auth, { pegawaiId: p.id, nama: p.nama, username: login, password: kata });

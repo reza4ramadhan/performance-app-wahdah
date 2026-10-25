@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
 import { kelasPilihan } from "@/components/app/kolom";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { Input } from "@/components/ui/input";
 import { simpanUnit } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
+import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
 import { wajibPeran } from "@/lib/sesi";
+import { hariIni, periodeDari } from "@/lib/waktu";
 import { JenisInduk } from "./jenis-induk";
 
 export const metadata: Metadata = { title: "Unit" };
@@ -26,11 +28,15 @@ export default function HalamanUnit() {
 }
 
 async function Isi() {
-  await wajibPeran("admin");
+  const sesi = await wajibPeran("admin");
   const db = await getDb();
   const [semuaUnit, waka] = await Promise.all([
     db.select().from(s.unit),
-    db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.peranSistem).innerJoin(s.pegawai, eq(s.pegawai.id, s.peranSistem.pegawaiId)).where(eq(s.peranSistem.peran, "waka")),
+    db
+      .selectDistinct({ id: s.pegawai.id, nama: s.pegawai.nama })
+      .from(s.penugasan)
+      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+      .where(and(eq(s.penugasan.peranKerja, "WAKA"), kondisiPenugasanBerlaku(periodeDari(hariIni(sesi.kantor))))),
   ]);
   // Urut nomor seperti di struktur (1, 2, …, 10 dan 1.1, 1.2, …), bukan urutan huruf.
   const unit = semuaUnit.sort((a, b) => a.jenis.localeCompare(b.jenis) || a.nama.localeCompare(b.nama, "id", { numeric: true }));

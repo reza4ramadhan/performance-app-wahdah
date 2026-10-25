@@ -29,8 +29,9 @@ export default function HalamanTugasStaf() {
 async function Isi() {
   const sesi = await wajibSesi();
   const today = hariIni(sesi.kantor);
-  const staf = (await anggotaTim(sesi.pegawaiId, sesi.kantor)).flatMap((t) =>
-    t.penugasan.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => ({ id: p.id, label: `${t.nama} · ${LABEL_PERAN_KERJA[p.peranKerja as PeranKerja]} ${p.unitNama}` })),
+  // Tugas khusus hanya untuk penugasan yang saya koordinasikan (bukan yang sekadar saya nilai K3-nya).
+  const staf = (await anggotaTim(sesi)).flatMap((t) =>
+    t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && p.koordinatorId === sesi.pegawaiId).map((p) => ({ id: p.id, label: `${t.nama} · ${LABEL_PERAN_KERJA[p.peranKerja as PeranKerja]} ${p.unitNama}` })),
   );
   const db = await getDb();
   const [menunggu, induk] = await Promise.all([

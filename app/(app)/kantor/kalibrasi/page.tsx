@@ -37,10 +37,9 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const db = await getDb();
   const penilai = alias(s.pegawai, "penilai");
   const rows = await db
-    .select({ k: s.penilaianK3, pegawai: s.pegawai.nama, penilai: penilai.nama, pegawaiId: s.penugasan.pegawaiId })
+    .select({ k: s.penilaianK3, pegawai: s.pegawai.nama, penilai: penilai.nama, pegawaiId: s.penilaianK3.pegawaiId })
     .from(s.penilaianK3)
-    .innerJoin(s.penugasan, eq(s.penugasan.id, s.penilaianK3.penugasanId))
-    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penilaianK3.pegawaiId))
     .innerJoin(penilai, eq(penilai.id, s.penilaianK3.penilaiId))
     .where(and(eq(s.penilaianK3.periodeId, periode), inArray(s.penilaianK3.status, ["dikirim", "dikembalikan", "draf"])));
   const bisaKembalikan = punya(sesi, "waka", "kepala");

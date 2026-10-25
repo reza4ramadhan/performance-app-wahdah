@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
 import { indikatorAktif } from "@/lib/ikp/k1";
-import { LABEL_PERAN_SISTEM } from "@/lib/ikp/tipe";
+import { LABEL_PERAN_SISTEM, PERAN_MANUAL } from "@/lib/ikp/tipe";
 import { menuUntuk } from "@/lib/menu";
 import { bacaSesi } from "@/lib/sesi";
 import { hariIni } from "@/lib/waktu";
@@ -28,21 +28,23 @@ async function Navigasi() {
   const db = await getDb();
   const [param, minTanggal] = await Promise.all([paramIndikator(db), tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor)]);
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
-  const penugasan = sesi.penugasan.map((p) => ({
+  // Catat item hanya untuk amanah aktif; pindah amanah lewat profil.
+  const penugasan = (sesi.amanah ? [sesi.amanah] : []).map((p) => ({
     id: p.id,
     label: `${p.peranKerja} · ${p.unitNama}`,
     indikator: indikatorAktif(p.peranKerja, param)
       .filter((d) => d.tipe === "item" && d.item && !d.otomatis)
       .map((d) => ({ kode: d.kode, pendek: d.pendek, nama: d.nama })),
   }));
-  const peranUtama = [...sesi.peran].filter((x) => x !== "pegawai").map((x) => LABEL_PERAN_SISTEM[x]);
+  const amanah = sesi.amanah ? `${sesi.amanah.peranKerja} · ${sesi.amanah.unitNama}` : null;
+  const peranFungsi = PERAN_MANUAL.filter((x) => sesi.peran.has(x)).map((x) => LABEL_PERAN_SISTEM[x]);
   return (
     <Cangkang
       grup={grup}
       kelola={kelola}
       labelKelola={labelKelola}
       nama={sesi.nama}
-      peran={peranUtama.join(", ") || sesi.penugasan[0]?.unitNama || "Pegawai"}
+      peran={[amanah, ...peranFungsi].filter(Boolean).join(" · ") || "Pegawai"}
       penugasan={penugasan.filter((p) => p.indikator.length)}
       hariIni={hariIni(sesi.kantor)}
       minTanggal={minTanggal}

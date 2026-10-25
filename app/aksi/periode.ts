@@ -67,9 +67,8 @@ export async function kembalikanK3(penilaianId: string, catatan: string): Promis
   if (!catatan.trim()) return gagal("Tulis catatan untuk penilai.");
   const db = await getDb();
   const [row] = await db
-    .select({ k: s.penilaianK3, pegawaiId: s.penugasan.pegawaiId })
+    .select({ k: s.penilaianK3, pegawaiId: s.penilaianK3.pegawaiId })
     .from(s.penilaianK3)
-    .innerJoin(s.penugasan, eq(s.penugasan.id, s.penilaianK3.penugasanId))
     .where(eq(s.penilaianK3.id, penilaianId));
   if (!row) return gagal("Penilaian tidak ditemukan.");
   const b = bolehProsesIkpPegawai(sesi, row.pegawaiId);

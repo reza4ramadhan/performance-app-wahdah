@@ -24,7 +24,7 @@ export default function HalamanTugas() {
 
 async function Isi() {
   const sesi = await wajibSesi();
-  const pnIds = sesi.penugasan.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK").map((p) => p.id);
+  const pnIds = sesi.amanah && (sesi.amanah.peranKerja === "SBK" || sesi.amanah.peranKerja === "SK") ? [sesi.amanah.id] : [];
   if (!pnIds.length) return <Kosong ikon={ClipboardList} judul="Tugas khusus untuk SBK dan Staf Khusus" />;
   const today = hariIni(sesi.kantor);
   // Jadwal berulang yang masih jauh tidak ditampilkan dulu.

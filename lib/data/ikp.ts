@@ -9,7 +9,8 @@ import type { ParamIndikator } from "../ikp/k1";
 import { KATALOG } from "../ikp/katalog";
 import { PARAMETER, type StatusPeriode } from "../ikp/tipe";
 import { geserHariKerja, keUtc, rentangPeriode, type Kantor } from "../waktu";
-import { petaBidang } from "./unit";
+import { penilaiK3 } from "../akses";
+import { petaBidang, petaWaka } from "./unit";
 
 export async function liburPerKantor(db: Db) {
   const rows = await db.select().from(s.hariLibur);
@@ -44,11 +45,12 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
   const batas = batasVerifikasi(periode, libur);
   const lewatBatas = sekarang > batas || status === "kalibrasi" || status === "sementara" || status === "disahkan";
 
-  const [pegawai, penugasan, param, bidang] = await Promise.all([
+  const [pegawai, penugasan, param, bidang, waka] = await Promise.all([
     db.select().from(s.pegawai).where(eq(s.pegawai.aktif, true)),
     db.select().from(s.penugasan).where(kondisiPenugasanBerlaku(periode)),
     paramIndikator(db),
     petaBidang(db),
+    petaWaka(db),
   ]);
   const kantorOf = new Map(pegawai.map((p) => [p.id, p.kantor as Kantor]));
   const pnAktif = penugasan.filter((p) => kantorOf.has(p.pegawaiId));
@@ -104,9 +106,9 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
       ujiPetik: uji.map((u) => ({ unitId: u.unitId, jumlahDiuji: u.jumlahDiuji, jumlahSesuai: u.jumlahSesuai })),
     },
     pegawai: pegawai.map((p) => ({ id: p.id, nama: p.nama, kantor: p.kantor as Kantor })),
-    penugasan: pnAktif.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peranKerja, unitId: p.unitId, koordinatorId: p.koordinatorId, bobotAlokasi: p.bobotAlokasi })),
+    penugasan: pnAktif.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peranKerja, unitId: p.unitId, koordinatorId: p.koordinatorId, penilaiK3Id: penilaiK3(p, waka.get(p.unitId) ?? null), bobotAlokasi: p.bobotAlokasi })),
     absensi: absensi.map((a) => ({ pegawaiId: a.pegawaiId, hariKerjaWajib: a.hariKerjaWajib, hadir: a.hadir, hadirTepatWaktu: a.hadirTepatWaktu, izinSakit: a.izinSakit, sanksiBerat: a.sanksiBerat })),
-    k3: k3.map((k) => ({ penugasanId: k.penugasanId, penilaiId: k.penilaiId, skor: k.skor })),
+    k3: k3.map((k) => ({ pegawaiId: k.pegawaiId, penilaiId: k.penilaiId, skor: k.skor })),
     adaLogPengembanganDiri: new Set(pd.map((p) => p.pegawaiId)),
     poinK4,
   };

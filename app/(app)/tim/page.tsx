@@ -30,7 +30,7 @@ async function Isi() {
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
   if (!kelola) redirect("/");
   const [tim, antrean, tugasMenunggu] = await Promise.all([
-    anggotaTim(sesi.pegawaiId, sesi.kantor),
+    anggotaTim(sesi),
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
   ]);

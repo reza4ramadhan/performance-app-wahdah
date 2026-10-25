@@ -226,7 +226,8 @@ describe("IKP bulanan", () => {
     return {
       k1,
       pegawai: ["A", "B", "K", "S", "U", "KK"].map((id) => ({ id, nama: id, kantor: "makassar" as const })),
-      penugasan: k1.penugasan.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peran, unitId: p.unitId, koordinatorId: "K", bobotAlokasi: null })),
+      // K mengoordinasikan semua penugasan; penugasannya sendiri dan Kepala Unit dinilai WaKa "W".
+      penugasan: k1.penugasan.map((p) => ({ id: p.id, pegawaiId: p.pegawaiId, peran: p.peran, unitId: p.unitId, koordinatorId: "K", penilaiK3Id: p.pegawaiId === "K" || p.id === "pU" ? "W" : "K", bobotAlokasi: null })),
       absensi: [
         { pegawaiId: "A", hariKerjaWajib: 22, hadir: 20, hadirTepatWaktu: 18, izinSakit: 0, sanksiBerat: false },
         { pegawaiId: "B", hariKerjaWajib: 22, hadir: 16, hadirTepatWaktu: 16, izinSakit: 0, sanksiBerat: false },
@@ -234,9 +235,9 @@ describe("IKP bulanan", () => {
         { pegawaiId: "KK", hariKerjaWajib: 20, hadir: 19, hadirTepatWaktu: 19, izinSakit: 1, sanksiBerat: false },
       ],
       k3: [
-        { penugasanId: "pA", penilaiId: "K", skor: semua(4) },
-        { penugasanId: "pB", penilaiId: "K", skor: semua(3) },
-        { penugasanId: "pU", penilaiId: "W", skor: semua(3) },
+        { pegawaiId: "A", penilaiId: "K", skor: semua(4) },
+        { pegawaiId: "B", penilaiId: "K", skor: semua(3) },
+        { pegawaiId: "U", penilaiId: "W", skor: semua(3) },
       ],
       adaLogPengembanganDiri: new Set(["A", "U"]),
       poinK4: new Map([["A", 30]]),
@@ -277,14 +278,30 @@ describe("IKP bulanan", () => {
   it("K1 memakai bobot alokasi tertulis bila semua penugasan berbobot", () => {
     const m = masukan();
     m.penugasan.find((p) => p.id === "pA")!.bobotAlokasi = 60;
-    m.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SK", unitId: "sk", koordinatorId: "K", bobotAlokasi: 40 });
+    m.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SK", unitId: "sk", koordinatorId: "K2", penilaiK3Id: "K2", bobotAlokasi: 40 });
     m.k1.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SK", unitId: "sk", kantor: "makassar" });
     m.k1.tugas.push(tugas("pA2", "2026-10-05", "disetujui", "2026-10-05"));
-    m.k3.push({ penugasanId: "pA2", penilaiId: "K", skor: semua(5) });
+    m.k3.push({ pegawaiId: "A", penilaiId: "K2", skor: semua(5) });
     const a = cari(m, "A");
     const [pa, pa2] = a.penugasan;
     expect(a.k1).toBeCloseTo((0.6 * pa.k1! + 0.4 * pa2.k1!) / 1);
     expect(a.k3).toBeCloseTo((80 + 100) / 2);
+  });
+
+  it("rangkap jabatan: penilai yang sama di dua penugasan cukup menilai sekali dan dihitung sekali", () => {
+    const m = masukan();
+    // A juga SBK di SKUO dengan koordinator dirinya sendiri; K3 penugasan itu naik ke penilai yang sama.
+    m.penugasan.push({ id: "pA2", pegawaiId: "A", peran: "SBK", unitId: "skuo", koordinatorId: "A", penilaiK3Id: "K", bobotAlokasi: null });
+    const a = cari(m, "A");
+    expect(a.k3).toBe(80);
+    expect(a.penugasan.map((p) => p.k3)).toEqual([80, 80]);
+    expect(a.ikp).not.toBeNull();
+  });
+
+  it("penugasan tanpa penilai K3 ditandai", () => {
+    const m = masukan();
+    m.penugasan.find((p) => p.id === "pA")!.penilaiK3Id = null;
+    expect(cari(m, "A").kekurangan).toContain("Ada penugasan tanpa penilai K3");
   });
 });
 

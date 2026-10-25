@@ -3,28 +3,16 @@
 
 import "server-only";
 import { schema as s, type Db } from "../db";
+import { bidangDari, wakaDari } from "../unit";
 
-type UnitInduk = { id: string; jenis: string; indukId: string | null };
-
-/** unitId → id bidang (unit itu sendiri bila bidang, selain itu leluhur bidang terdekat). */
-export function bidangDari(unit: UnitInduk[]): Map<string, string> {
-  const per = new Map(unit.map((u) => [u.id, u]));
-  const peta = new Map<string, string>();
-  for (const u of unit) {
-    const dilihat = new Set<string>();
-    for (let x: UnitInduk | undefined = u; x && !dilihat.has(x.id); x = x.indukId ? per.get(x.indukId) : undefined) {
-      dilihat.add(x.id);
-      if (x.jenis === "bidang") {
-        peta.set(u.id, x.id);
-        break;
-      }
-    }
-  }
-  return peta;
-}
+export { bidangDari, wakaDari };
 
 export async function petaBidang(db: Db) {
   return bidangDari(await db.select({ id: s.unit.id, jenis: s.unit.jenis, indukId: s.unit.indukId }).from(s.unit));
+}
+
+export async function petaWaka(db: Db) {
+  return wakaDari(await db.select({ id: s.unit.id, jenis: s.unit.jenis, indukId: s.unit.indukId, wakaId: s.unit.wakaId }).from(s.unit));
 }
 
 /** Id bidang itu sendiri beserta semua SKUO/unit di bawahnya. */

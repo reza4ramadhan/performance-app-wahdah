@@ -26,6 +26,10 @@ export const LABEL_PERAN_SISTEM: Record<PeranSistem, string> = {
   admin: "Admin",
 };
 
+/** Peran fungsi yang dicentang Admin. Koordinator, WaKa, dan Kepala Kantor diturunkan dari penugasan (lib/sesi.ts). */
+export const PERAN_MANUAL = ["sekretariat", "personalia", "keuangan", "admin"] as const satisfies readonly PeranSistem[];
+export type PeranManual = (typeof PERAN_MANUAL)[number];
+
 /** Peran yang melihat data seluruh kantor. */
 export const PERAN_PIMPINAN: PeranSistem[] = ["waka", "kepala", "sekretariat", "admin"];
 

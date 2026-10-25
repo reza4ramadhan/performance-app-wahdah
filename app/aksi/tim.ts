@@ -7,6 +7,7 @@ import { bolehNilaiK3 } from "@/lib/akses";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
+import { penugasanDinilai } from "@/lib/data/k3";
 import { buatItemOtomatis, itemBelumDisentuh } from "@/lib/data/kegiatan";
 import { stafBidang } from "@/lib/data/tim";
 import { unitDalamBidang } from "@/lib/data/unit";
@@ -131,9 +132,8 @@ export async function simpanCatatan(_: HasilAksi | null, fd: FormData): Promise<
   const p = skemaCatatan.safeParse(Object.fromEntries(fd));
   if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
   if (p.data.pegawaiId === sesi.pegawaiId) return gagal("Tidak bisa mencatat perilaku diri sendiri.");
+  if (!sesi.binaan.some((b) => b.pegawaiId === p.data.pegawaiId)) return gagal("Staf ini bukan anggota tim Anda.");
   const db = await getDb();
-  const [pn] = await db.select({ id: s.penugasan.id }).from(s.penugasan).where(and(eq(s.penugasan.pegawaiId, p.data.pegawaiId), eq(s.penugasan.koordinatorId, sesi.pegawaiId)));
-  if (!pn) return gagal("Staf ini bukan anggota tim Anda.");
   await db.insert(s.catatanPerilaku).values({ penilaiId: sesi.pegawaiId, pegawaiId: p.data.pegawaiId, tanggal: p.data.tanggal, nilaiK3: p.data.nilaiK3 || null, catatan: p.data.catatan });
   refresh();
   return berhasil("Catatan tersimpan. Akan tampil saat menilai K3.");
@@ -143,19 +143,20 @@ export async function simpanCatatan(_: HasilAksi | null, fd: FormData): Promise<
 
 export async function simpanK3(_: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
   const sesi = await wajibSesi();
-  const penugasanId = String(fd.get("penugasanId"));
+  const pegawaiId = String(fd.get("pegawaiId"));
   const periodeId = String(fd.get("periodeId"));
   const kirim = fd.get("kirim") === "1";
+  if (!/^\d{4}-\d{2}$/.test(periodeId)) return gagal("Periode tidak valid.");
   const db = await getDb();
-  const [pn] = await db.select().from(s.penugasan).where(eq(s.penugasan.id, penugasanId));
-  if (!pn) return gagal("Penugasan tidak ditemukan.");
-  const boleh = bolehNilaiK3(sesi, pn);
+  const amanah = await penugasanDinilai(db, periodeId, pegawaiId);
+  if (!amanah.length) return gagal("Penugasan tidak ditemukan.");
+  const boleh = bolehNilaiK3(sesi, pegawaiId, amanah.map((p) => p.penilaiId));
   if (!boleh.boleh) return gagal(boleh.alasan);
   const st = await periodeStatus(periodeId);
   if (st === "sementara" || st === "disahkan") return gagal("Periode sudah dikunci.");
 
   const { awal, akhir } = rentangPeriode(periodeId);
-  const [log] = await db.select({ n: count() }).from(s.pengembanganDiri).where(and(eq(s.pengembanganDiri.pegawaiId, pn.pegawaiId), gte(s.pengembanganDiri.tanggal, awal), lte(s.pengembanganDiri.tanggal, akhir)));
+  const [log] = await db.select({ n: count() }).from(s.pengembanganDiri).where(and(eq(s.pengembanganDiri.pegawaiId, pegawaiId), gte(s.pengembanganDiri.tanggal, awal), lte(s.pengembanganDiri.tanggal, akhir)));
 
   const skor = {} as SkorK3;
   const contoh: Partial<Record<keyof SkorK3, string>> = {};
@@ -174,11 +175,11 @@ export async function simpanK3(_: HasilAksi | null, fd: FormData): Promise<Hasil
   if (Object.keys(galat).length) return gagal("Periksa kembali penilaian.", galat);
 
   const status = kirim ? ("dikirim" as const) : ("draf" as const);
-  const [lama] = await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periodeId), eq(s.penilaianK3.penugasanId, penugasanId), eq(s.penilaianK3.penilaiId, sesi.pegawaiId)));
+  const [lama] = await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periodeId), eq(s.penilaianK3.pegawaiId, pegawaiId), eq(s.penilaianK3.penilaiId, sesi.pegawaiId)));
   const [baru] = await db
     .insert(s.penilaianK3)
-    .values({ periodeId, penugasanId, penilaiId: sesi.pegawaiId, skor, contoh, status, diubahPada: new Date() })
-    .onConflictDoUpdate({ target: [s.penilaianK3.periodeId, s.penilaianK3.penugasanId, s.penilaianK3.penilaiId], set: { skor, contoh, status, diubahPada: new Date() } })
+    .values({ periodeId, pegawaiId, penilaiId: sesi.pegawaiId, skor, contoh, status, diubahPada: new Date() })
+    .onConflictDoUpdate({ target: [s.penilaianK3.periodeId, s.penilaianK3.pegawaiId, s.penilaianK3.penilaiId], set: { skor, contoh, status, diubahPada: new Date() } })
     .returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: kirim ? "kirim" : "simpan-draf", entitas: "penilaian_k3", entitasId: baru.id, sebelum: lama, sesudah: baru });
   refresh();

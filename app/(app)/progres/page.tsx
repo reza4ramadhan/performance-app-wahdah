@@ -82,11 +82,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
 
             {saya.penugasan
               .filter((p) => p.indikator.length)
+              // K1 tiap amanah berdiri sendiri; amanah aktif di atas.
+              .sort((a, b) => Number(b.penugasanId === sesi.amanah?.id) - Number(a.penugasanId === sesi.amanah?.id))
               .map((p) => (
                 <Kartu key={p.penugasanId}>
                   <JudulBagian aksi={<span className="text-sm font-bold tabular-nums text-heading">K1 {angka(p.k1)}</span>}>
                     {LABEL_PERAN_KERJA[p.peran]} · {namaUnit.get(p.unitId)}
                     {p.bobotAlokasi ? <span className="ml-2 align-middle"><Lencana nada="brand">bobot {p.bobotAlokasi}%</Lencana></span> : null}
+                    {saya.penugasan.length > 1 && p.penugasanId === sesi.amanah?.id ? <span className="ml-2 align-middle"><Lencana nada="mint">amanah aktif</Lencana></span> : null}
                   </JudulBagian>
                   <DaftarIndikator indikator={p.indikator} />
                   {!!p.tambahan && p.pokok != null && (
@@ -126,7 +129,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                     <PetakIkon ikon={Star} nada="gold" />
                     <span className="flex-1">
                       K3 perilaku
-                      <span className="block text-xs text-muted-foreground">{saya.k3 === null ? "Dinilai koordinator di akhir bulan" : "Rata-rata dari semua koordinator"}</span>
+                      <span className="block text-xs text-muted-foreground">{saya.k3 === null ? "Dinilai koordinator di akhir bulan" : "Rata-rata dari setiap penilai (satu penilai dihitung sekali)"}</span>
                     </span>
                     <strong className="tabular-nums">{angka(saya.k3)}</strong>
                   </li>

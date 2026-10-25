@@ -96,7 +96,7 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <Kepala judul={item.judul} kembali={pemilik ? "/item" : "/verifikasi"} sub={<span className="inline-flex flex-wrap items-center gap-2"><LencanaStatus status={item.status} />{item.sisa && <Lencana nada={item.sisa.nada}>{item.sisa.teks}</Lencana>}</span>} />
+      <Kepala judul={item.judul} kembali={pemilik ? "/item" : "/verifikasi"} sub={<span className="inline-flex flex-wrap items-center gap-2"><LencanaStatus status={item.status} />{item.verifikatorId === item.pemilikId && <Lencana nada="gold">Diverifikasi sendiri</Lencana>}{item.sisa && <Lencana nada={item.sisa.nada}>{item.sisa.teks}</Lencana>}</span>} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="space-y-4">
@@ -129,9 +129,12 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
           </Kartu>
 
           {form && <Kartu>{form}</Kartu>}
-          {!pemilik && bisaVerifikasi && item.status === "diajukan" && (
+          {bisaVerifikasi && item.status === "diajukan" && (
             <Kartu>
-              <p className="mb-3 text-sm text-muted-foreground">Periksa bukti sebelum memutuskan. {verifikator === "keuangan" ? "Setujui = sesuai SOP; tolak = dikembalikan." : ""}</p>
+              <p className="mb-3 text-sm text-muted-foreground">
+                {pemilik ? "Item Anda sendiri: Anda koordinator penugasan ini, jadi verifikasi tercatat sebagai \"diverifikasi sendiri\". " : ""}
+                Periksa bukti sebelum memutuskan. {verifikator === "keuangan" ? "Setujui = sesuai SOP; tolak = dikembalikan." : ""}
+              </p>
               <PutusanItem ids={[id]} />
             </Kartu>
           )}

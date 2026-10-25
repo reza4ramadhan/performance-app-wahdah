@@ -1,14 +1,15 @@
 "use server";
 
 import { eq, or } from "drizzle-orm";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
+import { COOKIE_AMANAH } from "@/lib/amanah";
 import { getAuth } from "@/lib/auth";
 import { bersihkan, catatGagal, terkunci } from "@/lib/batas-login";
 import { getDb, schema as s } from "@/lib/db";
-import { bacaSesi } from "@/lib/sesi";
+import { bacaSesi, wajibSesi } from "@/lib/sesi";
 
 const bersihkanNomor = (x: string) => x.trim().replace(/[\s.-]/g, "").replace(/^\+62/, "0").toLowerCase();
 
@@ -73,4 +74,12 @@ export async function gantiPassword(_: HasilAksi | null, fd: FormData): Promise<
 export async function keluar() {
   await (await getAuth()).api.signOut({ headers: await headers() });
   redirect("/masuk");
+}
+
+/** Pindah Amanah: pilih penugasan yang menjadi konteks menu dan halaman kerja. */
+export async function pindahAmanah(penugasanId: string) {
+  const sesi = await wajibSesi();
+  if (!sesi.penugasan.some((p) => p.id === penugasanId)) redirect("/akun");
+  (await cookies()).set(COOKIE_AMANAH, penugasanId, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  redirect("/");
 }

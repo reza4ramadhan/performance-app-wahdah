@@ -39,6 +39,7 @@ const tim = await import("@/app/aksi/tim");
 const periode = await import("@/app/aksi/periode");
 const absensi = await import("@/app/aksi/absensi");
 const tugas = await import("@/app/aksi/tugas");
+const k4 = await import("@/app/aksi/k4");
 const { tanggalJadwal } = await import("@/lib/ikp/tugas");
 const { and, eq } = await import("drizzle-orm");
 
@@ -48,6 +49,7 @@ const id: Record<string, string> = {};
 const pn: Record<string, string> = {};
 
 function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: string; peranKerja: "SBK" | "KSBK"; unitId: string; bidangId?: string; koordinatorId: string | null }[] = []) {
+  const milik = penugasan.map((p) => ({ ...p, unitNama: "Bidang Uji", bidangId: p.bidangId ?? p.unitId }));
   sesiAktif = {
     userId: `u-${pegawai}`,
     pegawaiId: id[pegawai],
@@ -55,7 +57,10 @@ function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: st
     kantor: "makassar",
     harusGantiPassword: false,
     peran: new Set<PeranSistem>(["pegawai", ...peran]),
-    penugasan: penugasan.map((p) => ({ ...p, unitNama: "Bidang Uji", bidangId: p.bidangId ?? p.unitId })),
+    penugasan: milik,
+    binaan: [],
+    amanah: milik[0] ?? null,
+    tim: [],
   };
 }
 
@@ -146,17 +151,17 @@ describe("penilaian K3", () => {
 
   it("skor 5 tanpa contoh ditolak saat dikirim; pengembangan diri > 2 tanpa log ditolak", async () => {
     sebagai("koord", ["koordinator"]);
-    const r = await tim.simpanK3(null, fd({ penugasanId: pn.staf, periodeId: P, kirim: "1", ...skor({ "skor-akhlak": "5", "skor-pengembanganDiri": "4" }) }));
+    const r = await tim.simpanK3(null, fd({ pegawaiId: id.staf, periodeId: P, kirim: "1", ...skor({ "skor-akhlak": "5", "skor-pengembanganDiri": "4" }) }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(Object.keys(r.galat ?? {})).toEqual(expect.arrayContaining(["contoh-akhlak", "skor-pengembanganDiri"]));
-    expect(await tim.simpanK3(null, fd({ penugasanId: pn.staf, periodeId: P, kirim: "1", ...skor({ "skor-akhlak": "5", "contoh-akhlak": "Mengembalikan kelebihan dana" }) }))).toMatchObject({ ok: true });
+    expect(await tim.simpanK3(null, fd({ pegawaiId: id.staf, periodeId: P, kirim: "1", ...skor({ "skor-akhlak": "5", "contoh-akhlak": "Mengembalikan kelebihan dana" }) }))).toMatchObject({ ok: true });
   });
 
   it("tidak bisa menilai diri sendiri, dan bukan koordinatornya tidak bisa menilai", async () => {
     sebagai("koord", ["koordinator"]);
-    expect((await tim.simpanK3(null, fd({ penugasanId: pn.koord, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
+    expect((await tim.simpanK3(null, fd({ pegawaiId: id.koord, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
     sebagai("koord2", ["koordinator"]);
-    expect((await tim.simpanK3(null, fd({ penugasanId: pn.staf2, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
+    expect((await tim.simpanK3(null, fd({ pegawaiId: id.staf2, periodeId: P, kirim: "1", ...skor({}) }))).ok).toBe(false);
   });
 });
 
@@ -315,6 +320,59 @@ describe("absensi", () => {
     const db = await getDb();
     const rows = await db.select().from(s.absensi).where(eq(s.absensi.periodeId, P));
     expect(rows.map((x) => x.pegawaiId)).toEqual([id.staf]);
+  });
+});
+
+describe("rangkap jabatan", () => {
+  // koord2 = KSBK "Bidang Rangkap" sekaligus SBK di SKUO-nya dengan koordinator dirinya sendiri; WaKa bidang = "kepala".
+  const skor = { "skor-akhlak": "4", "skor-profesional": "4", "skor-inovatif": "4", "skor-kolaboratif": "4", "skor-rasaMemiliki": "4", "skor-pengembanganDiri": "2" };
+  beforeAll(async () => {
+    const db = await getDb();
+    const [b] = await db.insert(s.unit).values({ jenis: "bidang", nama: "Bidang Rangkap", wakaId: id.kepala }).returning();
+    const [k] = await db.insert(s.unit).values({ jenis: "skuo", nama: "SKUO Rangkap", indukId: b.id }).returning();
+    id.bidangR = b.id;
+    id.skuoR = k.id;
+    const [ksbk] = await db.insert(s.penugasan).values({ pegawaiId: id.koord2, peranKerja: "KSBK", unitId: b.id, koordinatorId: id.kepala, periodeMulai: P }).returning();
+    const [sbk] = await db.insert(s.penugasan).values({ pegawaiId: id.koord2, peranKerja: "SBK", unitId: k.id, koordinatorId: id.koord2, periodeMulai: P }).returning();
+    pn.ksbkR = ksbk.id;
+    pn.sbkR = sbk.id;
+  });
+  const pnSbkR = () => ({ id: pn.sbkR, peranKerja: "SBK" as const, unitId: id.skuoR, bidangId: id.bidangR, koordinatorId: id.koord2 });
+
+  it("KSBK boleh memverifikasi item SBK miliknya sendiri; tercatat diverifikasi sendiri", async () => {
+    sebagai("koord2", ["koordinator"], [pnSbkR()]);
+    const r = await item.simpanItem({ idKlien: "klien-r001", penugasanId: pn.sbkR, indikatorKode: "SBK-1", masuk: today, selesai: today, linkBukti: "https://drive.google.com/r", data: { perihal: "Surat rangkap" } });
+    expect(r).toMatchObject({ ok: true });
+    const db = await getDb();
+    const [row] = await db.select().from(s.item).where(eq(s.item.idKlien, "klien-r001"));
+    expect(await verif.verifikasiItem([row.id], "setuju")).toMatchObject({ ok: true });
+    const [sesudah] = await db.select().from(s.item).where(eq(s.item.id, row.id));
+    expect(sesudah).toMatchObject({ status: "disetujui", verifikatorId: id.koord2 });
+  });
+
+  it("K3 tidak bisa dinilai sendiri; WaKa menilai sekali untuk kedua amanah", async () => {
+    sebagai("koord2", ["koordinator"]);
+    expect((await tim.simpanK3(null, fd({ pegawaiId: id.koord2, periodeId: P, kirim: "1", ...skor }))).ok).toBe(false);
+    sebagai("kepala", ["kepala", "koordinator"]);
+    expect(await tim.simpanK3(null, fd({ pegawaiId: id.koord2, periodeId: P, kirim: "1", ...skor }))).toMatchObject({ ok: true });
+    expect(await tim.simpanK3(null, fd({ pegawaiId: id.koord2, periodeId: P, kirim: "1", ...skor }))).toMatchObject({ ok: true });
+    const db = await getDb();
+    const rows = await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.pegawaiId, id.koord2), eq(s.penilaianK3.periodeId, P)));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].penilaiId).toBe(id.kepala);
+  });
+
+  it("K4 untuk amanah yang ia koordinasikan sendiri diperiksa WaKa, bukan koordinator lain", async () => {
+    sebagai("koord2", ["koordinator"], [pnSbkR()]);
+    const r = await k4.ajukanK4(null, fd({ periodeId: P, penugasanId: pn.sbkR, judul: "Arsip digital SKUO", tingkatUsulan: "I", linkBukti: "https://drive.google.com/k4" }));
+    expect(r).toMatchObject({ ok: true });
+    const db = await getDb();
+    const [row] = await db.select().from(s.k4Pengajuan).where(eq(s.k4Pengajuan.judul, "Arsip digital SKUO"));
+    expect(row.penugasanId).toBe(pn.sbkR);
+    sebagai("koord", ["koordinator"]);
+    expect((await k4.periksaK4(row.id, true)).ok).toBe(false);
+    sebagai("kepala", ["kepala", "koordinator"]);
+    expect(await k4.periksaK4(row.id, true)).toMatchObject({ ok: true });
   });
 });
 

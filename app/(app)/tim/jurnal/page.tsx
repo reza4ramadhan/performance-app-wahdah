@@ -39,7 +39,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   // Koordinator melihat anggota timnya; pimpinan, Sekretariat, dan Admin melihat semua pegawai.
   const daftar = pimpinan(sesi)
     ? await db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.pegawai).where(eq(s.pegawai.aktif, true)).orderBy(asc(s.pegawai.nama))
-    : (await anggotaTim(sesi.pegawaiId, sesi.kantor)).map((t) => ({ id: t.pegawaiId, nama: t.nama })).filter((t) => t.id !== sesi.pegawaiId);
+    : (await anggotaTim(sesi)).map((t) => ({ id: t.pegawaiId, nama: t.nama })).filter((t) => t.id !== sesi.pegawaiId);
   if (!daftar.length) return <Kosong ikon={NotebookPen} judul="Tidak ada staf di bawah Anda" />;
   const dipilih = daftar.find((p) => p.id === sp.pegawai);
   const ids = dipilih ? [dipilih.id] : daftar.map((p) => p.id);

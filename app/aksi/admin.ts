@@ -7,9 +7,12 @@ import { z } from "zod";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { buatAkun, resetPassword } from "@/lib/auth";
-import { getDb, schema as s } from "@/lib/db";
-import { PERAN_KERJA, PERAN_SISTEM } from "@/lib/ikp/tipe";
+import { getDb, schema as s, type Db } from "@/lib/db";
+import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
+import { petaBidang, petaWaka } from "@/lib/data/unit";
+import { PERAN_KERJA, PERAN_MANUAL, type PeranManual } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
+import { hariIni, periodeDari } from "@/lib/waktu";
 
 const galatDari = (e: z.ZodError) => Object.fromEntries(e.issues.map((i) => [String(i.path[0]), i.message]));
 const nomor = (x: string) => x.trim().replace(/[\s.-]/g, "").replace(/^\+62/, "0");
@@ -22,6 +25,9 @@ function passwordSementara() {
 }
 
 // ── Pegawai & akun ────────────────────────────────────────────────────────────
+
+/** Hanya peran fungsi; peran koordinator/WaKa/Kepala Kantor diturunkan dari penugasan. */
+const peranDari = (fd: FormData) => fd.getAll("peran").map(String).filter((x): x is PeranManual => (PERAN_MANUAL as readonly string[]).includes(x));
 
 const skemaPegawai = z.object({
   nama: z.string().trim().min(3, "Isi nama lengkap."),
@@ -38,7 +44,7 @@ export async function tambahPegawai(_: HasilAksi | null, fd: FormData): Promise<
   const nip = p.data.nip ? nomor(p.data.nip) : undefined;
   const noHp = p.data.noHp ? nomor(p.data.noHp) : undefined;
   if (!nip && !noHp) return gagal("Isi NIP atau No. HP untuk login.", { nip: "Isi NIP atau No. HP." });
-  const peran = fd.getAll("peran").map(String).filter((x): x is (typeof PERAN_SISTEM)[number] => (PERAN_SISTEM as readonly string[]).includes(x) && x !== "pegawai");
+  const peran = peranDari(fd);
 
   const db = await getDb();
   const bentrok = await db.select({ id: s.pegawai.id }).from(s.pegawai).where(nip ? eq(s.pegawai.nip, nip) : eq(s.pegawai.noHp, noHp!));
@@ -59,7 +65,7 @@ export async function ubahPegawai(id: string, _: HasilAksi | null, fd: FormData)
   const db = await getDb();
   const [lama] = await db.select().from(s.pegawai).where(eq(s.pegawai.id, id));
   if (!lama) return gagal("Pegawai tidak ditemukan.");
-  const peran = fd.getAll("peran").map(String).filter((x): x is (typeof PERAN_SISTEM)[number] => (PERAN_SISTEM as readonly string[]).includes(x) && x !== "pegawai");
+  const peran = peranDari(fd);
   if (id === sesi.pegawaiId && !peran.includes("admin")) return gagal("Anda tidak bisa mencabut peran Admin milik sendiri.");
   const aktif = fd.get("aktif") === "on";
   const [baru] = await db
@@ -146,19 +152,48 @@ const skemaPenugasan = z.object({
   bobotAlokasi: z.union([z.literal(""), z.coerce.number().min(1).max(100)]).optional(),
 });
 
+/** KSBK yang berlaku di bidang induk unit ini pada periode itu. */
+async function ksbkBidang(db: Db, unitId: string, periode: string) {
+  const bidangId = (await petaBidang(db)).get(unitId);
+  if (!bidangId) return [];
+  const rows = await db
+    .select({ pegawaiId: s.penugasan.pegawaiId })
+    .from(s.penugasan)
+    .where(and(eq(s.penugasan.unitId, bidangId), eq(s.penugasan.peranKerja, "KSBK"), kondisiPenugasanBerlaku(periode)));
+  return rows.map((r) => r.pegawaiId);
+}
+
+/** Koordinator bawaan bila Admin tidak memilih: SBK → KSBK bidang induknya; KSBK/KU → WaKa unitnya. */
+async function koordinatorBawaan(db: Db, pn: { peranKerja: string; unitId: string; periode: string }) {
+  if (pn.peranKerja === "SBK") return (await ksbkBidang(db, pn.unitId, pn.periode))[0] ?? null;
+  if (pn.peranKerja === "KSBK" || pn.peranKerja === "KU") return (await petaWaka(db)).get(pn.unitId) ?? null;
+  return null;
+}
+
+/** Koordinator = pegawai itu sendiri hanya untuk rangkap jabatan: SBK yang juga KSBK bidang tersebut. */
+async function cekKoordinatorSendiri(db: Db, pn: { pegawaiId: string; peranKerja: string; unitId: string; periode: string }) {
+  if (pn.peranKerja === "SBK" && (await ksbkBidang(db, pn.unitId, pn.periode)).includes(pn.pegawaiId)) return null;
+  return "Koordinator hanya boleh pegawai itu sendiri bila ia SBK yang juga KSBK bidang tersebut (rangkap jabatan).";
+}
+
 export async function tambahPenugasan(_: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
   const sesi = await wajibPeran("admin");
   const p = skemaPenugasan.safeParse(Object.fromEntries(fd));
   if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
-  if (p.data.koordinatorId && p.data.koordinatorId === p.data.pegawaiId) return gagal("Koordinator tidak boleh pegawai itu sendiri.", { koordinatorId: "Pilih koordinator lain." });
   const db = await getDb();
+  const dasar = { pegawaiId: p.data.pegawaiId, peranKerja: p.data.peranKerja, unitId: p.data.unitId, periode: p.data.periodeMulai };
+  const koordinatorId = p.data.koordinatorId ?? (await koordinatorBawaan(db, dasar));
+  if (koordinatorId === p.data.pegawaiId) {
+    const galat = await cekKoordinatorSendiri(db, dasar);
+    if (galat) return gagal(galat, { koordinatorId: "Pilih koordinator lain." });
+  }
   const [pn] = await db
     .insert(s.penugasan)
     .values({
       pegawaiId: p.data.pegawaiId,
       peranKerja: p.data.peranKerja,
       unitId: p.data.unitId,
-      koordinatorId: p.data.koordinatorId ?? null,
+      koordinatorId,
       periodeMulai: p.data.periodeMulai,
       periodeSelesai: p.data.periodeSelesai || null,
       bobotAlokasi: typeof p.data.bobotAlokasi === "number" ? p.data.bobotAlokasi : null,
@@ -166,7 +201,7 @@ export async function tambahPenugasan(_: HasilAksi | null, fd: FormData): Promis
     .returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "penugasan", entitasId: pn.id, sesudah: pn });
   refresh();
-  return berhasil("Penugasan ditambahkan.");
+  return berhasil(!p.data.koordinatorId && koordinatorId ? "Penugasan ditambahkan; koordinator diisi otomatis." : "Penugasan ditambahkan.");
 }
 
 /** Akhiri penugasan pada periode tertentu (riwayat tetap utuh). */
@@ -189,7 +224,11 @@ export async function ubahKoordinator(id: string, _: HasilAksi | null, fd: FormD
   const db = await getDb();
   const [lama] = await db.select().from(s.penugasan).where(eq(s.penugasan.id, id));
   if (!lama) return gagal("Penugasan tidak ditemukan.");
-  if (koordinatorId === lama.pegawaiId) return gagal("Koordinator tidak boleh pegawai itu sendiri.");
+  if (koordinatorId === lama.pegawaiId) {
+    const kini = periodeDari(hariIni(sesi.kantor));
+    const galat = await cekKoordinatorSendiri(db, { ...lama, periode: lama.periodeMulai > kini ? lama.periodeMulai : kini });
+    if (galat) return gagal(galat);
+  }
   await db.update(s.penugasan).set({ koordinatorId, bobotAlokasi: bobot ? Number(bobot) : null }).where(eq(s.penugasan.id, id));
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "ubah", entitas: "penugasan", entitasId: id, sebelum: lama, sesudah: { koordinatorId, bobot } });
   refresh();

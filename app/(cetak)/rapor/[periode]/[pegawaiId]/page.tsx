@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { TombolCetak } from "./tombol-cetak";
 import { bolehLihatPegawai } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
@@ -38,23 +38,28 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
   const h = hasil.find((x) => x.pegawaiId === pegawaiId);
   const [pg] = await db.select().from(s.pegawai).where(eq(s.pegawai.id, pegawaiId));
   if (!h || !pg) notFound();
-  const pnIds = h.penugasan.map((p) => p.penugasanId);
-  const [unit, k3, abs, k4] = await Promise.all([
+  const pnIds = h.penugasan.map((p) => p.penugasanId).concat("-");
+  const [unit, k3, abs, k4, sendiri] = await Promise.all([
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit),
-    pnIds.length
-      ? db
-          .select({ k: s.penilaianK3, penilai: s.pegawai.nama })
-          .from(s.penilaianK3)
-          .innerJoin(s.pegawai, eq(s.pegawai.id, s.penilaianK3.penilaiId))
-          .where(and(eq(s.penilaianK3.periodeId, periode), inArray(s.penilaianK3.penugasanId, pnIds), eq(s.penilaianK3.status, "dikirim")))
-      : [],
+    db
+      .select({ k: s.penilaianK3, penilai: s.pegawai.nama })
+      .from(s.penilaianK3)
+      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penilaianK3.penilaiId))
+      .where(and(eq(s.penilaianK3.periodeId, periode), eq(s.penilaianK3.pegawaiId, pegawaiId), eq(s.penilaianK3.status, "dikirim"))),
     db.select().from(s.absensi).where(and(eq(s.absensi.periodeId, periode), eq(s.absensi.pegawaiId, pegawaiId))),
     db
       .select({ k: s.k4Pengajuan })
       .from(s.k4Pengajuan)
       .innerJoin(s.k4Pengusul, eq(s.k4Pengusul.k4Id, s.k4Pengajuan.id))
       .where(and(eq(s.k4Pengajuan.periodeId, periode), eq(s.k4Pengusul.pegawaiId, pegawaiId), inArray(s.k4Pengajuan.status, ["ditetapkan", "disahkan"]))),
+    // Rangkap jabatan: item yang diverifikasi pemiliknya sendiri, ditampilkan untuk transparansi.
+    db
+      .select({ pn: s.item.penugasanId, n: count() })
+      .from(s.item)
+      .where(and(eq(s.item.periodeId, periode), inArray(s.item.penugasanId, pnIds), eq(s.item.verifikatorId, pegawaiId), eq(s.item.status, "disetujui")))
+      .groupBy(s.item.penugasanId),
   ]);
+  const nSendiri = new Map(sendiri.map((x) => [x.pn, x.n]));
   const namaUnit = new Map(unit.map((u) => [u.id, u.nama]));
   const a = abs[0];
 
@@ -101,6 +106,7 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
                   <th className={th} colSpan={6}>
                     {LABEL_PERAN_KERJA[p.peran]} · {namaUnit.get(p.unitId)}
                     {p.bobotAlokasi ? ` · bobot ${p.bobotAlokasi}%` : ""}
+                    {nSendiri.get(p.penugasanId) ? <span className="font-normal text-neutral-600"> · {nSendiri.get(p.penugasanId)} item diverifikasi sendiri (rangkap jabatan)</span> : null}
                   </th>
                 </tr>
                 <tr>

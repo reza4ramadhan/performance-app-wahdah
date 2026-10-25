@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { bolehKelolaPeriode, bolehLihatPegawai, bolehNilaiK3, bolehProsesIkpPegawai, bolehVerifikasiItem, type Aktor } from "./akses";
+import { bolehKelolaPeriode, bolehLihatPegawai, bolehNilaiK3, bolehProsesIkpPegawai, bolehVerifikasiItem, penilaiK3, type Aktor } from "./akses";
 import type { PeranSistem } from "./ikp/tipe";
 
 const aktor = (pegawaiId: string, ...peran: PeranSistem[]): Aktor => ({ pegawaiId, peran: new Set<PeranSistem>(["pegawai", ...peran]) });
 
 describe("konflik kepentingan", () => {
-  it("tidak ada yang bisa memverifikasi item miliknya sendiri, termasuk Keuangan dan Sekretariat", () => {
-    expect(bolehVerifikasiItem(aktor("k", "koordinator"), { pemilikId: "k", koordinatorId: "k", verifikator: "koordinator" }).boleh).toBe(false);
+  it("item milik sendiri tidak bisa diverifikasi, termasuk oleh Keuangan dan Sekretariat", () => {
+    expect(bolehVerifikasiItem(aktor("k", "koordinator"), { pemilikId: "k", koordinatorId: "x", verifikator: "koordinator" }).boleh).toBe(false);
     expect(bolehVerifikasiItem(aktor("f", "keuangan"), { pemilikId: "f", koordinatorId: "x", verifikator: "keuangan" }).boleh).toBe(false);
-    expect(bolehVerifikasiItem(aktor("s", "sekretariat"), { pemilikId: "s", koordinatorId: "x", verifikator: "sekretariat" }).boleh).toBe(false);
+    expect(bolehVerifikasiItem(aktor("s", "sekretariat"), { pemilikId: "s", koordinatorId: "s", verifikator: "sekretariat" }).boleh).toBe(false);
+  });
+
+  it("rangkap jabatan: koordinator penugasan miliknya sendiri boleh memverifikasi item itu", () => {
+    expect(bolehVerifikasiItem(aktor("k", "koordinator"), { pemilikId: "k", koordinatorId: "k", verifikator: "koordinator" }).boleh).toBe(true);
   });
 
   it("verifikator harus sesuai indikator", () => {
@@ -18,16 +22,21 @@ describe("konflik kepentingan", () => {
     expect(bolehVerifikasiItem(aktor("f", "keuangan"), { pemilikId: "a", koordinatorId: "k", verifikator: "keuangan" }).boleh).toBe(true);
   });
 
-  it("K3 hanya oleh koordinator penugasan, tidak untuk diri sendiri", () => {
-    expect(bolehNilaiK3(aktor("k"), { pegawaiId: "a", koordinatorId: "k" }).boleh).toBe(true);
-    expect(bolehNilaiK3(aktor("k"), { pegawaiId: "k", koordinatorId: "k" }).boleh).toBe(false);
-    expect(bolehNilaiK3(aktor("x", "waka"), { pegawaiId: "a", koordinatorId: "k" }).boleh).toBe(false);
+  it("K3 hanya oleh penilai penugasan, tidak untuk diri sendiri", () => {
+    expect(bolehNilaiK3(aktor("k"), "a", ["k"]).boleh).toBe(true);
+    expect(bolehNilaiK3(aktor("k"), "k", ["k"]).boleh).toBe(false);
+    expect(bolehNilaiK3(aktor("x", "waka"), "a", ["k"]).boleh).toBe(false);
   });
 
   it("KSBK yang juga staf di bidang lain dinilai koordinator bidang tersebut", () => {
-    // Penugasan SBK milik KSBK "k" di bidang lain dengan koordinator "k2".
-    expect(bolehNilaiK3(aktor("k2"), { pegawaiId: "k", koordinatorId: "k2" }).boleh).toBe(true);
-    expect(bolehNilaiK3(aktor("k"), { pegawaiId: "k", koordinatorId: "k2" }).boleh).toBe(false);
+    expect(penilaiK3({ pegawaiId: "k", koordinatorId: "k2" }, "w")).toBe("k2");
+    expect(bolehNilaiK3(aktor("k2"), "k", ["w", "k2"]).boleh).toBe(true);
+  });
+
+  it("rangkap jabatan di bidang sendiri: K3 naik ke WaKa", () => {
+    expect(penilaiK3({ pegawaiId: "k", koordinatorId: "k" }, "w")).toBe("w");
+    expect(penilaiK3({ pegawaiId: "k", koordinatorId: "k" }, null)).toBeNull();
+    expect(penilaiK3({ pegawaiId: "w", koordinatorId: "w" }, "w")).toBeNull();
   });
 
   it("Sekretariat tidak memproses IKP dirinya sendiri", () => {

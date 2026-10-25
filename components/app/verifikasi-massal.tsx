@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PutusanItem } from "./aksi-item";
 import { Lencana } from "./ui";
 
-export type ItemAntrean = { id: string; judul: string; pemilik: string; kode: string; pendek: string; diajukan: string; selesai: string; linkBukti: string | null; lambat: boolean };
+export type ItemAntrean = { id: string; judul: string; pemilik: string; kode: string; pendek: string; diajukan: string; selesai: string; linkBukti: string | null; lambat: boolean; milikSendiri: boolean };
 
 /** Daftar item menunggu verifikasi dengan centang massal (plan.md Bagian 8 butir 9). */
 export function VerifikasiMassal({ items }: { items: ItemAntrean[] }) {
@@ -39,6 +39,7 @@ export function VerifikasiMassal({ items }: { items: ItemAntrean[] }) {
                 {i.pemilik} · {i.kode} {i.pendek} · selesai {i.selesai}
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {i.milikSendiri && <Lencana nada="brand">Item Anda</Lencana>}
                 {i.lambat && <Lencana nada="gold">Diajukan &gt; 1 hari kerja lalu</Lencana>}
                 {i.linkBukti ? (
                   <a href={i.linkBukti} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-primary">

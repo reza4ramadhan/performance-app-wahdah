@@ -3,22 +3,35 @@
 import "server-only";
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { getDb, schema as s, type Db } from "../db";
+import type { Sesi } from "../sesi";
 import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "../waktu";
 import { kondisiPenugasanBerlaku } from "./ikp";
 import { unitDalamBidang } from "./unit";
 
-export type AnggotaTim = { pegawaiId: string; nama: string; kantor: Kantor; penugasan: { id: string; peranKerja: string; unitNama: string; unitId: string }[]; isiHariIni: boolean };
+export type AnggotaTim = {
+  pegawaiId: string;
+  nama: string;
+  kantor: Kantor;
+  penugasan: { id: string; peranKerja: string; unitNama: string; unitId: string; koordinatorId: string | null }[];
+  isiHariIni: boolean;
+};
 
-/** Penugasan yang koordinatornya = pegawai ini (bulan berjalan), dikelompokkan per pegawai. */
-export async function anggotaTim(koordinatorId: string, kantor: Kantor): Promise<AnggotaTim[]> {
+/**
+ * Anggota tim amanah aktif (bulan berjalan), dikelompokkan per pegawai. Penugasan saya sendiri (rangkap jabatan)
+ * tidak ikut: item miliknya muncul di antrean verifikasi.
+ */
+export async function anggotaTim(sesi: Pick<Sesi, "pegawaiId" | "kantor" | "tim">): Promise<AnggotaTim[]> {
+  const binaan = sesi.tim.filter((b) => b.pegawaiId !== sesi.pegawaiId).map((b) => b.id);
+  if (!binaan.length) return [];
   const db = await getDb();
+  const kantor = sesi.kantor;
   const periode = periodeDari(hariIni(kantor));
   const rows = await db
     .select({ pn: s.penugasan, nama: s.pegawai.nama, kantor: s.pegawai.kantor, unitNama: s.unit.nama })
     .from(s.penugasan)
     .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
     .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
-    .where(and(eq(s.penugasan.koordinatorId, koordinatorId), eq(s.pegawai.aktif, true), kondisiPenugasanBerlaku(periode)));
+    .where(and(inArray(s.penugasan.id, binaan), eq(s.pegawai.aktif, true), kondisiPenugasanBerlaku(periode)));
   if (!rows.length) return [];
 
   const ids = [...new Set(rows.map((r) => r.pn.pegawaiId))];
@@ -40,7 +53,7 @@ export async function anggotaTim(koordinatorId: string, kantor: Kantor): Promise
       pegawaiId: id,
       nama: milik[0].nama,
       kantor: milik[0].kantor as Kantor,
-      penugasan: milik.map((r) => ({ id: r.pn.id, peranKerja: r.pn.peranKerja, unitNama: r.unitNama, unitId: r.pn.unitId })),
+      penugasan: milik.map((r) => ({ id: r.pn.id, peranKerja: r.pn.peranKerja, unitNama: r.unitNama, unitId: r.pn.unitId, koordinatorId: r.pn.koordinatorId })),
       isiHariIni: isi.has(id),
     };
   });

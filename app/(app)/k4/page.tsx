@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ajukanK4 } from "@/app/aksi/k4";
 import { getDb, schema as s } from "@/lib/db";
 import { periodeK4Terbuka } from "@/lib/data/k4";
-import { POIN_K4, type StatusK4 } from "@/lib/ikp/tipe";
+import { LABEL_PERAN_KERJA, POIN_K4, type StatusK4 } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { labelPeriode } from "@/lib/waktu";
 
@@ -93,6 +93,22 @@ async function Isi() {
               ))}
             </select>
           </label>
+          {sesi.penugasan.length > 1 ? (
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-heading">Amanah terkait</span>
+              <select name="penugasanId" className={kelasPilihan} defaultValue={sesi.amanah?.id}>
+                {sesi.penugasan.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {LABEL_PERAN_KERJA[p.peranKerja]} · {p.unitNama}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-muted-foreground">Atasan amanah ini yang memeriksa sebelum diteruskan ke WaKa.</span>
+              <Galat nama="penugasanId" />
+            </label>
+          ) : (
+            sesi.amanah && <input type="hidden" name="penugasanId" value={sesi.amanah.id} />
+          )}
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Judul inovasi</span>
             <Input name="judul" required placeholder="mis. Template laporan bidang otomatis" />

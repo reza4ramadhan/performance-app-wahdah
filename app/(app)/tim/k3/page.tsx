@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { ChevronRight, Star } from "lucide-react";
 import { ChipFilter } from "@/components/app/filter";
 import { Avatar, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
-import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
+import { penugasanDinilai } from "@/lib/data/k3";
 import { hitungK3 } from "@/lib/ikp/hitung";
-import { angka } from "@/lib/format";
+import { angka, kelompokkan } from "@/lib/format";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, periodeBerikut, periodeDari } from "@/lib/waktu";
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Penilaian K3" };
 export default function HalamanK3(props: PageProps<"/tim/k3">) {
   return (
     <>
-      <Kepala judul="Penilaian K3" kembali="/tim" sub="Satu penilaian per penugasan yang Anda koordinasikan. Isi setelah bulan berakhir, paling lambat 5 hari kerja." />
+      <Kepala judul="Penilaian K3" kembali="/tim" sub="Satu penilaian per pegawai yang Anda koordinasikan, walau ia memegang beberapa amanah. Isi setelah bulan berakhir, paling lambat 5 hari kerja." />
       <Suspense fallback={<Kerangka />}>
         <Isi searchParams={props.searchParams} />
       </Suspense>
@@ -32,18 +32,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const lalu = periodeBerikut(kini, -1);
   const periode = sp.periode === kini ? kini : lalu;
   const db = await getDb();
-  const pn = await db
-    .select({ pn: s.penugasan, nama: s.pegawai.nama, unitNama: s.unit.nama })
-    .from(s.penugasan)
-    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
-    .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
-    .where(and(eq(s.penugasan.koordinatorId, sesi.pegawaiId), kondisiPenugasanBerlaku(periode)));
-  const ids = pn.filter((p) => p.pn.pegawaiId !== sesi.pegawaiId && p.pn.peranKerja !== "KAKAN" && p.pn.peranKerja !== "WAKA").map((p) => p.pn.id);
-  const nilai = ids.length
-    ? await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periode), inArray(s.penilaianK3.penugasanId, ids), eq(s.penilaianK3.penilaiId, sesi.pegawaiId)))
-    : [];
-  const daftar = pn.filter((p) => ids.includes(p.pn.id));
-  const selesai = nilai.filter((n) => n.status === "dikirim").length;
+  // Hanya binaan amanah aktif; amanah lain dinilai setelah Pindah Amanah.
+  const tim = new Set(sesi.tim.map((b) => b.id));
+  const pn = (await penugasanDinilai(db, periode)).filter((p) => p.penilaiId === sesi.pegawaiId && p.pegawaiId !== sesi.pegawaiId && tim.has(p.id));
+  const nilai = pn.length ? await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periode), eq(s.penilaianK3.penilaiId, sesi.pegawaiId))) : [];
+  const daftar = [...kelompokkan(pn, (p) => p.pegawaiId)];
+  const selesai = daftar.filter(([id]) => nilai.some((n) => n.pegawaiId === id && n.status === "dikirim")).length;
 
   return (
     <>
@@ -54,17 +48,15 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
             {selesai} dari {daftar.length} penilaian sudah dikirim.
           </p>
           <ul className="space-y-2">
-            {daftar.map(({ pn: p, nama, unitNama }) => {
-              const n = nilai.find((x) => x.penugasanId === p.id);
+            {daftar.map(([pegawaiId, amanah]) => {
+              const n = nilai.find((x) => x.pegawaiId === pegawaiId);
               return (
-                <li key={p.id}>
-                  <Link href={`/tim/k3/${p.id}?periode=${periode}`} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5 transition hover:border-primary/30">
-                    <Avatar nama={nama} />
+                <li key={pegawaiId}>
+                  <Link href={`/tim/k3/${pegawaiId}?periode=${periode}`} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5 transition hover:border-primary/30">
+                    <Avatar nama={amanah[0].nama} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-semibold text-heading">{nama}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {p.peranKerja} · {unitNama}
-                      </span>
+                      <span className="block truncate text-[15px] font-semibold text-heading">{amanah[0].nama}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{amanah.map((p) => `${p.peranKerja} · ${p.unitNama}`).join(" / ")}</span>
                     </span>
                     {n?.status === "dikirim" ? (
                       <Lencana nada="mint">{angka(hitungK3(n.skor, true).k3)}</Lencana>

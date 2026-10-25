@@ -1,0 +1,2 @@
+ALTER TABLE "k4_pengajuan" ADD COLUMN "penugasan_id" text;--> statement-breakpoint
+ALTER TABLE "k4_pengajuan" ADD CONSTRAINT "k4_pengajuan_penugasan_id_penugasan_id_fk" FOREIGN KEY ("penugasan_id") REFERENCES "public"."penugasan"("id") ON DELETE set null ON UPDATE no action;

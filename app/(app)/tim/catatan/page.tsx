@@ -27,7 +27,7 @@ export default function HalamanCatatan() {
 
 async function Isi() {
   const sesi = await wajibSesi();
-  const tim = await anggotaTim(sesi.pegawaiId, sesi.kantor);
+  const tim = await anggotaTim(sesi);
   if (!tim.length) return <Kosong ikon={MessageSquareText} judul="Belum ada anggota tim" />;
   const db = await getDb();
   const today = hariIni(sesi.kantor);

@@ -14,13 +14,13 @@ import { kelasTeks } from "./kolom";
 const ARTI = ["", "Sangat kurang", "Kurang", "Cukup", "Baik", "Istimewa"];
 
 export function FormK3({
-  penugasanId,
+  pegawaiId,
   periodeId,
   awal,
   adaLog,
   terkunci,
 }: {
-  penugasanId: string;
+  pegawaiId: string;
   periodeId: string;
   awal?: { skor: SkorK3; contoh: Partial<Record<NilaiK3, string>> };
   adaLog: boolean;
@@ -38,7 +38,7 @@ export function FormK3({
 
   return (
     <form action={jalankan} className="space-y-3">
-      <input type="hidden" name="penugasanId" value={penugasanId} />
+      <input type="hidden" name="pegawaiId" value={pegawaiId} />
       <input type="hidden" name="periodeId" value={periodeId} />
       {NILAI_K3.map((n) => {
         const maks = n === "pengembanganDiri" && !adaLog ? 2 : 5;

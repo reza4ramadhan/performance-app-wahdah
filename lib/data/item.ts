@@ -26,6 +26,7 @@ export type BarisItem = {
   linkBukti: string | null;
   alasanTolak: string | null;
   diajukanPada: Date | null;
+  verifikatorId: string | null;
   data: Record<string, string>;
   sisa: { teks: string; nada: "netral" | "gold" | "flame" } | null;
   lewat: boolean;
@@ -86,6 +87,7 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
       linkBukti: r.item.linkBukti,
       alasanTolak: r.item.alasanTolak,
       diajukanPada: r.item.diajukanPada,
+      verifikatorId: r.item.verifikatorId,
       data: r.item.data,
       sisa,
       lewat: sisa?.nada === "flame",

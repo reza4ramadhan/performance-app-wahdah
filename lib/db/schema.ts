@@ -40,7 +40,8 @@ export const peranSistem = pgTable(
   "peran_sistem",
   {
     pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
-    peran: text("peran", { enum: ["pegawai", "koordinator", "waka", "kepala", "sekretariat", "personalia", "keuangan", "admin"] }).notNull(),
+    /** Hanya peran fungsi; koordinator/WaKa/Kepala Kantor diturunkan dari penugasan. */
+    peran: text("peran", { enum: ["sekretariat", "personalia", "keuangan", "admin"] }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.pegawaiId, t.peran] })],
 );
@@ -298,7 +299,8 @@ export const penilaianK3 = pgTable(
   {
     id: id(),
     periodeId: text("periode_id").notNull(),
-    penugasanId: text("penugasan_id").notNull().references(() => penugasan.id, { onDelete: "cascade" }),
+    /** Satu penilaian per pegawai per penilai, walau penilai itu mengoordinasikan beberapa penugasannya. */
+    pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
     penilaiId: text("penilai_id").notNull().references(() => pegawai.id),
     skor: jsonb("skor").$type<SkorK3>().notNull(),
     contoh: jsonb("contoh").$type<Partial<Record<keyof SkorK3, string>>>().notNull().default({}),
@@ -306,7 +308,7 @@ export const penilaianK3 = pgTable(
     catatanKalibrasi: text("catatan_kalibrasi"),
     diubahPada: tz("diubah_pada").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("k3_unik").on(t.periodeId, t.penugasanId, t.penilaiId)],
+  (t) => [uniqueIndex("k3_pegawai_unik").on(t.periodeId, t.pegawaiId, t.penilaiId)],
 );
 
 export const absensi = pgTable(
@@ -333,6 +335,8 @@ export const k4Pengajuan = pgTable("k4_pengajuan", {
   /** Poin bersih setelah dikurangi poin tingkat sebelumnya untuk inovasi yang sama. */
   poin: integer("poin"),
   linkBukti: text("link_bukti").notNull(),
+  /** Amanah pengusul yang terkait; atasannya yang memeriksa. Kosong untuk pengajuan sebelum aturan rangkap. */
+  penugasanId: text("penugasan_id").references(() => penugasan.id, { onDelete: "set null" }),
   /** Pengajuan terdahulu untuk inovasi yang sama (naik tingkat). */
   inovasiIndukId: text("inovasi_induk_id"),
   status: text("status", { enum: ["diajukan", "diperiksa", "ditetapkan", "ditolak", "disahkan"] }).notNull().default("diajukan"),

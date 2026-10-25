@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { tambahPegawai } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
 import { kelompokkan } from "@/lib/format";
-import { LABEL_PERAN_SISTEM, PERAN_SISTEM } from "@/lib/ikp/tipe";
+import { LABEL_PERAN_SISTEM, PERAN_MANUAL } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
 
 export const metadata: Metadata = { title: "Pegawai & akun" };
@@ -113,9 +113,10 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
             </label>
           </div>
           <fieldset>
-            <legend className="mb-1.5 text-sm font-medium text-heading">Peran sistem tambahan</legend>
+            <legend className="mb-1.5 text-sm font-medium text-heading">Peran fungsi</legend>
+            <p className="mb-1.5 text-xs text-muted-foreground">Koordinator, Wakil Kepala Kantor, dan Kepala Kantor otomatis mengikuti Penugasan.</p>
             <div className="grid grid-cols-2 gap-x-3">
-              {PERAN_SISTEM.filter((p) => p !== "pegawai").map((p) => (
+              {PERAN_MANUAL.map((p) => (
                 <label key={p} className="flex min-h-10 items-center gap-2 text-sm">
                   <Checkbox name="peran" value={p} className="size-5" /> {LABEL_PERAN_SISTEM[p]}
                 </label>

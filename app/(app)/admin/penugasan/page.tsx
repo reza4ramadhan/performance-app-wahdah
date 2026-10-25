@@ -11,7 +11,9 @@ import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { Input } from "@/components/ui/input";
 import { akhiriPenugasan, tambahPenugasan, ubahKoordinator } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
+import { penilaiK3 } from "@/lib/akses";
 import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
+import { petaWaka } from "@/lib/data/unit";
 import { kelompokkan } from "@/lib/format";
 import { LABEL_PERAN_KERJA, PERAN_KERJA } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
@@ -22,7 +24,7 @@ export const metadata: Metadata = { title: "Penugasan" };
 export default function HalamanPenugasan(props: PageProps<"/admin/penugasan">) {
   return (
     <>
-      <Kepala judul="Penugasan" kembali="/tim" sub="Satu peran di satu unit, berlaku per periode. Koordinator = verifikator item dan penilai K3 penugasan itu. Bobot alokasi diisi bila ada keputusan tertulis (mis. 60/40)." />
+      <Kepala judul="Penugasan" kembali="/tim" sub="Satu peran di satu unit, berlaku per periode. Koordinator = verifikator item dan penilai K3 penugasan itu (rangkap jabatan: K3 naik ke WaKa). Bobot alokasi diisi bila ada keputusan tertulis (mis. 60/40)." />
       <Suspense fallback={<Kerangka />}>
         <Isi searchParams={props.searchParams} />
       </Suspense>
@@ -38,7 +40,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const periode = pilihan.includes(String(sp.periode)) ? String(sp.periode) : kini;
   const db = await getDb();
   const koord = alias(s.pegawai, "koord");
-  const [rows, pegawai, unit] = await Promise.all([
+  const [rows, pegawai, unit, waka] = await Promise.all([
     db
       .select({ pn: s.penugasan, nama: s.pegawai.nama, unit: s.unit.nama, koordinator: koord.nama })
       .from(s.penugasan)
@@ -49,7 +51,9 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .orderBy(asc(s.unit.nama), asc(s.pegawai.nama)),
     db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.pegawai).where(eq(s.pegawai.aktif, true)).orderBy(asc(s.pegawai.nama)),
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).orderBy(asc(s.unit.nama)),
+    petaWaka(db),
   ]);
+  const namaPegawai = new Map(pegawai.map((p) => [p.id, p.nama]));
   const perUnit = kelompokkan(rows, (r) => r.unit);
   const pilihPegawai = (nama: string, nilai?: string | null, kosong = "—") => (
     <select name={nama} className={kelasPilihan} defaultValue={nilai ?? ""}>
@@ -85,6 +89,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                         </span>
                         {pn.bobotAlokasi && <Lencana nada="brand">{pn.bobotAlokasi}%</Lencana>}
                         {!pn.koordinatorId && pn.peranKerja !== "KAKAN" && <Lencana nada="gold">Tanpa koordinator</Lencana>}
+                        {pn.koordinatorId === pn.pegawaiId &&
+                          (() => {
+                            const penilai = penilaiK3(pn, waka.get(pn.unitId) ?? null);
+                            return penilai ? <Lencana nada="brand">Rangkap · K3 oleh {namaPegawai.get(penilai) ?? "WaKa"}</Lencana> : <Lencana nada="flame">Tanpa penilai K3</Lencana>;
+                          })()}
                       </summary>
                       <div className="space-y-3 border-t border-border px-4 pb-4">
                         <FormAksi aksi={ubahKoordinator.bind(null, pn.id)} tombol="Simpan" className="mt-3 grid grid-cols-[minmax(0,1fr)_96px] gap-3">
@@ -148,7 +157,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
             </div>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Koordinator (verifikator & penilai K3)</span>
-              {pilihPegawai("koordinatorId")}
+              {pilihPegawai("koordinatorId", null, "Otomatis")}
+              <span className="mt-1 block text-xs text-muted-foreground">Otomatis: SBK → KSBK bidangnya; KSBK/KU → WaKa unitnya. KSBK yang juga SBK di bidangnya boleh menjadi koordinator dirinya; K3-nya dinilai WaKa.</span>
               <Galat nama="koordinatorId" />
             </label>
             <div className="grid grid-cols-3 gap-3">

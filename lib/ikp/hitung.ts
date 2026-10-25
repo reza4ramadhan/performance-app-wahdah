@@ -13,6 +13,8 @@ export type PenugasanHitung = {
   peran: PeranKerja;
   unitId: string;
   koordinatorId: string | null;
+  /** Penilai K3 efektif (lib/akses.ts penilaiK3): koordinator, atau WaKa bila koordinator = dirinya sendiri. */
+  penilaiK3Id: string | null;
   /** Bobot alokasi tertulis (mis. 60). Kosong = rata-rata sederhana. */
   bobotAlokasi: number | null;
 };
@@ -27,7 +29,7 @@ export type AbsensiHitung = {
 };
 
 /** Penilaian K3 yang sudah dikirim penilai (bukan draf/dikembalikan). */
-export type K3Hitung = { penugasanId: string; penilaiId: string; skor: SkorK3 };
+export type K3Hitung = { pegawaiId: string; penilaiId: string; skor: SkorK3 };
 
 export type MasukanIkp = {
   k1: KonteksK1;
@@ -105,9 +107,11 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
         ? "kepala_unit"
         : "umum";
 
+    // K3 per penilai: satu penilaian berlaku untuk semua penugasan yang ia nilai.
+    const k3Penilai = new Map(m.k3.filter((k) => k.pegawaiId === pg.id).map((k) => [k.penilaiId, hitungK3(k.skor, adaLog)]));
+
     const penugasan: HasilPenugasan[] = milik.map((p) => {
-      const nilai = m.k3.filter((k) => k.penugasanId === p.id);
-      const k3PerPenilai = nilai.map((k) => hitungK3(k.skor, adaLog));
+      const n = p.penilaiK3Id ? k3Penilai.get(p.penilaiK3Id) : undefined;
       return {
         penugasanId: p.id,
         peran: p.peran,
@@ -118,8 +122,8 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
         pokok: k1.get(p.id)?.pokok ?? null,
         tambahan: k1.get(p.id)?.tambahan ?? 0,
         k1: k1.get(p.id)?.k1 ?? null,
-        k3: rataRata(k3PerPenilai.map((x) => x.k3)),
-        k3Rincian: k3PerPenilai[0]?.rincian ?? null,
+        k3: n?.k3 ?? null,
+        k3Rincian: n?.rincian ?? null,
       };
     });
 
@@ -142,9 +146,10 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
       nilaiK1 = rataRata(terisi.map((p) => p.k1!));
     }
 
-    // K3 — rata-rata dari setiap koordinator penugasan. Pimpinan tidak dinilai K3.
-    const perluK3 = kategori === "pimpinan" ? [] : penugasan.filter((p) => p.peran !== "KAKAN" && p.peran !== "WAKA");
-    const k3 = perluK3.length && perluK3.every((p) => p.k3 !== null) ? rataRata(perluK3.map((p) => p.k3!)) : null;
+    // K3 — rata-rata dari setiap penilai berbeda (penilai yang sama di dua penugasan dihitung sekali). Pimpinan tidak dinilai K3.
+    const perluK3 = kategori === "pimpinan" ? [] : milik.filter((p) => p.peran !== "KAKAN" && p.peran !== "WAKA");
+    const penilai = [...new Set(perluK3.map((p) => p.penilaiK3Id))];
+    const k3 = penilai.length && penilai.every((x) => x && k3Penilai.has(x)) ? rataRata(penilai.map((x) => k3Penilai.get(x!)!.k3)) : null;
 
     const k4 = Math.min(K4_MAKS, Math.max(0, m.poinK4.get(pg.id) ?? 0));
 
@@ -153,7 +158,8 @@ export function hitungIkp(m: MasukanIkp): HasilIkp[] {
       ikp = k2r?.k2 ?? null;
     } else {
       if (!milik.length) kekurangan.push("Belum punya penugasan");
-      if (perluK3.some((p) => p.k3 === null)) kekurangan.push("Penilaian K3 belum lengkap");
+      if (penilai.includes(null)) kekurangan.push("Ada penugasan tanpa penilai K3");
+      else if (k3 === null && penilai.length) kekurangan.push("Penilaian K3 belum lengkap");
       if (kategori === "kepala_unit") {
         // K1 Kepala Unit Pendukung ditunda; bobot K2 & K3 dinormalisasi (Bagian 4, 13.5).
         if (k2r && k3 !== null) ikp = 0.5 * k2r.k2 + 0.5 * k3;
