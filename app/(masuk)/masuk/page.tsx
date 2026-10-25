@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { FormMasuk } from "./form";
+import { Suspense } from "react";
+import { FormMasuk, PesanDiganti } from "./form";
 
 export const metadata: Metadata = { title: "Masuk" };
 
@@ -13,6 +14,9 @@ export default function HalamanMasuk() {
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">Catat pekerjaan harian, pantau progres, dan lihat IKP bulanan Anda di satu tempat.</p>
       <div className="mt-auto pt-10">
+        <Suspense fallback={null}>
+          <PesanDiganti />
+        </Suspense>
         <FormMasuk />
         <p className="mt-6 text-center text-xs text-muted-foreground">Lupa password? Hubungi Admin Data, Digitalisasi &amp; Monev.</p>
       </div>

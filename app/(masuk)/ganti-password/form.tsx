@@ -1,14 +1,12 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
-import { Check, CircleCheck, Eye, EyeOff, X } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { gantiPassword, keluar } from "@/app/aksi/akun";
+import { gantiPassword } from "@/app/aksi/akun";
 import { cn } from "@/lib/utils";
-
-const JEDA_DETIK = 3;
 
 const kolom = [
   ["lama", "Password saat ini", "current-password"],
@@ -19,59 +17,25 @@ const kolom = [
 type Nama = (typeof kolom)[number][0];
 
 export function FormGanti({ nama, harusGanti }: { nama: string; harusGanti: boolean }) {
-  // Simpan teks pembuka saat pertama dimuat: setelah berhasil, sesi di server berubah
-  // (harusGantiPassword = false) dan props ikut berubah saat halaman disegarkan.
-  const [awal] = useState({ nama, harusGanti });
+  // Bila berhasil, aksi mengeluarkan pengguna lalu mengarahkan ke /masuk?diganti=1; `hasil` hanya berisi galat.
   const [hasil, jalankan, proses] = useActionState(gantiPassword, null);
   const [nilai, setNilai] = useState<Record<Nama, string>>({ lama: "", baru: "", ulang: "" });
   const [lihat, setLihat] = useState<Record<Nama, boolean>>({ lama: false, baru: false, ulang: false });
-  const [sisa, setSisa] = useState(JEDA_DETIK);
 
-  const berhasil = hasil?.ok === true;
   const galat = hasil && !hasil.ok ? (hasil.galat ?? {}) : {};
   const cocok = nilai.ulang.length > 0 && nilai.baru === nilai.ulang;
   const tidakCocok = nilai.ulang.length > 0 && nilai.baru !== nilai.ulang;
 
   useEffect(() => {
-    if (!hasil) return;
-    if (hasil.ok) toast.success("Password berhasil diganti. Silakan masuk kembali dengan password baru.");
-    else if (!hasil.galat) toast.error(hasil.pesan);
+    if (hasil && !hasil.ok && !hasil.galat) toast.error(hasil.pesan);
   }, [hasil]);
-
-  // Setelah berhasil: hitung mundur lalu keluar dan arahkan ke halaman masuk.
-  useEffect(() => {
-    if (!berhasil) return;
-    if (sisa <= 0) {
-      startTransition(() => keluar());
-      return;
-    }
-    const t = setTimeout(() => setSisa((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [berhasil, sisa]);
-
-  if (berhasil) {
-    return (
-      <div role="status" className="mt-8">
-        <span className="grid size-14 place-items-center rounded-full bg-mint-500/15 text-mint-600 dark:text-mint-100">
-          <CircleCheck className="size-8" />
-        </span>
-        <h1 className="mt-5 text-[28px] font-extrabold leading-tight tracking-tight text-heading">Password berhasil diganti</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">
-          Silakan masuk kembali dengan password baru. Anda akan diarahkan ke halaman masuk dalam {Math.max(sisa, 0)} detik…
-        </p>
-        <Button type="button" size="lg" className="mt-8 w-full" onClick={() => setSisa(0)}>
-          Masuk sekarang
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>
-      <h1 className="mt-8 text-[28px] font-extrabold leading-tight tracking-tight text-heading">{awal.harusGanti ? "Buat password baru" : "Ganti password"}</h1>
+      <h1 className="mt-8 text-[28px] font-extrabold leading-tight tracking-tight text-heading">{harusGanti ? "Buat password baru" : "Ganti password"}</h1>
       <p className="mt-2 text-[15px] text-muted-foreground">
-        {awal.harusGanti
-          ? `Assalamu'alaikum, ${awal.nama}. Untuk keamanan, ganti password sementara dari Admin sebelum mulai.`
+        {harusGanti
+          ? `Assalamu'alaikum, ${nama}. Untuk keamanan, ganti password sementara dari Admin sebelum mulai.`
           : "Minimal 8 karakter. Setelah disimpan, Anda perlu masuk kembali dengan password baru."}
       </p>
       <form

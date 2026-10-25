@@ -1,10 +1,21 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowRight, CircleCheck, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { masuk } from "@/app/aksi/akun";
+
+/** Konfirmasi setelah ganti password (aksi gantiPassword mengarahkan ke /masuk?diganti=1). */
+export function PesanDiganti() {
+  if (useSearchParams().get("diganti") !== "1") return null;
+  return (
+    <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-mint-500/12 px-3.5 py-2.5 text-sm font-medium text-mint-700 dark:text-mint-100">
+      <CircleCheck className="mt-0.5 size-4 shrink-0" /> Password berhasil diganti. Silakan masuk dengan password baru.
+    </p>
+  );
+}
 
 export function FormMasuk() {
   const [hasil, jalankan, proses] = useActionState(masuk, null);

@@ -4,7 +4,7 @@ import { eq, or } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
+import { gagal, type HasilAksi } from "@/lib/aksi";
 import { COOKIE_AMANAH } from "@/lib/amanah";
 import { getAuth } from "@/lib/auth";
 import { bersihkan, catatGagal, terkunci } from "@/lib/batas-login";
@@ -60,15 +60,21 @@ export async function gantiPassword(_: HasilAksi | null, fd: FormData): Promise<
   if (!sesi) redirect("/masuk");
   const p = skemaGanti.safeParse(Object.fromEntries(fd));
   if (!p.success) return gagal("Periksa kembali isian.", Object.fromEntries(p.error.issues.map((i) => [String(i.path[0]), i.message])));
+  const auth = await getAuth();
+  const h = await headers();
   try {
-    await (await getAuth()).api.changePassword({ body: { currentPassword: p.data.lama, newPassword: p.data.baru, revokeOtherSessions: true }, headers: await headers() });
+    await auth.api.changePassword({ body: { currentPassword: p.data.lama, newPassword: p.data.baru }, headers: h });
   } catch {
     return gagal("Password saat ini salah.", { lama: "Password saat ini salah." });
   }
   const db = await getDb();
   await db.update(s.user).set({ harusGantiPassword: false }).where(eq(s.user.id, sesi.userId));
-  // Klien menampilkan notifikasi lalu memanggil `keluar` agar pengguna masuk ulang dengan password baru.
-  return berhasil("Password berhasil diganti.");
+  // Keluar di server, dalam aksi yang sama: sesi ini (beserta cookie-nya) lalu sesi di perangkat lain.
+  // Dulu klien memanggil `keluar` setelah hitung mundur; bila pengguna sudah masuk ulang sebelum
+  // hitungan habis, sesi barunya ikut terhapus sehingga percobaan masuk pertama tampak gagal.
+  await auth.api.signOut({ headers: h });
+  await (await auth.$context).internalAdapter.deleteUserSessions(sesi.userId);
+  redirect("/masuk?diganti=1");
 }
 
 export async function keluar() {
