@@ -3,8 +3,9 @@ import { Suspense } from "react";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { MessageSquareText } from "lucide-react";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan, kelasTeks } from "@/components/app/kolom";
+import { kelasTeks } from "@/components/app/kolom";
 import { Avatar, Kartu, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { simpanCatatan } from "@/app/aksi/tim";
 import { getDb, schema as s } from "@/lib/db";
 import { anggotaTim } from "@/lib/data/tim";
@@ -64,28 +65,12 @@ async function Isi() {
           <input type="hidden" name="tanggal" value={today} />
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Staf</span>
-            <select name="pegawaiId" className={kelasPilihan} required defaultValue="">
-              <option value="" disabled>
-                Pilih staf…
-              </option>
-              {tim.map((t) => (
-                <option key={t.pegawaiId} value={t.pegawaiId}>
-                  {t.nama}
-                </option>
-              ))}
-            </select>
+            <PilihCari name="pegawaiId" opsi={tim.map((t) => ({ id: t.pegawaiId, nama: t.nama }))} kosong={null} placeholder="Pilih staf…" required />
             <Galat nama="pegawaiId" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Nilai K3 terkait (opsional)</span>
-            <select name="nilaiK3" className={kelasPilihan} defaultValue="">
-              <option value="">—</option>
-              {NILAI_K3.map((n) => (
-                <option key={n} value={n}>
-                  {LABEL_NILAI_K3[n]}
-                </option>
-              ))}
-            </select>
+            <PilihCari name="nilaiK3" opsi={NILAI_K3.map((n) => ({ id: n, nama: LABEL_NILAI_K3[n] }))} />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Catatan</span>

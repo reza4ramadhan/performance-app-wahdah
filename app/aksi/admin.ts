@@ -10,7 +10,7 @@ import { buatAkun, resetPassword } from "@/lib/auth";
 import { getDb, schema as s, type Db } from "@/lib/db";
 import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
 import { petaBidang, petaWaka } from "@/lib/data/unit";
-import { PERAN_KERJA, PERAN_MANUAL, type PeranManual } from "@/lib/ikp/tipe";
+import { PERAN_KERJA, PERAN_MANUAL, STATUS_KEPEGAWAIAN, type PeranManual } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
 import { hariIni, periodeDari } from "@/lib/waktu";
 
@@ -33,7 +33,7 @@ const skemaPegawai = z.object({
   nama: z.string().trim().min(3, "Isi nama lengkap."),
   nip: opsional,
   noHp: opsional,
-  statusKepegawaian: z.enum(["Mutafarrigh", "Muta'awin", "Kontrak"]),
+  statusKepegawaian: z.enum(STATUS_KEPEGAWAIAN),
   kantor: z.enum(["makassar", "jakarta"]),
 });
 

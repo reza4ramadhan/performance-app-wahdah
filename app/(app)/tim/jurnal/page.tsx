@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { NotebookPen } from "lucide-react";
 import { ChipFilter } from "@/components/app/filter";
-import { kelasPilihan } from "@/components/app/kolom";
 import { Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Button } from "@/components/ui/button";
 import { pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
@@ -61,14 +61,9 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       <ChipFilter pilihan={[periodeBerikut(kini, -2), periodeBerikut(kini, -1), kini].map((p) => ({ nilai: p, label: labelPeriode(p) }))} aktif={periode} href={(p) => q({ periode: p })} />
       <Form action="/tim/jurnal" className="mb-4 flex gap-2">
         <input type="hidden" name="periode" value={periode} />
-        <select name="pegawai" defaultValue={dipilih?.id ?? ""} className={kelasPilihan} aria-label="Pegawai">
-          <option value="">Semua ({daftar.length} pegawai)</option>
-          {daftar.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nama}
-            </option>
-          ))}
-        </select>
+        <div className="min-w-0 flex-1">
+          <PilihCari name="pegawai" opsi={daftar.map((p) => ({ id: p.id, nama: p.nama }))} nilaiAwal={dipilih?.id} kosong={`Semua (${daftar.length} pegawai)`} aria-label="Pegawai" />
+        </div>
         <Button type="submit" variant="outline" className="h-11">
           Tampilkan
         </Button>

@@ -4,9 +4,9 @@ import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { CalendarDays, Copy, Trash2 } from "lucide-react";
 import { ChipFilter } from "@/components/app/filter";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { TombolAksi } from "@/components/app/tombol-aksi";
 import { Kartu, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { hapusKegiatan, salinKegiatanBulanLalu, simpanKegiatan } from "@/app/aksi/tim";
@@ -131,14 +131,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-heading">SKUO</span>
-                <select name="skuoId" className={kelasPilihan} defaultValue={skuo.length === 1 ? skuo[0].id : ""} required>
-                  <option value="">Pilih SKUO…</option>
-                  {skuo.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nama}
-                    </option>
-                  ))}
-                </select>
+                <PilihCari name="skuoId" opsi={skuo} nilaiAwal={skuo.length === 1 ? skuo[0].id : ""} kosong={null} placeholder="Pilih SKUO…" required />
                 <Galat nama="skuoId" />
               </label>
             </div>
@@ -147,14 +140,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Penanggung jawab (staf)</span>
-              <select name="penanggungJawabId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""} required>
-                <option value="">Pilih staf…</option>
-                {staf.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.skuo.length ? `${p.nama} · ${p.skuo.join(", ")}` : p.nama}
-                  </option>
-                ))}
-              </select>
+              <PilihCari
+                name="penanggungJawabId"
+                opsi={staf.map((p) => ({ id: p.id, nama: p.nama }))}
+                nilaiAwal={staf.length === 1 ? staf[0].id : ""}
+                kosong={null}
+                placeholder="Pilih staf…"
+                required
+              />
               <Galat nama="penanggungJawabId" />
               <span className="mt-1 block text-xs text-muted-foreground">Boleh staf SKUO lain di bidang ini sebagai backup; penanggung jawab yang dinilai.</span>
             </label>

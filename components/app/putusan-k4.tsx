@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { periksaK4, tetapkanK4, tolakK4Waka } from "@/app/aksi/k4";
 import type { HasilAksi } from "@/lib/aksi";
 import { POIN_K4, type TingkatK4 } from "@/lib/ikp/tipe";
-import { kelasPilihan, kelasTeks } from "./kolom";
+import { kelasTeks } from "./kolom";
+import { PilihCari } from "./pilih-cari";
 
 function useJalankan() {
   const [proses, mulai] = useTransition();
@@ -51,13 +52,7 @@ export function TetapkanK4({ id, usulan }: { id: string; usulan: TingkatK4 }) {
   const [t, p] = pilih.split(":") as [TingkatK4, string];
   return (
     <div className="mt-3 space-y-2">
-      <select value={pilih} onChange={(e) => setPilih(e.target.value)} className={kelasPilihan} aria-label="Tingkat dan poin">
-        {OPSI.map((o) => (
-          <option key={o.nilai} value={o.nilai}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <PilihCari opsi={OPSI.map((o) => ({ id: o.nilai, nama: o.label }))} nilai={pilih} saatBerubah={setPilih} kosong={null} aria-label="Tingkat dan poin" />
       <textarea value={catatan} onChange={(e) => setCatatan(e.target.value)} rows={2} className={kelasTeks} placeholder="Catatan (wajib bila ditolak)" aria-label="Catatan" />
       <div className="flex gap-2">
         <Button className="flex-1" disabled={proses} onClick={() => jalankan(() => tetapkanK4(id, t, Number(p), catatan))}>

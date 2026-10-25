@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { asc } from "drizzle-orm";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { Kepala, Kerangka, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ubahIndikator } from "@/app/aksi/admin";
@@ -79,11 +79,17 @@ async function Isi() {
                           </label>
                           <label className="block">
                             <span className="mb-1.5 block text-sm font-medium text-heading">Verifikator</span>
-                            <select name="verifikator" className={kelasPilihan} defaultValue={r.verifikatorPeran}>
-                              <option value="koordinator">Koordinator</option>
-                              <option value="keuangan">Keuangan</option>
-                              <option value="sekretariat">Sekretariat</option>
-                            </select>
+                            <PilihCari
+                              name="verifikator"
+                              opsi={[
+                                { id: "koordinator", nama: "Koordinator" },
+                                { id: "keuangan", nama: "Keuangan" },
+                                { id: "sekretariat", nama: "Sekretariat" },
+                              ]}
+                              nilaiAwal={r.verifikatorPeran}
+                              kosong={null}
+                              required
+                            />
                           </label>
                         </div>
                         <label className="flex min-h-11 items-center gap-2 text-sm font-medium">

@@ -3,9 +3,9 @@ import { Suspense } from "react";
 import { asc, gte } from "drizzle-orm";
 import { Trash2 } from "lucide-react";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { TombolAksi } from "@/components/app/tombol-aksi";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Input } from "@/components/ui/input";
 import { hapusLibur, tambahLibur } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
@@ -63,11 +63,14 @@ async function Isi() {
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Berlaku di</span>
-            <select name="kantor" className={kelasPilihan} defaultValue="">
-              <option value="">Semua kantor</option>
-              <option value="makassar">Makassar</option>
-              <option value="jakarta">Jakarta</option>
-            </select>
+            <PilihCari
+              name="kantor"
+              opsi={[
+                { id: "makassar", nama: "Makassar" },
+                { id: "jakarta", nama: "Jakarta" },
+              ]}
+              kosong="Semua kantor"
+            />
           </label>
         </FormAksi>
       </Kartu>

@@ -5,14 +5,14 @@ import { Suspense } from "react";
 import { asc, ilike, or } from "drizzle-orm";
 import { ChevronRight, Search } from "lucide-react";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { Avatar, Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { tambahPegawai } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
 import { kelompokkan } from "@/lib/format";
-import { LABEL_PERAN_SISTEM, PERAN_MANUAL } from "@/lib/ikp/tipe";
+import { LABEL_PERAN_SISTEM, OPSI_KANTOR, OPSI_STATUS_KEPEGAWAIAN, PERAN_MANUAL } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
 
 export const metadata: Metadata = { title: "Pegawai & akun" };
@@ -98,18 +98,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Status</span>
-              <select name="statusKepegawaian" className={kelasPilihan} defaultValue="Kontrak">
-                {["Mutafarrigh", "Muta'awin", "Kontrak"].map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </select>
+              <PilihCari name="statusKepegawaian" opsi={OPSI_STATUS_KEPEGAWAIAN} nilaiAwal="Kontrak" kosong={null} required />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Kantor</span>
-              <select name="kantor" className={kelasPilihan} defaultValue="makassar">
-                <option value="makassar">Makassar (WITA)</option>
-                <option value="jakarta">Jakarta (WIB)</option>
-              </select>
+              <PilihCari name="kantor" opsi={OPSI_KANTOR} nilaiAwal="makassar" kosong={null} required />
             </label>
           </div>
           <fieldset>

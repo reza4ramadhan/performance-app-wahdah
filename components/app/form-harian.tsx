@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { hapusJurnal, hapusPengembanganDiri, simpanJurnal, simpanPengembanganDiri } from "@/app/aksi/harian";
 import { FormAksi, Galat } from "./form-aksi";
-import { kelasPilihan, kelasTeks } from "./kolom";
+import { kelasTeks } from "./kolom";
+import { PilihCari } from "./pilih-cari";
 
 const Label = ({ children }: { children: React.ReactNode }) => <span className="mb-1.5 block text-sm font-medium text-heading">{children}</span>;
 
@@ -33,14 +34,7 @@ export function FormJurnalCepat({ tanggal, unit = [], minTanggal }: { tanggal: s
           {unit.length > 0 && (
             <label className="block">
               <Label>Bidang/SKUO</Label>
-              <select name="unitId" className={kelasPilihan} defaultValue="">
-                <option value="">—</option>
-                {unit.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nama}
-                  </option>
-                ))}
-              </select>
+              <PilihCari name="unitId" opsi={unit} />
             </label>
           )}
           <label className={unit.length ? "block" : "col-span-2 block"}>

@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
+import { PilihCari } from "@/components/app/pilih-cari";
 
 type Opsi = { id: string; nama: string; jenis: string };
 
@@ -23,24 +23,11 @@ export function JenisInduk({ jenisLabel, unit, awal }: { jenisLabel: Record<stri
     <div className="grid grid-cols-2 gap-3">
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-heading">Jenis</span>
-        <select name="jenis" className={kelasPilihan} value={jenis} onChange={(e) => setJenis(e.target.value)}>
-          {Object.entries(jenisLabel).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
+        <PilihCari name="jenis" opsi={Object.entries(jenisLabel).map(([id, nama]) => ({ id, nama }))} nilai={jenis} saatBerubah={setJenis} kosong={null} required />
       </label>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-heading">{syarat ? "Induk (bidang)" : "Induk"}</span>
-        <select name="indukId" className={kelasPilihan} value={induk} onChange={(e) => setIndukId(e.target.value)} required={Boolean(syarat)}>
-          <option value="">{syarat ? "Pilih bidang…" : "—"}</option>
-          {pilihan.map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.nama}
-            </option>
-          ))}
-        </select>
+        <PilihCari name="indukId" opsi={pilihan} nilai={induk} saatBerubah={setIndukId} kosong={syarat ? null : "—"} placeholder={syarat ? "Pilih bidang…" : undefined} required={Boolean(syarat)} />
         <Galat nama="indukId" />
       </label>
     </div>

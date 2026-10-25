@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { desc, eq } from "drizzle-orm";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { bukaKunciEdit, resetPasswordForm, ubahPegawai } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
-import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM, PERAN_MANUAL } from "@/lib/ikp/tipe";
+import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM, OPSI_KANTOR, OPSI_STATUS_KEPEGAWAIAN, PERAN_MANUAL } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
 import { hariIni, labelTanggal, tanggalLokal } from "@/lib/waktu";
 
@@ -64,18 +64,11 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <Label>Status</Label>
-                <select name="statusKepegawaian" className={kelasPilihan} defaultValue={pg.statusKepegawaian}>
-                  {["Mutafarrigh", "Muta'awin", "Kontrak"].map((x) => (
-                    <option key={x}>{x}</option>
-                  ))}
-                </select>
+                <PilihCari name="statusKepegawaian" opsi={OPSI_STATUS_KEPEGAWAIAN} nilaiAwal={pg.statusKepegawaian} kosong={null} required />
               </label>
               <label className="block">
                 <Label>Kantor</Label>
-                <select name="kantor" className={kelasPilihan} defaultValue={pg.kantor}>
-                  <option value="makassar">Makassar (WITA)</option>
-                  <option value="jakarta">Jakarta (WIB)</option>
-                </select>
+                <PilihCari name="kantor" opsi={OPSI_KANTOR} nilaiAwal={pg.kantor} kosong={null} required />
               </label>
             </div>
             <fieldset>

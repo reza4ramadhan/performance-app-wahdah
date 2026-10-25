@@ -26,6 +26,15 @@ export const LABEL_PERAN_SISTEM: Record<PeranSistem, string> = {
   admin: "Admin",
 };
 
+export const STATUS_KEPEGAWAIAN = ["Mutafarrigh", "Muta'awin", "Kontrak"] as const;
+
+/** Pilihan form data pegawai. */
+export const OPSI_STATUS_KEPEGAWAIAN = STATUS_KEPEGAWAIAN.map((x) => ({ id: x, nama: x }));
+export const OPSI_KANTOR = [
+  { id: "makassar", nama: "Makassar (WITA)" },
+  { id: "jakarta", nama: "Jakarta (WIB)" },
+];
+
 /** Peran fungsi yang dicentang Admin. Koordinator, WaKa, dan Kepala Kantor diturunkan dari penugasan (lib/sesi.ts). */
 export const PERAN_MANUAL = ["sekretariat", "personalia", "keuangan", "admin"] as const satisfies readonly PeranSistem[];
 export type PeranManual = (typeof PERAN_MANUAL)[number];

@@ -3,7 +3,9 @@
 import "server-only";
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { getDb, schema as s, type Db } from "../db";
+import type { PeranKerja } from "../ikp/tipe";
 import type { Sesi } from "../sesi";
+import { bidangDari } from "../unit";
 import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "../waktu";
 import { kondisiPenugasanBerlaku } from "./ikp";
 import { unitDalamBidang } from "./unit";
@@ -12,7 +14,8 @@ export type AnggotaTim = {
   pegawaiId: string;
   nama: string;
   kantor: Kantor;
-  penugasan: { id: string; peranKerja: string; unitNama: string; unitId: string; koordinatorId: string | null }[];
+  /** `bidangId`: bidang unit itu (SKUO → bidang induknya), null bila di luar bidang. */
+  penugasan: { id: string; peranKerja: PeranKerja; unitNama: string; unitId: string; bidangId: string | null; koordinatorId: string | null }[];
   isiHariIni: boolean;
 };
 
@@ -26,12 +29,16 @@ export async function anggotaTim(sesi: Pick<Sesi, "pegawaiId" | "kantor" | "tim"
   const db = await getDb();
   const kantor = sesi.kantor;
   const periode = periodeDari(hariIni(kantor));
-  const rows = await db
-    .select({ pn: s.penugasan, nama: s.pegawai.nama, kantor: s.pegawai.kantor, unitNama: s.unit.nama })
-    .from(s.penugasan)
-    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
-    .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
-    .where(and(inArray(s.penugasan.id, binaan), eq(s.pegawai.aktif, true), kondisiPenugasanBerlaku(periode)));
+  const [rows, unit] = await Promise.all([
+    db
+      .select({ pn: s.penugasan, nama: s.pegawai.nama, kantor: s.pegawai.kantor, unitNama: s.unit.nama })
+      .from(s.penugasan)
+      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+      .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
+      .where(and(inArray(s.penugasan.id, binaan), eq(s.pegawai.aktif, true), kondisiPenugasanBerlaku(periode))),
+    db.select({ id: s.unit.id, jenis: s.unit.jenis, indukId: s.unit.indukId }).from(s.unit),
+  ]);
+  const bidang = bidangDari(unit);
   if (!rows.length) return [];
 
   const ids = [...new Set(rows.map((r) => r.pn.pegawaiId))];
@@ -53,7 +60,7 @@ export async function anggotaTim(sesi: Pick<Sesi, "pegawaiId" | "kantor" | "tim"
       pegawaiId: id,
       nama: milik[0].nama,
       kantor: milik[0].kantor as Kantor,
-      penugasan: milik.map((r) => ({ id: r.pn.id, peranKerja: r.pn.peranKerja, unitNama: r.unitNama, unitId: r.pn.unitId, koordinatorId: r.pn.koordinatorId })),
+      penugasan: milik.map((r) => ({ id: r.pn.id, peranKerja: r.pn.peranKerja, unitNama: r.unitNama, unitId: r.pn.unitId, bidangId: bidang.get(r.pn.unitId) ?? null, koordinatorId: r.pn.koordinatorId })),
       isiHariIni: isi.has(id),
     };
   });

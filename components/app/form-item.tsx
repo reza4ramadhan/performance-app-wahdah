@@ -6,7 +6,8 @@ import { CalendarClock, CircleCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { BentukItem } from "@/lib/ikp/katalog";
 import { cn } from "@/lib/utils";
-import { Chip, Kolom, kelasPilihan } from "./kolom";
+import { Chip, Kolom } from "./kolom";
+import { PilihCari } from "./pilih-cari";
 
 export type NilaiForm = {
   kegiatanId: string;
@@ -65,14 +66,15 @@ export function FieldItem({
     <div className="space-y-4">
       {bentuk.kegiatan !== "tidak" && (
         <Kolom label={bentuk.kegiatan === "opsional" ? "Kegiatan (opsional)" : "Kegiatan"} galat={galat.kegiatanId} bantuan={pilihan && !pilihan.kegiatan.length ? "Belum ada kegiatan bidang. Minta KSBK menginput kegiatan bulanan." : undefined}>
-          <select className={kelasPilihan} value={nilai.kegiatanId} onChange={(e) => set({ kegiatanId: e.target.value })} aria-invalid={!!galat.kegiatanId} disabled={!pilihan || kunciKegiatan}>
-            <option value="">{!pilihan ? "Memuat…" : bentuk.kegiatan === "opsional" ? "Tanpa kegiatan" : "Pilih kegiatan…"}</option>
-            {pilihan?.kegiatan.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.tanggal.slice(8)}/{k.tanggal.slice(5, 7)} · {k.nama}
-              </option>
-            ))}
-          </select>
+          <PilihCari
+            opsi={(pilihan?.kegiatan ?? []).map((k) => ({ id: k.id, nama: `${k.tanggal.slice(8)}/${k.tanggal.slice(5, 7)} · ${k.nama}` }))}
+            nilai={nilai.kegiatanId}
+            saatBerubah={(x) => set({ kegiatanId: x })}
+            kosong={bentuk.kegiatan === "opsional" ? "Tanpa kegiatan" : null}
+            placeholder={!pilihan ? "Memuat…" : "Pilih kegiatan…"}
+            aria-invalid={!!galat.kegiatanId}
+            disabled={!pilihan || kunciKegiatan}
+          />
         </Kolom>
       )}
 

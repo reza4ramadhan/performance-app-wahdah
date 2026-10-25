@@ -18,9 +18,10 @@ import { FREKUENSI_TUGAS, LABEL_FREKUENSI_TUGAS, LABEL_STATUS_TUGAS, type Frekue
 import { cn } from "@/lib/utils";
 import { isHariKerja, jamLokal, labelTanggal, labelTanggalPanjang, LABEL_ZONA, tambahHari, tanggalLokal } from "@/lib/waktu";
 import { FormAksi, Galat } from "./form-aksi";
-import { Chip, Kolom, kelasPilihan, kelasTeks } from "./kolom";
+import { Chip, Kolom, kelasTeks } from "./kolom";
 import { TombolAksi } from "./tombol-aksi";
 import { Batang, Lencana, type Nada } from "./ui";
+import { PilihCari } from "./pilih-cari";
 
 const NADA_STATUS: Record<StatusTugas, Nada> = { belum: "netral", dikerjakan: "brand", diajukan: "gold", disetujui: "mint", ditolak: "flame" };
 
@@ -111,11 +112,17 @@ function UbahStatusTugas({ tugas: t, tutup }: { tugas: BarisTugas; tutup: () => 
     >
       <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
         <Kolom label="Status" galat={galat.status} className={status === "dikerjakan" ? "" : "col-span-2"}>
-          <select className={kelasPilihan} value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-invalid={!!galat.status}>
-            <option value="">Pilih status…</option>
-            <option value="dikerjakan">{LABEL_STATUS_TUGAS.dikerjakan}</option>
-            <option value="selesai">Selesai</option>
-          </select>
+          <PilihCari
+            opsi={[
+              { id: "dikerjakan", nama: LABEL_STATUS_TUGAS.dikerjakan },
+              { id: "selesai", nama: "Selesai" },
+            ]}
+            nilai={status}
+            saatBerubah={(x) => setStatus(x as typeof status)}
+            kosong={null}
+            placeholder="Pilih status…"
+            aria-invalid={!!galat.status}
+          />
         </Kolom>
         {status === "dikerjakan" && (
           <Kolom label="Persentase" galat={galat.persen}>
@@ -220,14 +227,14 @@ export function FormTugasBaru({ staf, hariIni }: { staf: { id: string; label: st
       >
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-heading">Staf</span>
-          <select name="penugasanId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""} required>
-            <option value="">Pilih staf…</option>
-            {staf.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          <PilihCari
+            name="penugasanId"
+            opsi={staf.map((p) => ({ id: p.id, nama: p.label }))}
+            nilaiAwal={staf.length === 1 ? staf[0].id : ""}
+            kosong={null}
+            placeholder="Pilih staf…"
+            required
+          />
           <Galat nama="penugasanId" />
         </label>
         <IsianJudul

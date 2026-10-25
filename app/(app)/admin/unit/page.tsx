@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { and, eq } from "drizzle-orm";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan } from "@/components/app/kolom";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Input } from "@/components/ui/input";
 import { simpanUnit } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
@@ -57,14 +57,7 @@ async function Isi() {
       </label>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-heading">WaKa yang membawahi</span>
-        <select name="wakaId" className={kelasPilihan} defaultValue={u?.wakaId ?? ""}>
-          <option value="">Belum ditetapkan</option>
-          {waka.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.nama}
-            </option>
-          ))}
-        </select>
+        <PilihCari name="wakaId" opsi={waka} nilaiAwal={u?.wakaId} kosong="Belum ditetapkan" />
       </label>
     </>
   );

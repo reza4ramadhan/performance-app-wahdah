@@ -9,7 +9,8 @@ import { hapusTugasKhusus, putuskanUsulan } from "@/app/aksi/tugas";
 import { getDb, schema as s } from "@/lib/db";
 import { anggotaTim } from "@/lib/data/tim";
 import { daftarTugas, daftarUsulan, kondisiTugasMenunggu, kondisiUsulanMenunggu, type BarisUsulan } from "@/lib/data/tugas";
-import { LABEL_FREKUENSI_TUGAS, LABEL_PERAN_KERJA, type PeranKerja } from "@/lib/ikp/tipe";
+import { kelompokAmanah } from "@/lib/amanah";
+import { LABEL_FREKUENSI_TUGAS, LABEL_PERAN_KERJA } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelTanggal, periodeDari, rentangPeriode, tanggalLokal, type Kantor } from "@/lib/waktu";
 
@@ -30,9 +31,11 @@ async function Isi() {
   const sesi = await wajibSesi();
   const today = hariIni(sesi.kantor);
   // Tugas khusus hanya untuk penugasan yang saya koordinasikan (bukan yang sekadar saya nilai K3-nya).
-  const staf = (await anggotaTim(sesi)).flatMap((t) =>
-    t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && p.koordinatorId === sesi.pegawaiId).map((p) => ({ id: p.id, label: `${t.nama} · ${LABEL_PERAN_KERJA[p.peranKerja as PeranKerja]} ${p.unitNama}` })),
-  );
+  // Satu pilihan per amanah: staf yang rangkap SKUO di bidang yang sama cukup tampil sekali (K1-nya pun gabungan).
+  const staf = (await anggotaTim(sesi)).flatMap((t) => {
+    const amanah = kelompokAmanah(t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && p.koordinatorId === sesi.pegawaiId));
+    return amanah.map((g) => ({ id: g[0].id, label: amanah.length > 1 ? `${t.nama} · ${LABEL_PERAN_KERJA[g[0].peranKerja]} ${g.map((p) => p.unitNama).join(", ")}` : t.nama }));
+  });
   const db = await getDb();
   const [menunggu, usulan, induk] = await Promise.all([
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),

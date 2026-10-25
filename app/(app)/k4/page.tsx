@@ -3,8 +3,9 @@ import { Suspense } from "react";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { Lightbulb } from "lucide-react";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
-import { kelasPilihan, kelasTeks } from "@/components/app/kolom";
+import { kelasTeks } from "@/components/app/kolom";
 import { Kartu, Kepala, Kerangka, Kosong, Lencana, type Nada } from "@/components/app/ui";
+import { PilihCari } from "@/components/app/pilih-cari";
 import { Input } from "@/components/ui/input";
 import { ajukanK4 } from "@/app/aksi/k4";
 import { getDb, schema as s } from "@/lib/db";
@@ -85,24 +86,12 @@ async function Isi() {
         <FormAksi aksi={ajukanK4} tombol="Ajukan" tombolPenuh className="mt-3 space-y-3">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Periode</span>
-            <select name="periodeId" className={kelasPilihan} defaultValue={periode.at(-1)}>
-              {periode.map((p) => (
-                <option key={p} value={p}>
-                  {labelPeriode(p)}
-                </option>
-              ))}
-            </select>
+            <PilihCari name="periodeId" opsi={periode.map((p) => ({ id: p, nama: labelPeriode(p) }))} nilaiAwal={periode.at(-1)} kosong={null} required />
           </label>
           {sesi.penugasan.length > 1 ? (
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Amanah terkait</span>
-              <select name="penugasanId" className={kelasPilihan} defaultValue={sesi.amanah?.id}>
-                {sesi.penugasan.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {LABEL_PERAN_KERJA[p.peranKerja]} · {p.unitNama}
-                  </option>
-                ))}
-              </select>
+              <PilihCari name="penugasanId" opsi={sesi.penugasan.map((p) => ({ id: p.id, nama: `${LABEL_PERAN_KERJA[p.peranKerja]} · ${p.unitNama}` }))} nilaiAwal={sesi.amanah?.id} kosong={null} required />
               <span className="mt-1 block text-xs text-muted-foreground">Atasan amanah ini yang memeriksa sebelum diteruskan ke WaKa.</span>
               <Galat nama="penugasanId" />
             </label>
@@ -120,13 +109,7 @@ async function Isi() {
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Tingkat yang diusulkan</span>
-            <select name="tingkatUsulan" className={kelasPilihan} defaultValue="I" required>
-              {Object.entries(POIN_K4).map(([t, p]) => (
-                <option key={t} value={t}>
-                  Tingkat {t} · {p.join("/")} poin
-                </option>
-              ))}
-            </select>
+            <PilihCari name="tingkatUsulan" opsi={Object.entries(POIN_K4).map(([t, p]) => ({ id: t, nama: `Tingkat ${t} · ${p.join("/")} poin` }))} nilaiAwal="I" kosong={null} required />
             <Galat nama="tingkatUsulan" />
           </label>
           <label className="block">
@@ -138,14 +121,7 @@ async function Isi() {
             <legend className="mb-1.5 text-sm font-medium text-heading">Rekan pengusul (maks. 2)</legend>
             <div className="grid grid-cols-2 gap-2">
               {[0, 1].map((i) => (
-                <select key={i} name="rekan" className={kelasPilihan} defaultValue="" aria-label={`Rekan ${i + 1}`}>
-                  <option value="">—</option>
-                  {rekan.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.nama}
-                    </option>
-                  ))}
-                </select>
+                <PilihCari key={i} name="rekan" opsi={rekan} aria-label={`Rekan ${i + 1}`} />
               ))}
             </div>
             <Galat nama="rekan" />
@@ -153,14 +129,7 @@ async function Isi() {
           {bisaNaik.length > 0 && (
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Naik tingkat dari inovasi sebelumnya?</span>
-              <select name="inovasiIndukId" className={kelasPilihan} defaultValue="">
-                <option value="">Tidak, inovasi baru</option>
-                {bisaNaik.map(({ k }) => (
-                  <option key={k.id} value={k.id}>
-                    {k.judul} (tingkat {k.tingkatDitetapkan})
-                  </option>
-                ))}
-              </select>
+              <PilihCari name="inovasiIndukId" opsi={bisaNaik.map(({ k }) => ({ id: k.id, nama: `${k.judul} (tingkat ${k.tingkatDitetapkan})` }))} kosong="Tidak, inovasi baru" />
             </label>
           )}
         </FormAksi>

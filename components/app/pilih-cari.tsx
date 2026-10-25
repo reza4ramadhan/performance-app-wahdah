@@ -1,7 +1,8 @@
 "use client";
 
-// Dropdown yang bisa diketik untuk dicari (pengganti <select> untuk daftar panjang, mis. pegawai).
+// Dropdown yang bisa diketik untuk dicari; dipakai untuk semua isian daftar (pengganti <select>).
 // Nilai dikirim lewat input tersembunyi `name`, jadi tetap bekerja di FormAksi / Server Action.
+// Tanpa `nilai`: tak terkendali (nilaiAwal, ikut reset form). Dengan `nilai`: terkendali lewat saatBerubah.
 
 import { useEffect, useId, useRef, useState } from "react";
 import { kelasPilihan } from "@/components/app/kolom";
@@ -21,18 +22,35 @@ const normal = (x: string) =>
 export function PilihCari({
   name,
   opsi,
+  nilai: dikendalikan,
   nilaiAwal,
   kosong = "—",
+  placeholder,
+  required,
+  disabled,
   saatBerubah,
+  "aria-label": ariaLabel,
+  "aria-invalid": ariaInvalid,
 }: {
   name?: string;
   opsi: Opsi[];
+  /** Nilai terkendali; ubah lewat saatBerubah. */
+  nilai?: string;
   nilaiAwal?: string | null;
-  /** Label pilihan kosong; null = wajib memilih salah satu opsi. */
+  /** Label pilihan kosong; null = tidak ada baris kosong di daftar. */
   kosong?: string | null;
+  /** Teks saat belum memilih (bawaan: label kosong). */
+  placeholder?: string;
+  /** Wajib dipilih: form tidak terkirim selama nilainya kosong (validasi bawaan browser). */
+  required?: boolean;
+  disabled?: boolean;
   saatBerubah?: (id: string) => void;
+  "aria-label"?: string;
+  "aria-invalid"?: boolean;
 }) {
-  const [nilai, setNilai] = useState(nilaiAwal ?? "");
+  const [dalam, setDalam] = useState(nilaiAwal ?? "");
+  const nilai = dikendalikan ?? dalam;
+  const kombo = useRef<HTMLInputElement>(null);
   const berubah = useRef(saatBerubah);
   useEffect(() => {
     berubah.current = saatBerubah;
@@ -50,25 +68,26 @@ export function PilihCari({
   // Baris pertama "kosong" (mis. Otomatis) hanya saat tidak mencari.
   const baris: Opsi[] = kata.length || kosong === null ? cocok : [{ id: "", nama: kosong }, ...cocok];
 
-  // FormAksi mereset form setelah berhasil: kembalikan ke nilai awal.
+  // FormAksi mereset form setelah berhasil: kembalikan ke nilai awal (hanya mode tak terkendali).
+  const terkendali = dikendalikan !== undefined;
   useEffect(() => {
     const form = tersembunyi.current?.form;
-    if (!form) return;
+    if (!form || terkendali) return;
     const reset = () => {
-      setNilai(nilaiAwal ?? "");
+      setDalam(nilaiAwal ?? "");
       setCari("");
       berubah.current?.(nilaiAwal ?? "");
     };
     form.addEventListener("reset", reset);
     return () => form.removeEventListener("reset", reset);
-  }, [nilaiAwal]);
+  }, [nilaiAwal, terkendali]);
 
   useEffect(() => {
     if (buka) daftar.current?.children[aktif]?.scrollIntoView({ block: "nearest" });
   }, [aktif, buka]);
 
   const pilih = (o: Opsi) => {
-    setNilai(o.id);
+    setDalam(o.id);
     setCari("");
     setBuka(false);
     if (o.id !== nilai) saatBerubah?.(o.id);
@@ -76,17 +95,22 @@ export function PilihCari({
 
   return (
     <div className="relative">
-      <input ref={tersembunyi} type="hidden" name={name} value={nilai} />
+      <input ref={tersembunyi} type="hidden" name={required ? undefined : name} value={nilai} />
       <input
+        ref={kombo}
         type="text"
         role="combobox"
+        aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-required={required}
+        disabled={disabled}
         aria-expanded={buka}
         aria-controls={idDaftar}
         aria-autocomplete="list"
         aria-activedescendant={buka && baris[aktif] ? `${idDaftar}-${aktif}` : undefined}
         autoComplete="off"
         className={cn(kelasPilihan, "placeholder:text-foreground", !terpilih && "placeholder:text-muted-foreground")}
-        placeholder={terpilih?.nama ?? kosong ?? ""}
+        placeholder={terpilih?.nama ?? placeholder ?? kosong ?? ""}
         value={cari}
         onFocus={() => {
           setBuka(true);
@@ -121,7 +145,21 @@ export function PilihCari({
           }
         }}
       />
-      {buka && (
+      {required && (
+        // Input tak terlihat agar validasi `required` bawaan browser berlaku; fokusnya diteruskan ke kotak pencarian.
+        <input
+          tabIndex={-1}
+          aria-hidden
+          name={name}
+          value={nilai}
+          required
+          disabled={disabled}
+          onChange={() => {}}
+          onFocus={() => kombo.current?.focus()}
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px w-full opacity-0"
+        />
+      )}
+      {buka && !disabled && (
         <ul ref={daftar} id={idDaftar} role="listbox" className="absolute inset-x-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-lg">
           {baris.length ? (
             baris.map((o, i) => (
