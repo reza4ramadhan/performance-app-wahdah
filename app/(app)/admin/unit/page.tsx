@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
 import { kelasPilihan } from "@/components/app/kolom";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
@@ -28,10 +28,12 @@ export default function HalamanUnit() {
 async function Isi() {
   await wajibPeran("admin");
   const db = await getDb();
-  const [unit, waka] = await Promise.all([
-    db.select().from(s.unit).orderBy(asc(s.unit.jenis), asc(s.unit.nama)),
+  const [semuaUnit, waka] = await Promise.all([
+    db.select().from(s.unit),
     db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.peranSistem).innerJoin(s.pegawai, eq(s.pegawai.id, s.peranSistem.pegawaiId)).where(eq(s.peranSistem.peran, "waka")),
   ]);
+  // Urut nomor seperti di struktur (1, 2, …, 10 dan 1.1, 1.2, …), bukan urutan huruf.
+  const unit = semuaUnit.sort((a, b) => a.jenis.localeCompare(b.jenis) || a.nama.localeCompare(b.nama, "id", { numeric: true }));
   const nama = new Map(unit.map((u) => [u.id, u.nama]));
   const namaWaka = new Map(waka.map((w) => [w.id, w.nama]));
 
