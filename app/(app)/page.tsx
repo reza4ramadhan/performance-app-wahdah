@@ -17,6 +17,7 @@ import { pemikulKegiatan } from "@/lib/ikp/k1";
 import { pimpinan } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
+import { HariIniKsbk } from "./hari-ini-ksbk";
 import { HariIniSk } from "./hari-ini-sk";
 
 export const metadata: Metadata = { title: "Hari Ini" };
@@ -35,6 +36,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const today = hariIni(sesi.kantor);
   // Staf Khusus punya dashboard sendiri yang berpusat pada tugas khusus.
   if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} hariIni={today} sp={sp} />;
+  // KSBK: dashboard pemantauan K1 staf, kegiatan SKUO, tugas khusus, dan verifikasi.
+  if (sesi.amanah?.peranKerja === "KSBK") return <HariIniKsbk sesi={sesi} hariIni={today} sp={sp} />;
   const db = await getDb();
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);

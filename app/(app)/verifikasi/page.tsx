@@ -3,14 +3,13 @@ import { Suspense } from "react";
 import { BadgeCheck, ClipboardCheck } from "lucide-react";
 import { BarisTautan, Kartu, Kepala, Kerangka, Kosong } from "@/components/app/ui";
 import { VerifikasiMassal } from "@/components/app/verifikasi-massal";
-import { kondisiAntrean } from "@/lib/data/antrean";
+import { barisAntrean, kondisiAntrean } from "@/lib/data/antrean";
 import { liburPerKantor } from "@/lib/data/ikp";
 import { daftarItem } from "@/lib/data/item";
 import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/data/tugas";
 import { ringkasanTugasTim } from "@/lib/format";
 import { getDb } from "@/lib/db";
 import { wajibPeran } from "@/lib/sesi";
-import { hariIni, hariKerjaAntara, labelTanggal, tanggalLokal } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Verifikasi" };
 
@@ -34,7 +33,6 @@ async function Isi() {
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
     jumlahUsulanMenunggu(sesi.pegawaiId),
   ]);
-  const today = hariIni(sesi.kantor);
   const kartuTugas = (tugas.length > 0 || usulan > 0) && (
     <Kartu className="mb-4 p-2">
       <BarisTautan href="/tim/tugas" ikon={ClipboardCheck} nada="gold" judul="Tugas khusus" sub={ringkasanTugasTim(tugas.length, usulan)} />
@@ -54,22 +52,7 @@ async function Isi() {
   return (
     <>
       {kartuTugas}
-      <VerifikasiMassal
-        items={items
-          .sort((a, b) => (a.diajukanPada?.getTime() ?? 0) - (b.diajukanPada?.getTime() ?? 0))
-          .map((i) => ({
-            id: i.id,
-            judul: i.judul,
-            pemilik: i.pemilikNama,
-            kode: i.indikatorKode,
-            pendek: i.indikatorPendek,
-            diajukan: i.diajukanPada ? labelTanggal(tanggalLokal(i.diajukanPada, sesi.kantor)) : "—",
-            selesai: i.tglSelesai ? labelTanggal(tanggalLokal(i.tglSelesai, sesi.kantor)) : "—",
-            linkBukti: i.linkBukti,
-            milikSendiri: i.pemilikId === sesi.pegawaiId,
-            lambat: !!i.diajukanPada && hariKerjaAntara(tanggalLokal(i.diajukanPada, sesi.kantor), today, libur(sesi.kantor)) > 1,
-          }))}
-      />
+      <VerifikasiMassal items={barisAntrean(items, sesi, libur(sesi.kantor))} />
     </>
   );
 }
