@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, Trash2 } from "lucide-react";
 import { ChipFilter } from "@/components/app/filter";
 import { FormAksi, Galat } from "@/components/app/form-aksi";
 import { PilihCari } from "@/components/app/pilih-cari";
 import { TombolAksi } from "@/components/app/tombol-aksi";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { Input } from "@/components/ui/input";
-import { akhiriPenugasan, tambahPenugasan, ubahKoordinator } from "@/app/aksi/admin";
+import { akhiriPenugasan, hapusPenugasan, tambahPenugasan, ubahPenugasan } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
 import { penilaiK3 } from "@/lib/akses";
 import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
@@ -66,6 +66,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const bidangAktif = skuo.find((u) => u.id === skuoAktif)?.indukId ?? bidang.find((u) => u.id === sp.bidang)?.id ?? "";
   const saring = skuoAktif || bidangAktif;
   const leluhur = leluhurDari(unit);
+  const opsiPeran = PERAN_KERJA.map((p) => ({ nilai: p, label: `${p} · ${LABEL_PERAN_KERJA[p]}` }));
   const tampil = saring ? rows.filter((r) => leluhur.get(r.pn.unitId)?.has(saring)) : rows;
   const perUnit = new Map([...kelompokkan(tampil, (r) => r.unit)].sort(([a], [b]) => urut(a, b)));
   const pilihPegawai = (nama: string, nilai?: string | null, kosong = "—") => <PilihCari name={nama} opsi={pegawai} nilaiAwal={nilai} kosong={kosong} />;
@@ -102,24 +103,48 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                           })()}
                       </summary>
                       <div className="space-y-3 border-t border-border px-4 pb-4">
-                        <FormAksi aksi={ubahKoordinator.bind(null, pn.id)} tombol="Simpan" className="mt-3 grid grid-cols-[minmax(0,1fr)_96px] gap-3">
+                        {/* key: muat ulang isian setelah tersimpan (nilai awal ikut berubah). */}
+                        <FormAksi
+                          key={[pn.peranKerja, pn.unitId, pn.koordinatorId, pn.periodeMulai, pn.periodeSelesai, pn.bobotAlokasi].join("|")}
+                          aksi={ubahPenugasan.bind(null, pn.id)}
+                          tombol="Simpan perubahan"
+                          className="mt-3 space-y-3"
+                        >
+                          <PeranUnit peran={opsiPeran} unit={unit} peranAwal={pn.peranKerja} unitAwal={pn.unitId} />
                           <label className="block">
                             <span className="mb-1.5 block text-sm font-medium text-heading">Koordinator</span>
-                            {pilihPegawai("koordinatorId", pn.koordinatorId)}
+                            {pilihPegawai("koordinatorId", pn.koordinatorId, "Otomatis")}
+                            <Galat nama="koordinatorId" />
                           </label>
-                          <label className="block">
-                            <span className="mb-1.5 block text-sm font-medium text-heading">Bobot %</span>
-                            <Input name="bobotAlokasi" type="number" min={1} max={100} defaultValue={pn.bobotAlokasi ?? ""} />
-                          </label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <label className="block">
+                              <span className="mb-1.5 block text-sm font-medium text-heading">Mulai</span>
+                              <Input name="periodeMulai" type="month" defaultValue={pn.periodeMulai} required />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1.5 block text-sm font-medium text-heading">Selesai</span>
+                              <Input name="periodeSelesai" type="month" defaultValue={pn.periodeSelesai ?? ""} />
+                              <Galat nama="periodeSelesai" />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1.5 block text-sm font-medium text-heading">Bobot %</span>
+                              <Input name="bobotAlokasi" type="number" min={1} max={100} defaultValue={pn.bobotAlokasi ?? ""} />
+                            </label>
+                          </div>
                         </FormAksi>
                         <p className="text-xs text-muted-foreground">
                           Berlaku {labelPeriode(pn.periodeMulai)} – {pn.periodeSelesai ? labelPeriode(pn.periodeSelesai) : "sekarang"}
                         </p>
-                        {!pn.periodeSelesai && (
-                          <TombolAksi aksi={akhiriPenugasan.bind(null, pn.id, periode)} konfirmasi={`Akhiri penugasan ini setelah ${labelPeriode(periode)}?`} ukuran="sm">
-                            <CalendarX2 className="size-4" /> Akhiri setelah {labelPeriode(periode)}
+                        <div className="flex flex-wrap gap-2">
+                          {!pn.periodeSelesai && (
+                            <TombolAksi aksi={akhiriPenugasan.bind(null, pn.id, periode)} konfirmasi={`Akhiri penugasan ini setelah ${labelPeriode(periode)}?`} ukuran="sm">
+                              <CalendarX2 className="size-4" /> Akhiri setelah {labelPeriode(periode)}
+                            </TombolAksi>
+                          )}
+                          <TombolAksi aksi={hapusPenugasan.bind(null, pn.id)} konfirmasi={`Hapus penugasan ${nama} di ${u}? Hanya untuk salah input.`} ukuran="sm" varian="ghost" className="text-destructive">
+                            <Trash2 className="size-4" /> Hapus
                           </TombolAksi>
-                        )}
+                        </div>
                       </div>
                     </details>
                   </li>
@@ -137,7 +162,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               {pilihPegawai("pegawaiId", null, "Pilih pegawai…")}
               <Galat nama="pegawaiId" />
             </label>
-            <PeranUnit peran={PERAN_KERJA.map((p) => ({ nilai: p, label: `${p} · ${LABEL_PERAN_KERJA[p]}` }))} unit={unit} />
+            <PeranUnit peran={opsiPeran} unit={unit} />
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Koordinator (verifikator & penilai K3)</span>
               {pilihPegawai("koordinatorId", null, "Otomatis")}

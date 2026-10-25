@@ -1,7 +1,7 @@
 "use server";
 
 import { randomInt } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
@@ -229,22 +229,54 @@ export async function akhiriPenugasan(id: string, periodeSelesai: string): Promi
   return berhasil("Penugasan diakhiri.");
 }
 
-export async function ubahKoordinator(id: string, _: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
+/** Ubah peran, unit, koordinator, masa berlaku, dan bobot satu penugasan (pegawainya tetap). */
+export async function ubahPenugasan(id: string, _: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
   const sesi = await wajibPeran("admin");
-  const koordinatorId = String(fd.get("koordinatorId") || "") || null;
-  const bobot = String(fd.get("bobotAlokasi") || "");
+  const p = skemaPenugasan.omit({ pegawaiId: true }).safeParse(Object.fromEntries(fd));
+  if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
+  if (p.data.periodeSelesai && p.data.periodeSelesai < p.data.periodeMulai) return gagal("Periksa isian.", { periodeSelesai: "Tidak boleh sebelum Mulai." });
   const db = await getDb();
   const [lama] = await db.select().from(s.penugasan).where(eq(s.penugasan.id, id));
   if (!lama) return gagal("Penugasan tidak ditemukan.");
+  const unitId = p.data.peranKerja === "KAKAN" || p.data.peranKerja === "WAKA" ? await unitKantor(db, sesi.pegawaiId) : p.data.unitId;
+  if (!unitId) return gagal("Periksa isian.", { unitId: "Pilih unit." });
+  const kini = periodeDari(hariIni(sesi.kantor));
+  const dasar = { pegawaiId: lama.pegawaiId, peranKerja: p.data.peranKerja, unitId, periode: p.data.periodeMulai > kini ? p.data.periodeMulai : kini };
+  const koordinatorId = p.data.koordinatorId ?? (await koordinatorBawaan(db, dasar));
   if (koordinatorId === lama.pegawaiId) {
-    const kini = periodeDari(hariIni(sesi.kantor));
-    const galat = await cekKoordinatorSendiri(db, { ...lama, periode: lama.periodeMulai > kini ? lama.periodeMulai : kini });
-    if (galat) return gagal(galat);
+    const galat = await cekKoordinatorSendiri(db, dasar);
+    if (galat) return gagal(galat, { koordinatorId: "Pilih koordinator lain." });
   }
-  await db.update(s.penugasan).set({ koordinatorId, bobotAlokasi: bobot ? Number(bobot) : null }).where(eq(s.penugasan.id, id));
-  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "ubah", entitas: "penugasan", entitasId: id, sebelum: lama, sesudah: { koordinatorId, bobot } });
+  const baru = {
+    peranKerja: p.data.peranKerja,
+    unitId,
+    koordinatorId,
+    periodeMulai: p.data.periodeMulai,
+    periodeSelesai: p.data.periodeSelesai || null,
+    bobotAlokasi: typeof p.data.bobotAlokasi === "number" ? p.data.bobotAlokasi : null,
+  };
+  await db.update(s.penugasan).set(baru).where(eq(s.penugasan.id, id));
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "ubah", entitas: "penugasan", entitasId: id, sebelum: lama, sesudah: baru });
   refresh();
   return berhasil("Penugasan diperbarui.");
+}
+
+/** Hapus penugasan yang salah input. Yang sudah punya item/tugas/usulan harus diakhiri, bukan dihapus (riwayat IKP ikut terhapus). */
+export async function hapusPenugasan(id: string): Promise<HasilAksi> {
+  const sesi = await wajibPeran("admin");
+  const db = await getDb();
+  const [lama] = await db.select().from(s.penugasan).where(eq(s.penugasan.id, id));
+  if (!lama) return gagal("Penugasan tidak ditemukan.");
+  const [[a], [b], [c]] = await Promise.all([
+    db.select({ n: count() }).from(s.item).where(eq(s.item.penugasanId, id)),
+    db.select({ n: count() }).from(s.tugasKhusus).where(eq(s.tugasKhusus.penugasanId, id)),
+    db.select({ n: count() }).from(s.usulanTugas).where(eq(s.usulanTugas.penugasanId, id)),
+  ]);
+  if (a.n + b.n + c.n > 0) return gagal("Penugasan ini sudah punya item atau tugas. Gunakan “Akhiri” agar riwayatnya tetap utuh.");
+  await db.delete(s.penugasan).where(eq(s.penugasan.id, id));
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "hapus", entitas: "penugasan", entitasId: id, sebelum: lama });
+  refresh();
+  return berhasil("Penugasan dihapus.");
 }
 
 // ── Indikator, hari libur, periode ────────────────────────────────────────────
