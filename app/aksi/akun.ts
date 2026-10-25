@@ -4,7 +4,7 @@ import { eq, or } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { gagal, type HasilAksi } from "@/lib/aksi";
+import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { COOKIE_AMANAH } from "@/lib/amanah";
 import { getAuth } from "@/lib/auth";
 import { bersihkan, catatGagal, terkunci } from "@/lib/batas-login";
@@ -43,7 +43,9 @@ export async function masuk(_: HasilAksi | null, fd: FormData): Promise<HasilAks
     return gagal("NIP/No. HP atau password salah.");
   }
   await bersihkan(db, identitas);
-  redirect("/");
+  // Klien membuka beranda dengan pemuatan penuh (bukan redirect di sini): router di browser masih
+  // menyimpan halaman dari sesi sebelumnya, mis. "/" yang mengarah ke ganti password atau milik akun lain.
+  return berhasil("Berhasil masuk.");
 }
 
 const skemaGanti = z

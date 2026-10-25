@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, CircleCheck, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,11 @@ export function PesanDiganti() {
 export function FormMasuk() {
   const [hasil, jalankan, proses] = useActionState(masuk, null);
   const [lihat, setLihat] = useState(false);
+  const berhasil = hasil?.ok === true;
+  // Pemuatan penuh membuang cache router dari sesi sebelumnya (lihat aksi `masuk`).
+  useEffect(() => {
+    if (berhasil) window.location.replace("/");
+  }, [berhasil]);
   return (
     <form action={jalankan} className="space-y-4">
       <label className="block">
@@ -45,8 +50,8 @@ export function FormMasuk() {
           {hasil.pesan}
         </p>
       )}
-      <Button type="submit" size="lg" disabled={proses} className="h-13 w-full rounded-full bg-ink text-base text-white hover:bg-ink/90 dark:bg-primary dark:text-primary-foreground">
-        {proses ? "Memeriksa…" : "Masuk"} <ArrowRight className="size-5" />
+      <Button type="submit" size="lg" disabled={proses || berhasil} className="h-13 w-full rounded-full bg-ink text-base text-white hover:bg-ink/90 dark:bg-primary dark:text-primary-foreground">
+        {proses ? "Memeriksa…" : berhasil ? "Membuka…" : "Masuk"} <ArrowRight className="size-5" />
       </Button>
     </form>
   );
