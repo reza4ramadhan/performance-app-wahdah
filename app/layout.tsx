@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { PenyediaTema } from "@/components/app/tema";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -25,10 +26,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="id" className={`${jakarta.variable} antialiased`}>
+    // suppressHydrationWarning: next-themes menambah kelas tema di <html> sebelum hidrasi.
+    <html lang="id" className={`${jakarta.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-dvh">
-        {children}
-        <Toaster position="top-center" richColors closeButton />
+        <PenyediaTema>
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </PenyediaTema>
       </body>
     </html>
   );

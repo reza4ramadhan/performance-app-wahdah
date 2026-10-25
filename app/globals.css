@@ -2,8 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Mode gelap mengikuti pengaturan perangkat. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Mode gelap: kelas .dark di <html> (next-themes; bawaan mengikuti perangkat). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /*
   Palet dari logo Wahdah Islamiyah:
@@ -101,29 +101,27 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #081416;
-    --foreground: #dbe8ea;
-    --heading: #f2f9fa;
-    --card: #0f1f22;
-    --card-foreground: #dbe8ea;
-    --popover: #12252a;
-    --popover-foreground: #dbe8ea;
-    --primary: #34afbb;
-    --primary-foreground: #04191c;
-    --secondary: #16303a;
-    --secondary-foreground: #cfe9ec;
-    --muted: #142a2e;
-    --muted-foreground: #92a8ae;
-    --accent: #143238;
-    --accent-foreground: #a8e0e5;
-    --destructive: #f27455;
-    --border: #1d363b;
-    --input: #26444a;
-    --ring: #34afbb;
-    color-scheme: dark;
-  }
+:root.dark {
+  --background: #081416;
+  --foreground: #dbe8ea;
+  --heading: #f2f9fa;
+  --card: #0f1f22;
+  --card-foreground: #dbe8ea;
+  --popover: #12252a;
+  --popover-foreground: #dbe8ea;
+  --primary: #34afbb;
+  --primary-foreground: #04191c;
+  --secondary: #16303a;
+  --secondary-foreground: #cfe9ec;
+  --muted: #142a2e;
+  --muted-foreground: #92a8ae;
+  --accent: #143238;
+  --accent-foreground: #a8e0e5;
+  --destructive: #f27455;
+  --border: #1d363b;
+  --input: #26444a;
+  --ring: #34afbb;
+  color-scheme: dark;
 }
 
 @layer base {

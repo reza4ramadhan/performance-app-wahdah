@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChartColumn, ClipboardCheck, House, ListChecks, Plus, UserRound, Users } from "lucide-react";
 import { IKON_MENU } from "./ikon-menu";
+import { TombolTema } from "./tema";
 import { cn } from "@/lib/utils";
 import type { GrupMenu } from "@/lib/menu";
 
@@ -30,8 +31,9 @@ export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string;
   const path = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
-      <div className="px-5 pt-5 pb-4">
+      <div className="flex items-center justify-between gap-2 pt-5 pr-3 pb-4 pl-5">
         <Merek />
+        <TombolTema />
       </div>
       <nav aria-label="Menu utama" className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         {grup.map((g) => (

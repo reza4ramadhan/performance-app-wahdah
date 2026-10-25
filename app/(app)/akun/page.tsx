@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { ArrowLeftRight, BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
 import { PanduanPasang, SakelarNotifikasi } from "@/components/app/pwa";
+import { PilihanTema } from "@/components/app/tema";
 import { Avatar, BarisTautan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { keluar, pindahAmanah } from "@/app/aksi/akun";
@@ -147,7 +148,10 @@ async function Isi() {
       </Kartu>
 
       <Kartu className="space-y-4">
-        <SakelarNotifikasi />
+        <PilihanTema />
+        <div className="border-t border-border pt-4">
+          <SakelarNotifikasi />
+        </div>
         <div className="border-t border-border pt-4">
           <p className="mb-2 flex items-center gap-2 text-[15px] font-medium text-heading">
             <Smartphone className="size-5 text-primary" /> Pasang di Home Screen
