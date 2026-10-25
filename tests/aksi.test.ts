@@ -40,8 +40,9 @@ const periode = await import("@/app/aksi/periode");
 const absensi = await import("@/app/aksi/absensi");
 const tugas = await import("@/app/aksi/tugas");
 const k4 = await import("@/app/aksi/k4");
+const admin = await import("@/app/aksi/admin");
 const { tanggalJadwal } = await import("@/lib/ikp/tugas");
-const { and, eq } = await import("drizzle-orm");
+const { and, eq, inArray } = await import("drizzle-orm");
 
 const today = hariIni("makassar");
 const P = periodeDari(today);
@@ -373,6 +374,21 @@ describe("rangkap jabatan", () => {
     expect((await k4.periksaK4(row.id, true)).ok).toBe(false);
     sebagai("kepala", ["kepala", "koordinator"]);
     expect(await k4.periksaK4(row.id, true)).toMatchObject({ ok: true });
+  });
+});
+
+describe("admin penugasan", () => {
+  it("Kepala Kantor dan WaKa tidak perlu memilih unit: otomatis unit Kantor; peran lain wajib unit", async () => {
+    sebagai("sekr", ["admin"]);
+    expect(await admin.tambahPenugasan(null, fd({ pegawaiId: id.kepala, peranKerja: "KAKAN", periodeMulai: P }))).toMatchObject({ ok: true });
+    expect(await admin.tambahPenugasan(null, fd({ pegawaiId: id.keu, peranKerja: "WAKA", periodeMulai: P }))).toMatchObject({ ok: true });
+    const db = await getDb();
+    const rows = await db.select({ jenis: s.unit.jenis, unitId: s.unit.id }).from(s.penugasan).innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId)).where(inArray(s.penugasan.peranKerja, ["KAKAN", "WAKA"]));
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.jenis === "kantor" && r.unitId === rows[0].unitId)).toBe(true);
+    const r = await admin.tambahPenugasan(null, fd({ pegawaiId: id.staf, peranKerja: "SBK", periodeMulai: P }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.galat).toMatchObject({ unitId: "Pilih unit." });
   });
 });
 

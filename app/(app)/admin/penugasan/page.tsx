@@ -17,6 +17,7 @@ import { petaWaka } from "@/lib/data/unit";
 import { kelompokkan } from "@/lib/format";
 import { LABEL_PERAN_KERJA, PERAN_KERJA } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
+import { PeranUnit } from "./peran-unit";
 import { hariIni, labelPeriode, periodeBerikut, periodeDari } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Penugasan" };
@@ -88,7 +89,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                           </span>
                         </span>
                         {pn.bobotAlokasi && <Lencana nada="brand">{pn.bobotAlokasi}%</Lencana>}
-                        {!pn.koordinatorId && pn.peranKerja !== "KAKAN" && <Lencana nada="gold">Tanpa koordinator</Lencana>}
+                        {!pn.koordinatorId && pn.peranKerja !== "KAKAN" && pn.peranKerja !== "WAKA" && <Lencana nada="gold">Tanpa koordinator</Lencana>}
                         {pn.koordinatorId === pn.pegawaiId &&
                           (() => {
                             const penilai = penilaiK3(pn, waka.get(pn.unitId) ?? null);
@@ -131,30 +132,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               {pilihPegawai("pegawaiId", null, "Pilih pegawai…")}
               <Galat nama="pegawaiId" />
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-heading">Peran kerja</span>
-                <select name="peranKerja" className={kelasPilihan} defaultValue="SBK">
-                  {PERAN_KERJA.map((p) => (
-                    <option key={p} value={p}>
-                      {p} · {LABEL_PERAN_KERJA[p]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-heading">Unit</span>
-                <select name="unitId" className={kelasPilihan} defaultValue="">
-                  <option value="">Pilih…</option>
-                  {unit.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nama}
-                    </option>
-                  ))}
-                </select>
-                <Galat nama="unitId" />
-              </label>
-            </div>
+            <PeranUnit peran={PERAN_KERJA.map((p) => ({ nilai: p, label: `${p} · ${LABEL_PERAN_KERJA[p]}` }))} unit={unit} />
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-heading">Koordinator (verifikator & penilai K3)</span>
               {pilihPegawai("koordinatorId", null, "Otomatis")}

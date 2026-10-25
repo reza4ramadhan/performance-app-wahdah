@@ -145,12 +145,21 @@ const periode = z.string().regex(/^\d{4}-\d{2}$/, "Format YYYY-MM.");
 const skemaPenugasan = z.object({
   pegawaiId: z.string().min(1, "Pilih pegawai."),
   peranKerja: z.enum(PERAN_KERJA),
-  unitId: z.string().min(1, "Pilih unit."),
+  unitId: opsional,
   koordinatorId: opsional,
   periodeMulai: periode,
   periodeSelesai: z.union([periode, z.literal("")]).optional(),
   bobotAlokasi: z.union([z.literal(""), z.coerce.number().min(1).max(100)]).optional(),
 });
+
+/** Unit berjenis Kantor (puncak struktur); dibuat bila belum ada. */
+async function unitKantor(db: Db, aktorId: string) {
+  const [ada] = await db.select({ id: s.unit.id }).from(s.unit).where(eq(s.unit.jenis, "kantor")).limit(1);
+  if (ada) return ada.id;
+  const [u] = await db.insert(s.unit).values({ jenis: "kantor", nama: "Kantor Pusat" }).returning();
+  await catatAudit(db, { aktorId, aksi: "buat", entitas: "unit", entitasId: u.id, sesudah: u });
+  return u.id;
+}
 
 /** KSBK yang berlaku di bidang induk unit ini pada periode itu. */
 async function ksbkBidang(db: Db, unitId: string, periode: string) {
@@ -181,7 +190,10 @@ export async function tambahPenugasan(_: HasilAksi | null, fd: FormData): Promis
   const p = skemaPenugasan.safeParse(Object.fromEntries(fd));
   if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
   const db = await getDb();
-  const dasar = { pegawaiId: p.data.pegawaiId, peranKerja: p.data.peranKerja, unitId: p.data.unitId, periode: p.data.periodeMulai };
+  // Kepala Kantor dan WaKa membawahi seluruh kantor: unitnya selalu unit berjenis Kantor.
+  const unitId = p.data.peranKerja === "KAKAN" || p.data.peranKerja === "WAKA" ? await unitKantor(db, sesi.pegawaiId) : p.data.unitId;
+  if (!unitId) return gagal("Periksa isian.", { unitId: "Pilih unit." });
+  const dasar = { pegawaiId: p.data.pegawaiId, peranKerja: p.data.peranKerja, unitId, periode: p.data.periodeMulai };
   const koordinatorId = p.data.koordinatorId ?? (await koordinatorBawaan(db, dasar));
   if (koordinatorId === p.data.pegawaiId) {
     const galat = await cekKoordinatorSendiri(db, dasar);
@@ -192,7 +204,7 @@ export async function tambahPenugasan(_: HasilAksi | null, fd: FormData): Promis
     .values({
       pegawaiId: p.data.pegawaiId,
       peranKerja: p.data.peranKerja,
-      unitId: p.data.unitId,
+      unitId,
       koordinatorId,
       periodeMulai: p.data.periodeMulai,
       periodeSelesai: p.data.periodeSelesai || null,
