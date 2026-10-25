@@ -14,10 +14,10 @@ export function tanggalJadwal(frekuensi: FrekuensiTugas, mulai: string, akhir: s
   return hasil;
 }
 
-/** Batas usulan tugas Staf Khusus dalam satu kiriman sekaligus. */
-export const MAKS_USULAN = 30;
+/** Batas tugas atau usulan dalam satu kiriman sekaligus. */
+export const MAKS_SEKALIGUS = 30;
 
-/** Usulan sekaligus: satu baris satu tugas; penomoran atau butir di awal baris dibuang, baris ganda digabung. */
+/** Isian sekaligus banyak: satu baris satu tugas; penomoran atau butir di awal baris dibuang, baris ganda digabung. */
 export function pecahDaftarJudul(teks: string): string[] {
   return [...new Set(teks.split(/\r?\n/).map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean))];
 }

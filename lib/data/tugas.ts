@@ -1,7 +1,7 @@
 // Query tugas khusus untuk layar staf, pemberi tugas, dan dashboard.
 
 import "server-only";
-import { and, asc, count, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb, schema as s } from "../db";
 import type { FrekuensiTugas, StatusTugas } from "../ikp/tipe";
@@ -77,6 +77,21 @@ export const kondisiTugasPenugasan = (penugasanIds: string[], status?: StatusTug
 
 /** Jadwal yang menunggu verifikasi pemberi tugas ini. */
 export const kondisiTugasMenunggu = (pemberiId: string) => and(eq(s.tugasKhusus.dibuatOleh, pemberiId), eq(s.tugasKhususJadwal.status, "diajukan"));
+
+/**
+ * Tugas yang belum selesai dengan tenggat setelah `setelah`, berapa pun jauhnya: satu baris per tugas
+ * (jadwal terdekat) beserta jumlah jadwal sesudahnya. Supaya tugas yang baru disetujui untuk bulan depan tetap tampil.
+ */
+export async function tugasAkanDatang(penugasanIds: string[], setelah: Date) {
+  const rows = await daftarTugas(and(kondisiTugasPenugasan(penugasanIds, ["belum", "dikerjakan", "ditolak"]), gt(s.tugasKhususJadwal.tenggat, setelah)), 1000);
+  const hasil = new Map<string, { tugas: BarisTugas; sisa: number }>();
+  for (const t of rows) {
+    const ada = hasil.get(t.tugasId);
+    if (ada) ada.sisa++;
+    else hasil.set(t.tugasId, { tugas: t, sisa: 0 });
+  }
+  return [...hasil.values()];
+}
 
 /** Jumlah jadwal per status milik penugasan tertentu dalam satu periode. */
 export async function ringkasTugas(penugasanIds: string[], periodeId: string): Promise<Record<StatusTugas, number>> {

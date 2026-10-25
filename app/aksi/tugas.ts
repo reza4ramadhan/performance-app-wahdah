@@ -13,7 +13,7 @@ import { periodeTerbuka } from "@/lib/data/batas";
 import { kondisiPenugasanBerlaku, liburPerKantor } from "@/lib/data/ikp";
 import { getDb, schema as s, type Db } from "@/lib/db";
 import { FREKUENSI_TUGAS, type FrekuensiTugas } from "@/lib/ikp/tipe";
-import { MAKS_JADWAL, MAKS_USULAN, pecahDaftarJudul, tanggalJadwal } from "@/lib/ikp/tugas";
+import { MAKS_JADWAL, MAKS_SEKALIGUS, pecahDaftarJudul, tanggalJadwal } from "@/lib/ikp/tugas";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "@/lib/waktu";
 
@@ -45,7 +45,24 @@ const denganRentang = <T extends z.ZodType<{ frekuensi: FrekuensiTugas; tanggalM
     .refine((x) => x.frekuensi === "sekali" || /^\d{4}-\d{2}-\d{2}$/.test(x.tanggalAkhir ?? ""), { path: ["tanggalAkhir"], message: "Isi tanggal berakhir untuk tugas berulang." })
     .refine((x) => x.frekuensi === "sekali" || x.tanggalAkhir! >= x.tanggalMulai, { path: ["tanggalAkhir"], message: "Tanggal berakhir tidak boleh sebelum tanggal mulai." });
 
-const skemaTugas = denganRentang(z.object({ penugasanId: z.string().min(1, "Pilih staf."), judul: judulTugas, ...isianTugas }));
+/** Satu per satu (judul + uraian) atau sekaligus banyak (satu baris satu judul, uraian tidak dipakai). */
+const isianJudul = { cara: z.enum(["satu", "banyak"]).default("satu"), judul: z.string().optional(), daftarJudul: z.string().optional() };
+
+const skemaTugas = denganRentang(z.object({ penugasanId: z.string().min(1, "Pilih staf."), ...isianJudul, ...isianTugas }));
+
+/** Judul-judul dari isian satu per satu atau sekaligus banyak, atau galat pada field yang sesuai. */
+function daftarJudulDari(x: { cara: "satu" | "banyak"; judul?: string; daftarJudul?: string }): { judul: string[] } | Extract<HasilAksi, { ok: false }> {
+  const kolom = x.cara === "satu" ? "judul" : "daftarJudul";
+  const salah = (pesan: string) => ({ ok: false as const, pesan: "Periksa isian tugas.", galat: { [kolom]: pesan } });
+  const judul = x.cara === "satu" ? [x.judul?.trim() ?? ""].filter(Boolean) : pecahDaftarJudul(x.daftarJudul ?? "");
+  if (!judul.length) return salah(x.cara === "satu" ? "Isi judul tugas." : "Tulis minimal satu tugas, satu per baris.");
+  if (judul.length > MAKS_SEKALIGUS) return salah(`Maksimal ${MAKS_SEKALIGUS} tugas sekali kirim.`);
+  for (const j of judul) {
+    const cek = judulTugas.safeParse(j);
+    if (!cek.success) return salah(x.cara === "satu" ? cek.error.issues[0].message : `“${j}”: judul harus 3–200 karakter.`);
+  }
+  return { judul };
+}
 
 type RencanaTugas = { judul: string; uraian?: string | null; frekuensi: FrekuensiTugas; tanggalMulai: string; tanggalAkhir?: string; jamTenggat: string };
 
@@ -89,12 +106,18 @@ export async function simpanTugasKhusus(_: HasilAksi | null, fd: FormData): Prom
   if (!pn || pn.pn.koordinatorId !== sesi.pegawaiId || pn.pn.pegawaiId === sesi.pegawaiId || !["SBK", "SK"].includes(pn.pn.peranKerja))
     return gagal("Periksa staf.", { penugasanId: "Tugas khusus hanya bisa diberikan kepada SBK atau Staf Khusus yang Anda koordinasikan." });
 
+  const j = daftarJudulDari(x);
+  if (!("judul" in j)) return j;
   const kantor = pn.kantor as Kantor;
   const r = await rencanaJadwal(db, kantor, x);
   if (!("daftar" in r)) return r;
-  await simpanTugas(db, pn.pn.id, kantor, x, r.daftar, sesi.pegawaiId);
+  // Sekaligus banyak: semua tugas tersimpan atau tidak sama sekali.
+  await db.transaction(async (tx) => {
+    for (const judul of j.judul) await simpanTugas(tx, pn.pn.id, kantor, { ...x, judul, uraian: x.cara === "satu" ? x.uraian : null }, r.daftar, sesi.pegawaiId);
+  });
   refresh();
-  return berhasil(r.daftar.length > 1 ? `Tugas tersimpan dengan ${r.daftar.length} jadwal.` : "Tugas tersimpan.");
+  const jadwal = r.daftar.length > 1 ? ` dengan ${r.daftar.length} jadwal${j.judul.length > 1 ? " masing-masing" : ""}` : "";
+  return berhasil(j.judul.length > 1 ? `${j.judul.length} tugas tersimpan${jadwal}.` : `Tugas tersimpan${jadwal}.`);
 }
 
 /** Hapus tugas: jadwal yang sudah disetujui tetap tersimpan, sisanya dihapus. */
@@ -198,7 +221,7 @@ export async function perbaruiTugas(jadwalId: string, input: unknown): Promise<H
 // ── Usulan tugas (Staf Khusus) ────────────────────────────────────────────────
 
 const skemaUsulan = denganRentang(
-  z.object({ penugasanId: z.string().min(1), cara: z.enum(["satu", "banyak"]), judul: z.string().optional(), daftarJudul: z.string().optional(), ...isianTugas }),
+  z.object({ penugasanId: z.string().min(1), ...isianJudul, ...isianTugas }),
 );
 
 /** Staf Khusus mengusulkan satu tugas, atau banyak tugas sekaligus dengan frekuensi dan tenggat yang sama. */
@@ -211,14 +234,9 @@ export async function ajukanUsulanTugas(_: HasilAksi | null, fd: FormData): Prom
   if (!pn) return gagal("Usulan tugas hanya untuk amanah Staf Khusus.");
   if (!pn.koordinatorId || pn.koordinatorId === sesi.pegawaiId) return gagal("Amanah ini belum punya atasan yang bisa menyetujui usulan. Hubungi Admin.");
 
-  const kolom = x.cara === "satu" ? "judul" : "daftarJudul";
-  const daftarJudul = x.cara === "satu" ? [x.judul?.trim() ?? ""].filter(Boolean) : pecahDaftarJudul(x.daftarJudul ?? "");
-  if (!daftarJudul.length) return gagal("Periksa isian usulan.", { [kolom]: x.cara === "satu" ? "Isi judul tugas." : "Tulis minimal satu tugas, satu per baris." });
-  if (daftarJudul.length > MAKS_USULAN) return gagal("Periksa isian usulan.", { [kolom]: `Maksimal ${MAKS_USULAN} tugas sekali kirim.` });
-  for (const j of daftarJudul) {
-    const cek = judulTugas.safeParse(j);
-    if (!cek.success) return gagal("Periksa isian usulan.", { [kolom]: x.cara === "satu" ? cek.error.issues[0].message : `“${j}”: judul harus 3–200 karakter.` });
-  }
+  const j = daftarJudulDari(x);
+  if (!("judul" in j)) return { ...j, pesan: "Periksa isian usulan." };
+  const daftarJudul = j.judul;
 
   const db = await getDb();
   const r = await rencanaJadwal(db, sesi.kantor, x);

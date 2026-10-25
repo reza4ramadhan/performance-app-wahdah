@@ -1,14 +1,14 @@
 // Dashboard Hari Ini untuk amanah Staf Khusus: berpusat pada tugas khusus (K1 SK-TK), usulan tugas, dan jurnal.
 
 import Link from "next/link";
-import { and, count, eq, gt, gte, inArray, lte } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte } from "drizzle-orm";
 import { AlarmClock, BookOpen, CalendarClock, ChevronRight, CircleCheck, ClipboardCheck, Clock3, Gauge, Hourglass, ListPlus, NotebookPen, Users } from "lucide-react";
 import { BagianJurnal, PanelPengembanganDiri, SapaanHariIni } from "@/components/app/hari-ini";
 import { KartuTugas } from "@/components/app/tugas";
 import { BarisTautan, JudulBagian, Kartu, Kosong, Lencana, PetakIkon, Statistik, TautanKecil } from "@/components/app/ui";
 import { pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
-import { daftarTugas, daftarUsulan, kondisiTugasPenugasan, kondisiUsulanPenugasan, ringkasTugas } from "@/lib/data/tugas";
+import { daftarTugas, daftarUsulan, kondisiTugasPenugasan, kondisiUsulanPenugasan, ringkasTugas, tugasAkanDatang } from "@/lib/data/tugas";
 import { cn } from "@/lib/utils";
 import type { Sesi } from "@/lib/sesi";
 import { jamLokal, keUtc, labelPeriode, labelTanggal, LABEL_ZONA, periodeDari, rentangPeriode, tambahHari, tanggalLokal } from "@/lib/waktu";
@@ -27,7 +27,8 @@ export async function HariIniSk({ sesi, amanah, hariIni: today, sp }: { sesi: Se
     ringkasTugas(pnIds, periode),
     // Jatuh tempo hari ini, ditambah yang sudah lewat tenggat tetapi belum selesai.
     daftarTugas(and(kondisiTugasPenugasan(pnIds, [...BELUM_SELESAI]), lte(s.tugasKhususJadwal.tenggat, akhirHari)), 20),
-    daftarTugas(and(kondisiTugasPenugasan(pnIds, [...BELUM_SELESAI]), gt(s.tugasKhususJadwal.tenggat, akhirHari), lte(s.tugasKhususJadwal.tenggat, keUtc(tambahHari(today, 8), sesi.kantor))), 6),
+    // Jadwal terdekat tiap tugas setelah hari ini, berapa pun jauhnya (mis. usulan yang disetujui untuk bulan depan).
+    tugasAkanDatang(pnIds, akhirHari),
     daftarUsulan(and(kondisiUsulanPenugasan(pnIds, ["diajukan", "ditolak"]), gte(s.usulanTugas.dibuatPada, keUtc(tambahHari(today, -30), sesi.kantor))), 50),
     db
       .select({ n: count() })
@@ -44,6 +45,8 @@ export async function HariIniSk({ sesi, amanah, hariIni: today, sp }: { sesi: Se
   const selesai = ringkas.disetujui;
   const menunggu = total - selesai;
   const capaian = total ? Math.round((selesai / total) * 100) : null;
+  const tugasFokus = new Set(fokus.map((t) => t.tugasId));
+  const akanDatang = berikutnya.filter((x) => !tugasFokus.has(x.tugas.tugasId)).slice(0, 6);
   const lewat = fokus.filter((t) => t.lewat);
   const hariIniSaja = fokus.filter((t) => !t.lewat);
   const usulanMenunggu = usulan.filter((u) => u.status === "diajukan");
@@ -145,18 +148,18 @@ export async function HariIniSk({ sesi, amanah, hariIni: today, sp }: { sesi: Se
               </ul>
             ) : (
               <Kosong ikon={CircleCheck} judul="Tidak ada tugas jatuh tempo hari ini">
-                {total ? "Lanjutkan tugas berikutnya, atau usulkan tugas yang sedang Anda kerjakan." : "Belum ada tugas bulan ini. Usulkan tugas yang Anda kerjakan agar tercatat dan dinilai."}
+                {total || akanDatang.length ? "Lanjutkan tugas berikutnya, atau usulkan tugas yang sedang Anda kerjakan." : "Belum ada tugas bulan ini. Usulkan tugas yang Anda kerjakan agar tercatat dan dinilai."}
               </Kosong>
             )}
           </section>
 
-          {/* Sepekan ke depan */}
-          {berikutnya.length > 0 && (
+          {/* Akan datang */}
+          {akanDatang.length > 0 && (
             <section>
-              <JudulBagian>Sepekan ke depan</JudulBagian>
+              <JudulBagian aksi={berikutnya.length > akanDatang.length ? <TautanKecil href="/tugas">Semua</TautanKecil> : undefined}>Akan datang</JudulBagian>
               <Kartu className="p-1.5">
                 <ul className="divide-y divide-border/70">
-                  {berikutnya.map((t) => {
+                  {akanDatang.map(({ tugas: t, sisa }) => {
                     const [tgl, bln] = labelTanggal(tanggalLokal(t.tenggat, t.kantor)).split(" ");
                     return (
                       <li key={t.id}>
@@ -170,6 +173,7 @@ export async function HariIniSk({ sesi, amanah, hariIni: today, sp }: { sesi: Se
                             <span className="block truncate text-xs text-muted-foreground">
                               pukul {jamLokal(t.tenggat, t.kantor)} {LABEL_ZONA[t.kantor]}
                               {t.status === "dikerjakan" && ` · ${t.persen}%`}
+                              {sisa > 0 && ` · +${sisa} jadwal berikutnya`}
                             </span>
                           </span>
                           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

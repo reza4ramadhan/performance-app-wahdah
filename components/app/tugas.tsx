@@ -4,18 +4,19 @@
 // serta usulan tugas dari Staf Khusus.
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ExternalLink, ListChecks, ListPlus, Pencil, Trash2, X } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, ListChecks, ListPlus, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ajukanUsulanTugas, batalkanUsulan, perbaruiTugas, putuskanUsulan, simpanTugasKhusus, verifikasiTugas } from "@/app/aksi/tugas";
 import type { HasilAksi } from "@/lib/aksi";
 import type { BarisTugas, BarisUsulan } from "@/lib/data/tugas";
-import { MAKS_USULAN, pecahDaftarJudul } from "@/lib/ikp/tugas";
+import { MAKS_SEKALIGUS, pecahDaftarJudul, tanggalJadwal } from "@/lib/ikp/tugas";
 import { FREKUENSI_TUGAS, LABEL_FREKUENSI_TUGAS, LABEL_STATUS_TUGAS, type FrekuensiTugas, type StatusTugas } from "@/lib/ikp/tipe";
 import { cn } from "@/lib/utils";
-import { jamLokal, labelTanggal, LABEL_ZONA, tanggalLokal } from "@/lib/waktu";
+import { isHariKerja, jamLokal, labelTanggal, labelTanggalPanjang, LABEL_ZONA, tambahHari, tanggalLokal } from "@/lib/waktu";
 import { FormAksi, Galat } from "./form-aksi";
 import { Chip, Kolom, kelasPilihan, kelasTeks } from "./kolom";
 import { TombolAksi } from "./tombol-aksi";
@@ -191,40 +192,155 @@ export function PutusanTugas({
   );
 }
 
-/** Form tugas baru untuk koordinator. Tugas berulang butuh tanggal berakhir. */
+/** Form tugas baru untuk koordinator: satu per satu atau sekaligus banyak untuk satu staf. Tugas berulang butuh tanggal berakhir. */
 export function FormTugasBaru({ staf, hariIni }: { staf: { id: string; label: string }[]; hariIni: string }) {
+  const [cara, setCara] = useState<CaraIsi>("satu");
   const [frekuensi, setFrekuensi] = useState<FrekuensiTugas>("sekali");
+  const [daftar, setDaftar] = useState("");
   const [putaran, setPutaran] = useState(0);
+  const n = pecahDaftarJudul(daftar).length;
   return (
-    <FormAksi key={putaran} aksi={simpanTugasKhusus} tombol="Berikan tugas" tombolPenuh className="mt-3 space-y-3" setelahBerhasil={() => setPutaran((x) => x + 1)}>
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-heading">Staf</span>
-        <select name="penugasanId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""} required>
-          <option value="">Pilih staf…</option>
-          {staf.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <Galat nama="penugasanId" />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-heading">Judul tugas</span>
-        <Input name="judul" required placeholder="mis. Menyiapkan bahan rapat pimpinan" />
-        <Galat nama="judul" />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-heading">Uraian (opsional)</span>
-        <textarea name="uraian" rows={2} className={kelasTeks} placeholder="Arahan singkat, hasil yang diharapkan" />
-      </label>
-      <IsianJadwal frekuensi={frekuensi} setFrekuensi={setFrekuensi} hariIni={hariIni} />
-    </FormAksi>
+    <div className="mt-3 space-y-4">
+      <PilihCara cara={cara} setCara={setCara} />
+      <FormAksi
+        key={`${cara}-${putaran}`}
+        aksi={simpanTugasKhusus}
+        tombol={cara === "banyak" && n > 1 ? `Berikan ${n} tugas` : "Berikan tugas"}
+        tombolPenuh
+        className="space-y-3"
+        setelahBerhasil={() => {
+          setDaftar("");
+          setPutaran((x) => x + 1);
+        }}
+      >
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-heading">Staf</span>
+          <select name="penugasanId" className={kelasPilihan} defaultValue={staf.length === 1 ? staf[0].id : ""} required>
+            <option value="">Pilih staf…</option>
+            {staf.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <Galat nama="penugasanId" />
+        </label>
+        <IsianJudul
+          cara={cara}
+          daftar={daftar}
+          setDaftar={setDaftar}
+          kata="diberikan"
+          contohJudul="mis. Menyiapkan bahan rapat pimpinan"
+          contohUraian="Arahan singkat, hasil yang diharapkan"
+          contohDaftar={"Satu baris satu tugas, mis.\nMenyiapkan bahan rapat pimpinan\nMerekap undangan kegiatan\nMengarsipkan notulensi rapat"}
+        />
+        <IsianJadwal frekuensi={frekuensi} setFrekuensi={setFrekuensi} hariIni={hariIni} />
+      </FormAksi>
+    </div>
   );
 }
 
-/** Frekuensi, tanggal, dan jam tenggat; dipakai form tugas baru dan form usulan. */
+type CaraIsi = "satu" | "banyak";
+
+/** Pilihan cara mengisi: satu per satu atau sekaligus banyak. */
+function PilihCara({ cara, setCara }: { cara: CaraIsi; setCara: (c: CaraIsi) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Cara mengisi">
+      {(
+        [
+          ["satu", "Satu per satu", ListPlus],
+          ["banyak", "Sekaligus banyak", ListChecks],
+        ] as const
+      ).map(([c, label, Ikon]) => (
+        <button
+          key={c}
+          type="button"
+          role="radio"
+          aria-checked={cara === c}
+          onClick={() => setCara(c)}
+          className={cn(
+            "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition",
+            cara === c ? "bg-card text-heading shadow-sm" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Ikon className="size-4" /> {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Judul + uraian (satu per satu) atau daftar judul dengan pratinjau (sekaligus banyak). */
+function IsianJudul({
+  cara,
+  daftar,
+  setDaftar,
+  kata,
+  contohJudul,
+  contohUraian,
+  contohDaftar,
+}: {
+  cara: CaraIsi;
+  daftar: string;
+  setDaftar: (v: string) => void;
+  /** "diberikan" / "diajukan" pada pratinjau. */
+  kata: string;
+  contohJudul: string;
+  contohUraian: string;
+  contohDaftar: string;
+}) {
+  const judul = pecahDaftarJudul(daftar);
+  if (cara === "satu")
+    return (
+      <>
+        <input type="hidden" name="cara" value="satu" />
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-heading">Judul tugas</span>
+          <Input name="judul" required placeholder={contohJudul} />
+          <Galat nama="judul" />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-heading">Uraian (opsional)</span>
+          <textarea name="uraian" rows={2} className={kelasTeks} placeholder={contohUraian} />
+        </label>
+      </>
+    );
+  return (
+    <>
+      <input type="hidden" name="cara" value="banyak" />
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-heading">Daftar tugas</span>
+        <textarea name="daftarJudul" rows={6} value={daftar} onChange={(e) => setDaftar(e.target.value)} className={kelasTeks} placeholder={contohDaftar} />
+        <Galat nama="daftarJudul" />
+        <span className="mt-1 block text-xs text-muted-foreground">
+          Bisa ditempel dari catatan; nomor dan tanda butir di awal baris dibuang otomatis. Maks. {MAKS_SEKALIGUS} tugas. Frekuensi dan tenggat di bawah berlaku untuk semua.
+        </span>
+      </label>
+      {judul.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+          <p className={cn("text-xs font-semibold", judul.length > MAKS_SEKALIGUS ? "text-destructive" : "text-muted-foreground")}>
+            {judul.length} tugas akan {kata}
+            {judul.length > MAKS_SEKALIGUS ? ` (maks. ${MAKS_SEKALIGUS})` : ""}
+          </p>
+          <ol className="mt-1.5 max-h-48 list-decimal space-y-0.5 overflow-y-auto pl-5 text-sm text-heading">
+            {judul.map((j) => (
+              <li key={j}>{j}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Frekuensi, tanggal, dan jam tenggat; dipakai form tugas baru dan form usulan. Pratinjau jadwal mencegah salah bulan. */
 function IsianJadwal({ frekuensi, setFrekuensi, hariIni }: { frekuensi: FrekuensiTugas; setFrekuensi: (f: FrekuensiTugas) => void; hariIni: string }) {
+  const [mulai, setMulai] = useState(hariIni);
+  const [akhir, setAkhir] = useState("");
+  // Hari libur hanya diketahui server; pratinjau harian sudah melewati Sabtu–Minggu.
+  const jadwal = mulai && (frekuensi === "sekali" || (akhir && akhir >= mulai)) ? tanggalJadwal(frekuensi, mulai, frekuensi === "sekali" ? mulai : akhir, new Set()) : [];
+  const jauh = mulai > tambahHari(hariIni, 31);
+  const akhirPekan = frekuensi !== "harian" && jadwal.length > 0 && !isHariKerja(jadwal[0], new Set());
   return (
     <>
       <div>
@@ -241,13 +357,13 @@ function IsianJadwal({ frekuensi, setFrekuensi, hariIni }: { frekuensi: Frekuens
       <div className={cn("grid gap-3", frekuensi === "sekali" ? "grid-cols-2" : "grid-cols-3")}>
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-heading">{frekuensi === "sekali" ? "Tenggat" : "Mulai"}</span>
-          <Input name="tanggalMulai" type="date" required min={hariIni} defaultValue={hariIni} />
+          <Input name="tanggalMulai" type="date" required min={hariIni} value={mulai} onChange={(e) => setMulai(e.target.value)} />
           <Galat nama="tanggalMulai" />
         </label>
         {frekuensi !== "sekali" && (
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Sampai</span>
-            <Input name="tanggalAkhir" type="date" required min={hariIni} />
+            <Input name="tanggalAkhir" type="date" required min={mulai || hariIni} value={akhir} onChange={(e) => setAkhir(e.target.value)} />
             <Galat nama="tanggalAkhir" />
           </label>
         )}
@@ -262,6 +378,17 @@ function IsianJadwal({ frekuensi, setFrekuensi, hariIni }: { frekuensi: Frekuens
           {frekuensi === "harian" ? "Satu jadwal tiap hari kerja dalam rentang ini." : "Satu jadwal tiap 7 hari sejak tanggal mulai."} Tiap jadwal dinilai dan diverifikasi sendiri.
         </p>
       )}
+      {jadwal.length > 0 && (
+        <p role="status" className={cn("rounded-xl px-3.5 py-2.5 text-xs", jauh || akhirPekan ? "bg-gold-400/20 text-gold-700 dark:text-gold-100" : "bg-muted text-muted-foreground")}>
+          <span className="font-semibold">
+            {jadwal.length} jadwal{frekuensi === "harian" && jadwal.length > 1 ? " (dikurangi hari libur)" : ""}
+          </span>
+          {" · "}
+          {jadwal.length === 1 ? labelTanggalPanjang(jadwal[0]) : `${labelTanggalPanjang(jadwal[0])} s.d. ${labelTanggalPanjang(jadwal.at(-1)!)}`}
+          {jauh && <span className="mt-1 block font-medium">Tanggal mulai lebih dari sebulan lagi. Pastikan bulannya benar.</span>}
+          {akhirPekan && <span className="mt-1 block font-medium">Jadwal pertama jatuh pada akhir pekan.</span>}
+        </p>
+      )}
     </>
   );
 }
@@ -270,40 +397,18 @@ function IsianJadwal({ frekuensi, setFrekuensi, hariIni }: { frekuensi: Frekuens
 
 /** Staf Khusus mengusulkan tugas: satu per satu (dengan uraian) atau sekaligus banyak (satu baris satu tugas). */
 export function FormUsulanTugas({ penugasanId, hariIni }: { penugasanId: string; hariIni: string }) {
-  const [cara, setCara] = useState<"satu" | "banyak">("satu");
+  const [cara, setCara] = useState<CaraIsi>("satu");
   const [frekuensi, setFrekuensi] = useState<FrekuensiTugas>("sekali");
   const [daftar, setDaftar] = useState("");
   const [putaran, setPutaran] = useState(0);
-  const judul = pecahDaftarJudul(daftar);
+  const n = pecahDaftarJudul(daftar).length;
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Cara mengisi">
-        {(
-          [
-            ["satu", "Satu per satu", ListPlus],
-            ["banyak", "Sekaligus banyak", ListChecks],
-          ] as const
-        ).map(([c, label, Ikon]) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={cara === c}
-            onClick={() => setCara(c)}
-            className={cn(
-              "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition",
-              cara === c ? "bg-card text-heading shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Ikon className="size-4" /> {label}
-          </button>
-        ))}
-      </div>
-
+      <PilihCara cara={cara} setCara={setCara} />
       <FormAksi
         key={`${cara}-${putaran}`}
         aksi={ajukanUsulanTugas}
-        tombol={cara === "banyak" && judul.length > 1 ? `Ajukan ${judul.length} tugas` : "Ajukan ke atasan"}
+        tombol={cara === "banyak" && n > 1 ? `Ajukan ${n} tugas` : "Ajukan ke atasan"}
         tombolPenuh
         className="space-y-3"
         setelahBerhasil={() => {
@@ -312,48 +417,15 @@ export function FormUsulanTugas({ penugasanId, hariIni }: { penugasanId: string;
         }}
       >
         <input type="hidden" name="penugasanId" value={penugasanId} />
-        <input type="hidden" name="cara" value={cara} />
-        {cara === "satu" ? (
-          <>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-heading">Judul tugas</span>
-              <Input name="judul" required placeholder="mis. Patroli keamanan gedung" />
-              <Galat nama="judul" />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-heading">Uraian (opsional)</span>
-              <textarea name="uraian" rows={2} className={kelasTeks} placeholder="Apa yang dikerjakan dan hasil yang diharapkan" />
-            </label>
-          </>
-        ) : (
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-heading">Daftar tugas</span>
-            <textarea
-              name="daftarJudul"
-              rows={6}
-              value={daftar}
-              onChange={(e) => setDaftar(e.target.value)}
-              className={kelasTeks}
-              placeholder={"Satu baris satu tugas, mis.\nPatroli keamanan gedung\nCek CCTV dan rekaman\nLaporan serah terima piket"}
-            />
-            <Galat nama="daftarJudul" />
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Bisa ditempel dari catatan; nomor dan tanda butir di awal baris dibuang otomatis. Maks. {MAKS_USULAN} tugas. Frekuensi dan tenggat di bawah berlaku untuk semua.
-            </span>
-          </label>
-        )}
-        {cara === "banyak" && judul.length > 0 && (
-          <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-            <p className={cn("text-xs font-semibold", judul.length > MAKS_USULAN ? "text-destructive" : "text-muted-foreground")}>
-              {judul.length} tugas akan diajukan{judul.length > MAKS_USULAN ? ` (maks. ${MAKS_USULAN})` : ""}
-            </p>
-            <ol className="mt-1.5 max-h-48 list-decimal space-y-0.5 overflow-y-auto pl-5 text-sm text-heading">
-              {judul.map((j) => (
-                <li key={j}>{j}</li>
-              ))}
-            </ol>
-          </div>
-        )}
+        <IsianJudul
+          cara={cara}
+          daftar={daftar}
+          setDaftar={setDaftar}
+          kata="diajukan"
+          contohJudul="mis. Patroli keamanan gedung"
+          contohUraian="Apa yang dikerjakan dan hasil yang diharapkan"
+          contohDaftar={"Satu baris satu tugas, mis.\nPatroli keamanan gedung\nCek CCTV dan rekaman\nLaporan serah terima piket"}
+        />
         <IsianJadwal frekuensi={frekuensi} setFrekuensi={setFrekuensi} hariIni={hariIni} />
       </FormAksi>
     </div>
@@ -392,6 +464,11 @@ export function KartuUsulan({ usulan: u, sebagai, tampilStaf = false }: { usulan
         <p className="mt-2 text-xs font-medium text-flame-600">
           Ditolak{u.pemutusNama ? ` ${u.pemutusNama}` : ""}: {u.alasanTolak}
         </p>
+      )}
+      {sebagai === "staf" && u.status === "disetujui" && u.tugasId && (
+        <Link href="/tugas" className="mt-2 inline-flex min-h-9 items-center gap-1 text-xs font-medium text-primary">
+          Sudah masuk daftar tugas khusus <ChevronRight className="size-3.5" />
+        </Link>
       )}
       {sebagai === "atasan" && u.status === "diajukan" && (
         <div className="mt-3">

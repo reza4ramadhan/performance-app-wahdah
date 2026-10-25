@@ -307,6 +307,30 @@ describe("tugas khusus", () => {
     expect(await tugas.hapusTugasKhusus(sekali.id)).toMatchObject({ ok: true });
     expect(await db.select().from(s.tugasKhususJadwal).where(and(eq(s.tugasKhususJadwal.tugasId, sekali.id), eq(s.tugasKhususJadwal.status, "disetujui")))).toHaveLength(1);
   });
+
+  it("koordinator bisa memberi banyak tugas sekaligus; satu baris salah membatalkan semuanya", async () => {
+    const db = await getDb();
+    const milikStaf2 = async () => db.select().from(s.tugasKhusus).where(eq(s.tugasKhusus.penugasanId, pn.staf2));
+    const akhir = tambahHari(today, 9);
+    const banyak = (daftarJudul: string) => isi({ penugasanId: pn.staf2, cara: "banyak", judul: "", daftarJudul, frekuensi: "harian", tanggalAkhir: akhir });
+
+    sebagai("koord2", ["koordinator"]);
+    expect((await tugas.simpanTugasKhusus(null, fd(banyak("Rekap undangan\nArsip notulensi")))).ok).toBe(false);
+    sebagai("koord", ["koordinator"]);
+    expect(await tugas.simpanTugasKhusus(null, fd(banyak("Rekap undangan\nab")))).toMatchObject({ ok: false, galat: { daftarJudul: expect.stringContaining("ab") } });
+    expect(await tugas.simpanTugasKhusus(null, fd(banyak(Array.from({ length: 31 }, (_, i) => `Tugas ke-${i + 1}`).join("\n"))))).toMatchObject({ ok: false, galat: { daftarJudul: expect.any(String) } });
+    expect(await milikStaf2()).toHaveLength(0);
+
+    const n = tanggalJadwal("harian", today, akhir, new Set()).length;
+    expect(await tugas.simpanTugasKhusus(null, fd(banyak("1. Rekap undangan\n2. Arsip notulensi\n- Rekap undangan\n3. Cek inventaris")))).toMatchObject({
+      ok: true,
+      pesan: `3 tugas tersimpan dengan ${n} jadwal masing-masing.`,
+    });
+    const tk = await milikStaf2();
+    expect(tk.map((t) => t.judul).sort()).toEqual(["Arsip notulensi", "Cek inventaris", "Rekap undangan"]);
+    expect(tk.every((t) => t.dibuatOleh === id.koord && t.frekuensi === "harian" && t.uraian === null)).toBe(true);
+    expect(await db.select().from(s.tugasKhususJadwal).where(inArray(s.tugasKhususJadwal.tugasId, tk.map((t) => t.id)))).toHaveLength(3 * n);
+  });
 });
 
 describe("usulan tugas Staf Khusus", () => {
@@ -386,6 +410,17 @@ describe("usulan tugas Staf Khusus", () => {
     expect(ringkas).toMatchObject({ disetujui: 1, diajukan: 0 });
     expect(Object.values(ringkas).reduce((a, n) => a + n, 0)).toBe(jadwal.filter((j) => j.periodeId === P).length);
     expect(await dataTugas.jumlahUsulanMenunggu(id.koord)).toBe(0);
+
+    // Usulan yang disetujui untuk bulan-bulan berikutnya tetap tampil di daftar tugas staf.
+    const jauh = tambahHari(today, 60);
+    sebagai("sk", [], [pnSk()]);
+    expect(await tugas.ajukanUsulanTugas(null, fd(isi({ judul: "Rekap absensi dosen", frekuensi: "pekanan", tanggalMulai: jauh, tanggalAkhir: tambahHari(jauh, 14) })))).toMatchObject({ ok: true });
+    const [rekap] = (await usulanSk()).filter((u) => u.judul === "Rekap absensi dosen");
+    sebagai("koord", ["koordinator"]);
+    expect(await tugas.putuskanUsulan([rekap.id], "setuju")).toMatchObject({ ok: true });
+    const { keUtc } = await import("@/lib/waktu");
+    const akanDatang = await dataTugas.tugasAkanDatang([pn.sk], keUtc(tambahHari(today, 8), "makassar"));
+    expect(akanDatang.find((x) => x.tugas.judul === "Rekap absensi dosen")).toMatchObject({ sisa: 2, tugas: { status: "belum", periodeId: periodeDari(jauh) } });
   });
 
   it("staf hanya bisa membatalkan usulan yang belum diputuskan", async () => {

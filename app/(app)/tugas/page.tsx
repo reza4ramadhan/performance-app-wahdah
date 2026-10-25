@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { and, eq, gt, lte } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { ClipboardList, ListPlus } from "lucide-react";
 import { KartuTugas } from "@/components/app/tugas";
 import { Button } from "@/components/ui/button";
 import { JudulBagian, Kepala, Kerangka, Kosong } from "@/components/app/ui";
 import { schema as s } from "@/lib/db";
-import { daftarTugas, kondisiTugasPenugasan } from "@/lib/data/tugas";
+import { daftarTugas, kondisiTugasPenugasan, tugasAkanDatang } from "@/lib/data/tugas";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, periodeDari, tambahHari } from "@/lib/waktu";
 
@@ -50,15 +50,19 @@ async function Isi() {
   const pnIds = sesi.amanah && (sesi.amanah.peranKerja === "SBK" || sesi.amanah.peranKerja === "SK") ? [sesi.amanah.id] : [];
   if (!pnIds.length) return <Kosong ikon={ClipboardList} judul="Tugas khusus untuk SBK dan Staf Khusus" />;
   const today = hariIni(sesi.kantor);
-  // Jadwal berulang yang masih jauh tidak ditampilkan dulu.
+  // Sepekan ke depan tampil per jadwal; yang lebih jauh cukup jadwal terdekat tiap tugas.
   const cakrawala = keUtc(tambahHari(today, 8), sesi.kantor);
   const bulanIni = eq(s.tugasKhususJadwal.periodeId, periodeDari(today));
-  const [aktif, menunggu, selesai, akanDatang] = await Promise.all([
+  const [aktif, menunggu, selesai, semuaAkanDatang] = await Promise.all([
     daftarTugas(and(kondisiTugasPenugasan(pnIds, ["belum", "dikerjakan", "ditolak"]), lte(s.tugasKhususJadwal.tenggat, cakrawala))),
     daftarTugas(kondisiTugasPenugasan(pnIds, ["diajukan"])),
     daftarTugas(and(kondisiTugasPenugasan(pnIds, ["disetujui"]), bulanIni)),
-    daftarTugas(and(kondisiTugasPenugasan(pnIds, ["belum"]), bulanIni, gt(s.tugasKhususJadwal.tenggat, cakrawala))),
+    tugasAkanDatang(pnIds, cakrawala),
   ]);
+  // Tugas berulang yang jadwal dekatnya sudah tampil di "Perlu dikerjakan" tidak diulang.
+  const tugasAktif = new Set(aktif.map((t) => t.tugasId));
+  const akanDatang = semuaAkanDatang.filter((x) => !tugasAktif.has(x.tugas.tugasId));
+  const lanjutan = semuaAkanDatang.filter((x) => tugasAktif.has(x.tugas.tugasId)).reduce((a, x) => a + x.sisa + 1, 0);
 
   if (!aktif.length && !menunggu.length && !selesai.length && !akanDatang.length)
     return (
@@ -82,9 +86,22 @@ async function Isi() {
         ) : (
           <p className="text-sm text-muted-foreground">Tidak ada tugas dengan tenggat dalam sepekan ke depan.</p>
         )}
-        {akanDatang.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{akanDatang.length} jadwal lain bulan ini tenggatnya lebih dari sepekan lagi.</p>}
+        {lanjutan > 0 && <p className="mt-3 text-xs text-muted-foreground">Tugas berulang di atas masih punya {lanjutan} jadwal lagi setelah sepekan ke depan.</p>}
       </section>
-      <div className="space-y-5">
+      {akanDatang.length > 0 && (
+        <section className="lg:col-start-1">
+          <JudulBagian>Akan datang</JudulBagian>
+          <ul className="space-y-2">
+            {akanDatang.map(({ tugas: t, sisa }) => (
+              <li key={t.id}>
+                <KartuTugas tugas={t} sebagai="staf" />
+                {sisa > 0 && <p className="mt-1 px-1 text-xs text-muted-foreground">+{sisa} jadwal berikutnya</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <div className="space-y-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         {menunggu.length > 0 && (
           <section>
             <JudulBagian>Menunggu verifikasi</JudulBagian>
