@@ -39,6 +39,7 @@ const verif = await import("@/app/aksi/verifikasi");
 const tim = await import("@/app/aksi/tim");
 const periode = await import("@/app/aksi/periode");
 const absensi = await import("@/app/aksi/absensi");
+const harian = await import("@/app/aksi/harian");
 const tugas = await import("@/app/aksi/tugas");
 const k4 = await import("@/app/aksi/k4");
 const admin = await import("@/app/aksi/admin");
@@ -124,6 +125,53 @@ describe("item harian", () => {
     expect(besok.ok).toBe(false);
     const salahPeran = await item.simpanItem({ idKlien: "klien-0004", penugasanId: pn.staf, indikatorKode: "KSBK-3", selesai: today, linkBukti: "https://x.id", data: {} });
     expect(salahPeran).toMatchObject({ ok: false, pesan: "Indikator ini tidak berlaku untuk penugasan Anda." });
+  });
+});
+
+describe("jurnal", () => {
+  const poin = (o: Record<string, string> = {}) => ({ tanggal: today, uraian: "Mendampingi tamu", jamMulai: "08:00", jamSelesai: "09:30", ...o });
+
+  it("wajib jam mulai dan selesai; jam selesai harus setelah jam mulai", async () => {
+    sebagai("staf", [], [pnStaf()]);
+    expect(await harian.simpanJurnal(null, fd(poin({ jamMulai: "" })))).toMatchObject({ ok: false, galat: { jamMulai: expect.any(String) } });
+    expect(await harian.simpanJurnal(null, fd(poin({ jamSelesai: "08:00" })))).toMatchObject({ ok: false, galat: { jamSelesai: "Jam selesai harus setelah jam mulai." } });
+    expect(await harian.simpanJurnal(null, fd(poin()))).toMatchObject({ ok: true });
+    const db = await getDb();
+    const [row] = await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf));
+    expect(row).toMatchObject({ jamMulai: "08:00", jamSelesai: "09:30" });
+  });
+
+  it("isi sekaligus: baris kosong dilewati, satu baris salah membatalkan semuanya", async () => {
+    sebagai("staf2", [], [{ ...pnStaf(), id: pn.staf2 }]);
+    const banyak = (jamSelesai2: string) =>
+      fd({ tanggal: today, uraian: ["Rapat panitia", "Menyusun notulen", ""], jamMulai: ["08:00", "10:00", ""], jamSelesai: ["10:00", jamSelesai2, ""], unitId: ["", "", ""], pemberiTugas: ["", "Ketua", ""], link: ["", "", ""] });
+    expect(await harian.simpanJurnalSekaligus(null, banyak("09:00"))).toMatchObject({ ok: false, galat: { "jamSelesai.1": expect.any(String) } });
+    const db = await getDb();
+    expect(await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf2))).toHaveLength(0);
+    expect(await harian.simpanJurnalSekaligus(null, banyak("11:15"))).toMatchObject({ ok: true, pesan: "2 poin jurnal tersimpan." });
+    const rows = await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf2));
+    expect(rows.map((r) => [r.uraian, r.jamMulai, r.jamSelesai, r.pemberiTugas]).sort()).toEqual([
+      ["Menyusun notulen", "10:00", "11:15", "Ketua"],
+      ["Rapat panitia", "08:00", "10:00", null],
+    ]);
+    expect((await harian.simpanJurnalSekaligus(null, fd({ tanggal: today, uraian: [""], jamMulai: [""], jamSelesai: [""] }))).ok).toBe(false);
+  });
+
+  it("hanya pemilik yang mengubah, dan hanya dalam jendela 2 hari kerja", async () => {
+    const db = await getDb();
+    const [j] = await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf));
+    sebagai("staf2", [], [{ ...pnStaf(), id: pn.staf2 }]);
+    expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, uraian: "Diubah orang lain" })))).toMatchObject({ ok: false, pesan: "Jurnal tidak ditemukan." });
+
+    sebagai("staf", [], [pnStaf()]);
+    expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, uraian: "Mendampingi tamu pimpinan", jamSelesai: "10:00" })))).toMatchObject({ ok: true });
+    const [baru] = await db.select().from(s.jurnal).where(eq(s.jurnal.id, j.id));
+    expect(baru).toMatchObject({ uraian: "Mendampingi tamu pimpinan", jamSelesai: "10:00" });
+    const lama = geserHariKerja(today, -3, new Set());
+    expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, tanggal: lama })))).toMatchObject({ ok: false, galat: { tanggal: expect.any(String) } });
+
+    const [terkunci] = await db.insert(s.jurnal).values({ pegawaiId: id.staf, tanggal: lama, uraian: "Jurnal lama" }).returning();
+    expect(await harian.ubahJurnal(null, fd(poin({ id: terkunci.id })))).toMatchObject({ ok: false, pesan: "Jurnal lebih dari 2 hari kerja ke belakang sudah terkunci." });
   });
 });
 

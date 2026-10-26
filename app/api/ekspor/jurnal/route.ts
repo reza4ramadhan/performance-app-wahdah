@@ -20,19 +20,21 @@ export async function GET(req: Request) {
     .innerJoin(s.pegawai, eq(s.pegawai.id, s.jurnal.pegawaiId))
     .leftJoin(s.unit, eq(s.unit.id, s.jurnal.unitId))
     .where(and(gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir)))
-    .orderBy(asc(s.unit.nama), asc(s.jurnal.tanggal));
+    .orderBy(asc(s.unit.nama), asc(s.jurnal.tanggal), asc(s.pegawai.nama), asc(s.jurnal.jamMulai));
 
   const buf = await bukuExcel(
     `Jurnal ${periode}`,
     [
       { header: "Bidang/SKUO", key: "unit", width: 26 },
       { header: "Tanggal", key: "tanggal", width: 12 },
+      { header: "Jam mulai", key: "mulai", width: 10 },
+      { header: "Jam selesai", key: "selesai", width: 10 },
       { header: "Pegawai", key: "nama", width: 26 },
       { header: "Uraian", key: "uraian", width: 60 },
       { header: "Pemberi tugas", key: "pemberi", width: 22 },
       { header: "Link", key: "link", width: 30 },
     ],
-    rows.map((r) => ({ unit: r.unit ?? "(tanpa bidang)", tanggal: r.j.tanggal, nama: r.nama, uraian: r.j.uraian, pemberi: r.j.pemberiTugas ?? "", link: r.j.link ?? "" })),
+    rows.map((r) => ({ unit: r.unit ?? "(tanpa bidang)", tanggal: r.j.tanggal, mulai: r.j.jamMulai ?? "", selesai: r.j.jamSelesai ?? "", nama: r.nama, uraian: r.j.uraian, pemberi: r.j.pemberiTugas ?? "", link: r.j.link ?? "" })),
   );
   return responsExcel(buf, `rekap-jurnal-${periode}.xlsx`);
 }

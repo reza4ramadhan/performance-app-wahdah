@@ -5,7 +5,7 @@ import { ArrowLeftRight, BookOpen } from "lucide-react";
 import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
 import { Avatar, JudulBagian, Kartu, PetakIkon, TautanKecil } from "@/components/app/ui";
 import { labelAmanah } from "@/lib/amanah";
-import { angka } from "@/lib/format";
+import { angka, rentangJam } from "@/lib/format";
 import { PARAMETER } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
 import { labelTanggalPanjang } from "@/lib/waktu";
@@ -38,11 +38,20 @@ export function SapaanHariIni({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: stri
 }
 
 /** Jurnal hari ini dengan form cepat. `poin`: tampilkan poin tambahan K1 (SBK dan Staf Khusus). */
-export function BagianJurnal({ hariIni, entri, jumlahBulanIni, poin }: { hariIni: string; entri: { id: string; uraian: string; pemberiTugas: string | null }[]; jumlahBulanIni: number; poin: boolean }) {
+export function BagianJurnal({ hariIni, entri, jumlahBulanIni, poin }: { hariIni: string; entri: { id: string; uraian: string; pemberiTugas: string | null; jamMulai: string | null; jamSelesai: string | null }[]; jumlahBulanIni: number; poin: boolean }) {
   const poinJurnal = Math.min(PARAMETER.tambahan.maks, jumlahBulanIni * PARAMETER.tambahan.poin);
   return (
     <section>
-      <JudulBagian aksi={<TautanKecil href="/jurnal">Semua jurnal</TautanKecil>}>Jurnal hari ini</JudulBagian>
+      <JudulBagian
+        aksi={
+          <span className="flex gap-4">
+            <TautanKecil href="/jurnal/sekaligus">Isi sekaligus</TautanKecil>
+            <TautanKecil href="/jurnal">Semua jurnal</TautanKecil>
+          </span>
+        }
+      >
+        Jurnal hari ini
+      </JudulBagian>
       <Kartu>
         <p className="text-xs text-muted-foreground">
           Pekerjaan di luar indikator · {jumlahBulanIni} entri bulan ini
@@ -50,6 +59,7 @@ export function BagianJurnal({ hariIni, entri, jumlahBulanIni, poin }: { hariIni
         </p>
         {entri.map((j) => (
           <p key={j.id} className="border-b border-border/60 py-2 text-sm last:border-0">
+            {rentangJam(j.jamMulai, j.jamSelesai) && <span className="mr-1.5 font-semibold tabular-nums text-primary">{j.jamMulai}–{j.jamSelesai}</span>}
             {j.uraian}
             {j.pemberiTugas && <span className="text-muted-foreground"> · {j.pemberiTugas}</span>}
           </p>

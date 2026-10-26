@@ -218,6 +218,9 @@ export const jurnal = pgTable(
     pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
     tanggal: date("tanggal").notNull(),
     uraian: text("uraian").notNull(),
+    /** "HH:MM" waktu kantor; kosong untuk jurnal lama sebelum isian jam ada. */
+    jamMulai: text("jam_mulai"),
+    jamSelesai: text("jam_selesai"),
     unitId: text("unit_id").references(() => unit.id),
     pemberiTugas: text("pemberi_tugas"),
     link: text("link"),

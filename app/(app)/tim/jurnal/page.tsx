@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { anggotaTim } from "@/lib/data/tim";
-import { kelompokkan } from "@/lib/format";
+import { kelompokkan, rentangJam } from "@/lib/format";
 import { PARAMETER } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, labelTanggalPanjang, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -50,7 +50,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     .innerJoin(s.pegawai, eq(s.pegawai.id, s.jurnal.pegawaiId))
     .leftJoin(s.unit, eq(s.unit.id, s.jurnal.unitId))
     .where(and(inArray(s.jurnal.pegawaiId, ids), gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir)))
-    .orderBy(desc(s.jurnal.tanggal), desc(s.jurnal.dibuatPada))
+    .orderBy(desc(s.jurnal.tanggal), asc(s.pegawai.nama), asc(s.jurnal.jamMulai), asc(s.jurnal.dibuatPada))
     .limit(500);
   const perHari = kelompokkan(entri, (e) => e.j.tanggal);
   const perPegawai = kelompokkan(entri, (e) => e.nama);
@@ -90,6 +90,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                 <ul className="space-y-2">
                   {xs.map(({ j, nama, unitNama }) => (
                     <li key={j.id} className="rounded-2xl border border-border/70 bg-card p-3.5">
+                      {rentangJam(j.jamMulai, j.jamSelesai) && <p className="text-xs font-semibold tabular-nums text-primary">{rentangJam(j.jamMulai, j.jamSelesai)}</p>}
                       <p className="text-[15px] text-heading">{j.uraian}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {[dipilih ? null : nama, unitNama, j.pemberiTugas && `dari ${j.pemberiTugas}`].filter(Boolean).join(" · ")}

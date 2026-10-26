@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { NotebookPen } from "lucide-react";
-import { FormJurnalCepat, TombolHapus } from "@/components/app/form-harian";
+import { BarisJurnalSaya, FormJurnalCepat } from "@/components/app/form-harian";
 import { ChipFilter } from "@/components/app/filter";
-import { Kartu, Kepala, Kerangka, Kosong } from "@/components/app/ui";
+import { JudulBagian, Kartu, Kepala, Kerangka, Kosong, TautanKecil } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
-import { kelompokkan } from "@/lib/format";
+import { kelompokkan, rentangJam } from "@/lib/format";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, labelTanggalPanjang, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
@@ -38,7 +38,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .from(s.jurnal)
       .leftJoin(s.unit, eq(s.unit.id, s.jurnal.unitId))
       .where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir)))
-      .orderBy(desc(s.jurnal.tanggal), desc(s.jurnal.dibuatPada)),
+      .orderBy(desc(s.jurnal.tanggal), asc(s.jurnal.jamMulai), asc(s.jurnal.dibuatPada)),
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["bidang", "skuo", "unit_pendukung"])).orderBy(s.unit.nama),
     tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
   ]);
@@ -58,9 +58,10 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               <section key={tgl}>
                 <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{labelTanggalPanjang(tgl)}</h2>
                 <ul className="space-y-2">
-                  {xs.map(({ j, unitNama }) => (
-                    <li key={j.id} className="flex items-start gap-2 rounded-2xl border border-border/70 bg-card p-3.5">
-                      <div className="min-w-0 flex-1">
+                  {xs.map(({ j, unitNama }) => {
+                    const isi = (
+                      <>
+                        {rentangJam(j.jamMulai, j.jamSelesai) && <p className="text-xs font-semibold tabular-nums text-primary">{rentangJam(j.jamMulai, j.jamSelesai)}</p>}
                         <p className="text-[15px] text-heading">{j.uraian}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {[unitNama, j.pemberiTugas && `dari ${j.pemberiTugas}`].filter(Boolean).join(" · ") || "—"}
@@ -73,10 +74,20 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                             </>
                           )}
                         </p>
-                      </div>
-                      {tgl >= minTanggal && <TombolHapus id={j.id} jenis="jurnal" />}
-                    </li>
-                  ))}
+                      </>
+                    );
+                    return (
+                      <li key={j.id} className="rounded-2xl border border-border/70 bg-card p-3.5">
+                        {tgl >= minTanggal ? (
+                          <BarisJurnalSaya jurnal={j} tanggal={tgl} unit={unit} minTanggal={minTanggal} maksTanggal={today}>
+                            {isi}
+                          </BarisJurnalSaya>
+                        ) : (
+                          isi
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
@@ -89,7 +100,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       </div>
       {periode === kini && (
         <Kartu className="order-1 lg:order-2 lg:sticky lg:top-8">
-          <h2 className="text-[15px] font-semibold text-heading">Tambah jurnal</h2>
+          <JudulBagian aksi={<TautanKecil href="/jurnal/sekaligus">Isi sekaligus</TautanKecil>}>Tambah jurnal</JudulBagian>
           <FormJurnalCepat tanggal={today} unit={unit} minTanggal={minTanggal} />
         </Kartu>
       )}

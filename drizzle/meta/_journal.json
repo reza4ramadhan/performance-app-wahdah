@@ -50,6 +50,13 @@
       "when": 1792947211254,
       "tag": "0006_usulan_tugas",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792976442874,
+      "tag": "0007_jurnal_jam",
+      "breakpoints": true
     }
   ]
 }
