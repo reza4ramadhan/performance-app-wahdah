@@ -25,14 +25,6 @@ export const inisial = (nama: string) =>
     .join("")
     .toUpperCase();
 
-/** Sapaan menurut jam di zona kantor. */
-export function sapaan(jam: number) {
-  if (jam < 11) return "Selamat pagi";
-  if (jam < 15) return "Selamat siang";
-  if (jam < 18) return "Selamat sore";
-  return "Selamat malam";
-}
-
 /** Kelompokkan berurutan (pengganti Map.groupBy yang belum ada di Node 20). */
 export function kelompokkan<T, K>(xs: T[], kunci: (x: T) => K): Map<K, T[]> {
   const m = new Map<K, T[]>();

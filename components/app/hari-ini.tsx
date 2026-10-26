@@ -5,20 +5,19 @@ import { ArrowLeftRight, BookOpen } from "lucide-react";
 import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
 import { Avatar, JudulBagian, Kartu, PetakIkon, TautanKecil } from "@/components/app/ui";
 import { labelAmanah } from "@/lib/amanah";
-import { angka, sapaan } from "@/lib/format";
+import { angka } from "@/lib/format";
 import { PARAMETER } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
-import { jamLokal, labelTanggalPanjang } from "@/lib/waktu";
+import { labelTanggalPanjang } from "@/lib/waktu";
 
 /** Sapaan, tanggal, pindah amanah, avatar, dan pesan dari redirect. */
 export function SapaanHariIni({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
-  const jam = Number(jamLokal(new Date(), sesi.kantor).slice(0, 2));
   const namaPanggil = sesi.nama.replace(/^(Ust\.|Ustadz|Ustadzah)\s+/i, "").split(" ")[0];
   return (
     <>
       <header className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-muted-foreground">{sapaan(jam)},</p>
+          <p className="text-sm text-muted-foreground">Assalamu&apos;alaikum,</p>
           <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
           {sesi.daftarAmanah.length > 1 && sesi.amanahPn.length > 0 && (
