@@ -7,7 +7,7 @@ import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { PilihCari } from "@/components/app/pilih-cari";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { bukaKunciEdit, resetPasswordForm, ubahPegawai } from "@/app/aksi/admin";
+import { bukaKunciEdit, buatAkunPegawai, resetPasswordForm, ubahPegawai } from "@/app/aksi/admin";
 import { getDb, schema as s } from "@/lib/db";
 import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM, OPSI_KANTOR, OPSI_STATUS_KEPEGAWAIAN, PERAN_MANUAL } from "@/lib/ikp/tipe";
 import { wajibPeran } from "@/lib/sesi";
@@ -111,6 +111,20 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
               <h2 className="text-[15px] font-semibold text-heading">Reset password</h2>
               <p className="mt-1 text-sm text-muted-foreground">Membuat password sementara dan mengeluarkan semua sesi. Sampaikan langsung ke pegawai.</p>
               <FormAksi aksi={resetPasswordForm.bind(null, id)} tombol="Buat password sementara" varian="outline" pesanTetap toastBerhasil={false} konfirmasi={`Reset password ${pg.nama}?`} />
+            </Kartu>
+          )}
+
+          {!akun[0] && (
+            <Kartu>
+              <h2 className="text-[15px] font-semibold text-heading">Buat akun</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pg.nip || pg.noHp
+                  ? `Login memakai ${pg.nip ? "NIP" : "No. HP"} ${pg.nip ?? pg.noHp} dengan password sementara. Sampaikan langsung ke pegawai.`
+                  : "Isi NIP atau No. HP lalu simpan dulu untuk membuat akun login."}
+              </p>
+              {(pg.nip || pg.noHp) && (
+                <FormAksi aksi={buatAkunPegawai.bind(null, id)} tombol="Buat akun" varian="outline" pesanTetap toastBerhasil={false} konfirmasi={`Buat akun login untuk ${pg.nama}?`} />
+              )}
             </Kartu>
           )}
 

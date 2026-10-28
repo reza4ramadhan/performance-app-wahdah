@@ -49,13 +49,46 @@ export async function tambahPegawai(_: HasilAksi | null, fd: FormData): Promise<
   const db = await getDb();
   const bentrok = await db.select({ id: s.pegawai.id }).from(s.pegawai).where(nip ? eq(s.pegawai.nip, nip) : eq(s.pegawai.noHp, noHp!));
   if (bentrok.length) return gagal("NIP/No. HP sudah dipakai pegawai lain.");
+  const login = (nip ?? noHp)!;
+  if (await loginTerpakai(db, login)) return gagal(`Login ${login} sudah dipakai akun lain.`);
   const [pg] = await db.insert(s.pegawai).values({ ...p.data, nip: nip ?? null, noHp: noHp ?? null }).returning();
   if (peran.length) await db.insert(s.peranSistem).values(peran.map((x) => ({ pegawaiId: pg.id, peran: x })));
   const pw = passwordSementara();
-  await buatAkun({ pegawaiId: pg.id, nama: pg.nama, username: (nip ?? noHp)!, password: pw });
+  try {
+    await buatAkun({ pegawaiId: pg.id, nama: pg.nama, username: login, password: pw });
+  } catch (e) {
+    // Jangan tinggalkan pegawai tanpa akun; peran ikut terhapus (cascade).
+    await db.delete(s.pegawai).where(eq(s.pegawai.id, pg.id));
+    console.error("Gagal membuat akun pegawai baru", e);
+    return gagal("Gagal membuat akun login. Pegawai tidak disimpan, coba lagi.");
+  }
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "pegawai", entitasId: pg.id, sesudah: { ...pg, peran } });
   refresh();
-  return berhasil(`Akun dibuat. Login: ${nip ?? noHp} · password sementara: ${pw}`);
+  return berhasil(`Akun dibuat. Login: ${login} · password sementara: ${pw}`);
+}
+
+/** Username Better Auth disimpan huruf kecil dan unik. */
+async function loginTerpakai(db: Db, login: string) {
+  const ada = await db.select({ id: s.user.id }).from(s.user).where(eq(s.user.username, login.toLowerCase()));
+  return ada.length > 0;
+}
+
+/** Buat akun untuk pegawai yang belum punya (mis. pembuatan akun dulu gagal). Username = NIP, atau No. HP. */
+export async function buatAkunPegawai(pegawaiId: string): Promise<HasilAksi> {
+  const sesi = await wajibPeran("admin");
+  const db = await getDb();
+  const [pg] = await db.select().from(s.pegawai).where(eq(s.pegawai.id, pegawaiId));
+  if (!pg) return gagal("Pegawai tidak ditemukan.");
+  const sudah = await db.select({ id: s.user.id }).from(s.user).where(eq(s.user.pegawaiId, pegawaiId));
+  if (sudah.length) return gagal("Pegawai ini sudah punya akun.");
+  const login = pg.nip ?? pg.noHp;
+  if (!login) return gagal("Isi NIP atau No. HP lalu simpan dulu.");
+  if (await loginTerpakai(db, login)) return gagal(`Login ${login} sudah dipakai akun lain.`);
+  const pw = passwordSementara();
+  const akun = await buatAkun({ pegawaiId: pg.id, nama: pg.nama, username: login, password: pw });
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat-akun", entitas: "akun", entitasId: akun.id });
+  refresh();
+  return berhasil(`Akun dibuat. Login: ${login} · password sementara: ${pw} (wajib diganti saat login).`);
 }
 
 export async function ubahPegawai(id: string, _: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
