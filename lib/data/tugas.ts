@@ -139,24 +139,24 @@ export const kondisiUsulanPenugasan = (penugasanIds: string[], status?: ("diajuk
 /** Usulan staf yang menunggu keputusan atasan ini (butuh join penugasan, sudah ada di daftarUsulan). */
 export const kondisiUsulanMenunggu = (koordinatorId: string) => and(eq(s.penugasan.koordinatorId, koordinatorId), eq(s.usulanTugas.status, "diajukan"));
 
-/** Jumlah jadwal tugas yang diajukan selesai dan menunggu persetujuan pemberinya. */
-export async function jumlahTugasMenunggu(pemberiId: string) {
+/** Jumlah jadwal tugas yang diajukan selesai dan menunggu persetujuan pemberinya; `penugasanIds` membatasi ke staf tertentu. */
+export async function jumlahTugasMenunggu(pemberiId: string, penugasanIds?: string[]) {
   const db = await getDb();
   const [r] = await db
     .select({ n: count() })
     .from(s.tugasKhususJadwal)
     .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
-    .where(kondisiTugasMenunggu(pemberiId));
+    .where(and(kondisiTugasMenunggu(pemberiId), penugasanIds && inArray(s.tugasKhusus.penugasanId, penugasanIds)));
   return r.n;
 }
 
-/** Jumlah usulan yang menunggu keputusan atasan ini. */
-export async function jumlahUsulanMenunggu(koordinatorId: string) {
+/** Jumlah usulan yang menunggu keputusan atasan ini; `penugasanIds` membatasi ke staf tertentu. */
+export async function jumlahUsulanMenunggu(koordinatorId: string, penugasanIds?: string[]) {
   const db = await getDb();
   const [r] = await db
     .select({ n: count() })
     .from(s.usulanTugas)
     .innerJoin(s.penugasan, eq(s.penugasan.id, s.usulanTugas.penugasanId))
-    .where(kondisiUsulanMenunggu(koordinatorId));
+    .where(and(kondisiUsulanMenunggu(koordinatorId), penugasanIds && inArray(s.usulanTugas.penugasanId, penugasanIds)));
   return r.n;
 }

@@ -4,11 +4,12 @@ import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { ArrowLeftRight, BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
 import { PanduanPasang, SakelarNotifikasi } from "@/components/app/pwa";
 import { PilihanTema } from "@/components/app/tema";
-import { Avatar, BarisTautan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
+import { Avatar, BarisTautan, Hitungan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { keluar, pindahAmanah } from "@/app/aksi/akun";
 import { getDb, schema as s } from "@/lib/db";
 import { liburPerKantor } from "@/lib/data/ikp";
+import { jumlahPerAmanah } from "@/lib/data/lencana";
 import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { LABEL_ZONA, geserHariKerja, hariIni, hariKerjaPeriode, isHariKerja, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -32,27 +33,15 @@ async function Isi() {
   const tz = sesi.kantor === "makassar" ? "Asia/Makassar" : "Asia/Jakarta";
   const pnIds = sesi.penugasan.map((p) => p.id).concat("-");
 
-  const binaanSaya = sesi.binaan.filter((b) => b.koordinatorId === sesi.pegawaiId).map((b) => b.id);
-  const [[pg], [nItem], hariItem, hariJurnal, libur, menunggu] = await Promise.all([
+  const [[pg], [nItem], hariItem, hariJurnal, libur, antreanAmanah] = await Promise.all([
     db.select().from(s.pegawai).where(eq(s.pegawai.id, sesi.pegawaiId)),
     db.select({ n: count() }).from(s.item).where(and(inArray(s.item.penugasanId, pnIds), eq(s.item.periodeId, periode))),
     db.selectDistinct({ d: sql<string>`(${s.item.dibuatPada} at time zone ${tz})::date::text` }).from(s.item).where(inArray(s.item.penugasanId, pnIds)),
     db.selectDistinct({ d: s.jurnal.tanggal }).from(s.jurnal).where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, geserHariKerja(today, -60, new Set())), lte(s.jurnal.tanggal, akhir))),
     liburPerKantor(db),
-    // Antrean verifikasi per penugasan binaan, agar profil menunjukkan amanah lain yang perlu dibuka.
-    binaanSaya.length
-      ? db
-          .select({ pn: s.item.penugasanId, n: count() })
-          .from(s.item)
-          .where(and(inArray(s.item.penugasanId, binaanSaya), eq(s.item.status, "diajukan")))
-          .groupBy(s.item.penugasanId)
-      : [],
+    // Antrean tiap amanah, agar profil menunjukkan amanah lain yang perlu dibuka.
+    jumlahPerAmanah(sesi),
   ]);
-  const antreanAmanah = new Map<string, number>();
-  for (const m of menunggu) {
-    const a = sesi.binaan.find((b) => b.id === m.pn)?.amanahId;
-    if (a) antreanAmanah.set(a, (antreanAmanah.get(a) ?? 0) + m.n);
-  }
   const terisi = new Set([...hariItem.map((x) => x.d), ...hariJurnal.map((x) => x.d)]);
   const hkBulan = hariKerjaPeriode(periode, libur(sesi.kantor), today);
   // Beruntun: hari kerja berturut-turut terisi sampai hari ini (hari ini boleh belum diisi).
@@ -107,18 +96,21 @@ async function Isi() {
           {sesi.daftarAmanah.map((grup) => {
             const p = grup[0];
             const aktif = grup.some((x) => x.id === sesi.amanah?.id);
-            const n = grup.reduce((a, x) => a + (antreanAmanah.get(x.id) ?? 0), 0);
+            const n = antreanAmanah.get(p.id) ?? 0;
             return (
               <li key={p.id} className="flex min-h-14 items-center gap-3 py-2">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
+                    <Hitungan n={n} className="h-5 min-w-5 text-[11px]" />
+                    {n > 0 && <span className="sr-only">{n} antrean</span>}
+                  </span>
                   {grup.map((x) => (
                     <span key={x.id} className="block truncate text-xs text-muted-foreground">
                       {x.unitNama}
                     </span>
                   ))}
                 </span>
-                {n > 0 && <Lencana nada="gold">{n} menunggu verifikasi</Lencana>}
                 {aktif ? (
                   rangkap && <Lencana nada="brand">Aktif</Lencana>
                 ) : (
