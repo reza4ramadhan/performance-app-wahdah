@@ -5,14 +5,15 @@ import { inArray } from "drizzle-orm";
 import { AlarmClock, BadgeCheck, ClipboardCheck, UserRoundX, Users } from "lucide-react";
 import { KartuItem } from "@/components/app/baris-item";
 import { IKON_MENU } from "@/components/app/ikon-menu";
-import { Avatar, BarisTautan, JudulBagian, Kartu, Kepala, Kerangka, Statistik } from "@/components/app/ui";
+import { Avatar, BarisTautan, Hitungan, JudulBagian, Kartu, Kepala, Kerangka, Statistik } from "@/components/app/ui";
 import { schema as s } from "@/lib/db";
 import { kondisiAntrean } from "@/lib/data/antrean";
 import { daftarItem } from "@/lib/data/item";
+import { jumlahMengantre } from "@/lib/data/lencana";
 import { anggotaTim } from "@/lib/data/tim";
 import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/data/tugas";
 import { ringkasanTugasTim } from "@/lib/format";
-import { menuUntuk } from "@/lib/menu";
+import { hrefMenu, menuUntuk } from "@/lib/menu";
 import { wajibSesi } from "@/lib/sesi";
 import { labelTanggalPanjang, hariIni } from "@/lib/waktu";
 
@@ -30,11 +31,12 @@ async function Isi() {
   const sesi = await wajibSesi();
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
   if (!kelola) redirect("/");
-  const [tim, antrean, tugasMenunggu, usulanMenunggu] = await Promise.all([
+  const [tim, antrean, tugasMenunggu, usulanMenunggu, mengantre] = await Promise.all([
     anggotaTim(sesi),
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
     jumlahUsulanMenunggu(sesi.pegawaiId),
+    jumlahMengantre(sesi, hrefMenu(grup.slice(1), [])),
   ]);
   const pnTim = tim.flatMap((t) => t.penugasan.map((p) => p.id));
   const lewat = pnTim.length ? (await daftarItem(inArray(s.item.penugasanId, pnTim), { kantor: sesi.kantor, batas: 400 })).filter((i) => i.lewat) : [];
@@ -103,7 +105,7 @@ async function Isi() {
             <Kartu key={g.judul} className="p-2">
               <p className="px-2 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.judul}</p>
               {g.item.map((m) => (
-                <BarisTautan key={m.href + m.label} href={m.href} ikon={IKON_MENU[m.ikon] ?? Users} judul={m.label} />
+                <BarisTautan key={m.href + m.label} href={m.href} ikon={IKON_MENU[m.ikon] ?? Users} judul={m.label} kanan={<Hitungan n={mengantre[m.href] ?? 0} className="h-5 min-w-5 text-[11px]" />} />
               ))}
             </Kartu>
           ))}

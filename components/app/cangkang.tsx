@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { GrupMenu } from "@/lib/menu";
+import type { GrupMenu, TabBawah } from "@/lib/menu";
 import { SheetCatat, useKirimDraf, type PenugasanCatat, type PresetCatat } from "./catat";
 import { NavBawah, Sidebar } from "./navigasi";
 import { DaftarkanSW } from "./pwa";
@@ -15,9 +15,12 @@ export function bukaCatat(preset?: PresetCatat) {
 
 export function Cangkang(p: {
   grup: GrupMenu[];
-  kelola: boolean;
-  labelKelola: string;
-  tabUtama: { href: string; label: string };
+  tabBawah: TabBawah[];
+  /** Tampilkan tombol + Catat di tengah navigasi bawah. */
+  catat: boolean;
+  /** Jumlah antrean per href menu (sidebar) dan per href tab (navigasi bawah). */
+  lencana: Record<string, number>;
+  lencanaTab: Record<string, number>;
   nama: string;
   peran: string;
   penugasan: PenugasanCatat[];
@@ -46,8 +49,8 @@ export function Cangkang(p: {
   return (
     <>
       <DaftarkanSW />
-      <Sidebar grup={p.grup} nama={p.nama} peran={p.peran} />
-      <NavBawah kelola={p.kelola} labelKelola={p.labelKelola} tabUtama={p.tabUtama} onCatat={bukaSheet} />
+      <Sidebar grup={p.grup} nama={p.nama} peran={p.peran} lencana={p.lencana} />
+      <NavBawah tab={p.tabBawah} onCatat={p.catat ? bukaSheet : undefined} lencana={p.lencanaTab} />
       <SheetCatat key={putaran} buka={buka} setBuka={setBuka} penugasan={p.penugasan} hariIni={p.hariIni} minTanggal={p.minTanggal} preset={preset} />
     </>
   );

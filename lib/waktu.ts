@@ -104,6 +104,22 @@ export function seninPekan(tgl: string) {
   return tambahHari(tgl, h === 0 ? -6 : 1 - h);
 }
 
+export type JenisRentang = "hari" | "pekan" | "bulan";
+
+/** Rentang kalender yang memuat `tgl`: hari itu, pekan Senin–Minggu, atau bulannya. */
+export function rentangTanggal(jenis: JenisRentang, tgl: string) {
+  if (jenis === "hari") return { awal: tgl, akhir: tgl };
+  if (jenis === "pekan") return { awal: seninPekan(tgl), akhir: tambahHari(seninPekan(tgl), 6) };
+  return rentangPeriode(periodeDari(tgl));
+}
+
+/** Tanggal acuan rentang ke-n sebelum/sesudah (awal rentangnya). */
+export function geserRentang(jenis: JenisRentang, tgl: string, n: number) {
+  if (jenis === "hari") return tambahHari(tgl, n);
+  if (jenis === "pekan") return tambahHari(seninPekan(tgl), 7 * n);
+  return `${periodeBerikut(periodeDari(tgl), n)}-01`;
+}
+
 // ── Format tampilan ───────────────────────────────────────────────────────────
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];

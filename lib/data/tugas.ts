@@ -139,6 +139,17 @@ export const kondisiUsulanPenugasan = (penugasanIds: string[], status?: ("diajuk
 /** Usulan staf yang menunggu keputusan atasan ini (butuh join penugasan, sudah ada di daftarUsulan). */
 export const kondisiUsulanMenunggu = (koordinatorId: string) => and(eq(s.penugasan.koordinatorId, koordinatorId), eq(s.usulanTugas.status, "diajukan"));
 
+/** Jumlah jadwal tugas yang diajukan selesai dan menunggu persetujuan pemberinya. */
+export async function jumlahTugasMenunggu(pemberiId: string) {
+  const db = await getDb();
+  const [r] = await db
+    .select({ n: count() })
+    .from(s.tugasKhususJadwal)
+    .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
+    .where(kondisiTugasMenunggu(pemberiId));
+  return r.n;
+}
+
 /** Jumlah usulan yang menunggu keputusan atasan ini. */
 export async function jumlahUsulanMenunggu(koordinatorId: string) {
   const db = await getDb();

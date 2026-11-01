@@ -592,3 +592,40 @@ describe("status periode", () => {
     expect(r).toMatchObject({ ok: false, pesan: "Periode item ini sudah dikunci." });
   });
 });
+
+describe("aktivitas K1", () => {
+  it("menghitung item, tugas selesai, dan jurnal per pegawai & bidang dalam rentang, menurut zona kantor", async () => {
+    const { aktivitasK1 } = await import("@/lib/data/aktivitas");
+    const db = await getDb();
+    const [bidang] = await db.insert(s.unit).values({ jenis: "bidang", nama: "Bidang Aktivitas" }).returning();
+    const [skuo] = await db.insert(s.unit).values({ jenis: "skuo", nama: "SKUO Aktivitas", indukId: bidang.id }).returning();
+    const pg = async (nama: string, nip: string, peranKerja: "SBK" | "WAKA") => {
+      const [p] = await db.insert(s.pegawai).values({ nama, nip }).returning();
+      const [x] = await db.insert(s.penugasan).values({ pegawaiId: p.id, peranKerja, unitId: skuo.id, periodeMulai: "2020-03", periodeSelesai: "2020-03" }).returning();
+      return { pegawaiId: p.id, pnId: x.id };
+    };
+    const rajin = await pg("Aktif Satu", "901", "SBK");
+    const diam = await pg("Pasif Satu", "902", "SBK");
+    await pg("Waka Satu", "903", "WAKA");
+    const item = (t: string) => ({ penugasanId: rajin.pnId, indikatorKode: "SBK-1", periodeId: "2020-03", tglMasuk: new Date(t), dibuatOleh: rajin.pegawaiId, dibuatPada: new Date(t) });
+    // 2 Mar 09.00 WITA (masuk), 8 Mar 23.30 WITA (masuk), 9 Mar 00.30 WITA (di luar pekan).
+    await db.insert(s.item).values([item("2020-03-02T01:00:00Z"), item("2020-03-08T15:30:00Z"), item("2020-03-08T16:30:00Z")]);
+    const [tk] = await db.insert(s.tugasKhusus).values({ penugasanId: rajin.pnId, judul: "Tugas", frekuensi: "sekali", tanggalMulai: "2020-03-03", tanggalAkhir: "2020-03-03", jamTenggat: "16:00", dibuatOleh: rajin.pegawaiId }).returning();
+    await db.insert(s.tugasKhususJadwal).values({ tugasId: tk.id, periodeId: "2020-03", tenggat: new Date("2020-03-03T08:00:00Z"), status: "diajukan", selesaiPada: new Date("2020-03-03T07:00:00Z") });
+    await db.insert(s.jurnal).values([
+      { pegawaiId: rajin.pegawaiId, tanggal: "2020-03-02", uraian: "Rapat" },
+      { pegawaiId: rajin.pegawaiId, tanggal: "2020-03-10", uraian: "Di luar pekan" },
+    ]);
+
+    const r = await aktivitasK1("2020-03-02", "2020-03-08");
+    const x = r.pegawai.filter((p) => p.bidang.some((b) => b.id === bidang.id));
+    expect(x.map((p) => p.nama)).toEqual(["Aktif Satu", "Pasif Satu"]);
+    expect(x[0]).toMatchObject({ item: 2, tugas: 1, jurnal: 1, hariAktif: 3, hariKerja: 5, bidang: [{ id: bidang.id, nama: "Bidang Aktivitas" }] });
+    expect(x[1]).toMatchObject({ item: 0, tugas: 0, jurnal: 0, hariAktif: 0 });
+    expect(r.bidang.find((b) => b.id === bidang.id)).toMatchObject({ pegawai: 2, aktif: 1, item: 2, tugas: 1, jurnal: 1 });
+
+    const hari = await aktivitasK1("2020-03-09", "2020-03-09");
+    expect(hari.pegawai.find((p) => p.id === rajin.pegawaiId)).toMatchObject({ item: 1, tugas: 0, jurnal: 0 });
+    expect(hari.pegawai.find((p) => p.id === diam.pegawaiId)?.item).toBe(0);
+  });
+});

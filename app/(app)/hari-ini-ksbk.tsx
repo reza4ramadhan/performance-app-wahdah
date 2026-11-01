@@ -8,11 +8,10 @@ import {
   BadgeCheck,
   BookOpen,
   CalendarDays,
-  CalendarPlus,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
-  ClipboardPlus,
+  FileText,
   Gauge,
   ListChecks,
   NotebookPen,
@@ -22,6 +21,7 @@ import {
 import { KartuItem } from "@/components/app/baris-item";
 import { BagianJurnal, PanelPengembanganDiri, SapaanHariIni } from "@/components/app/hari-ini";
 import { DaftarIndikator } from "@/components/app/rincian-ikp";
+import { TombolCatat } from "@/components/app/tombol-catat";
 import { KartuTugas } from "@/components/app/tugas";
 import { Avatar, BarisTautan, Batang, Cincin, JudulBagian, Kartu, Kosong, Lencana, PetakIkon, Statistik, TautanKecil, type Nada } from "@/components/app/ui";
 import { VerifikasiMassal } from "@/components/app/verifikasi-massal";
@@ -58,6 +58,7 @@ export async function HariIniKsbk({ sesi, hariIni: today, sp }: { sesi: Sesi; ha
   const { awal, akhir } = rentangPeriode(periode);
   const pnSaya = sesi.amanahPn.map((p) => p.id);
   const bidangIds = sesi.amanahPn.filter((p) => p.peranKerja === "KSBK").map((p) => p.unitId);
+  const pnKsbk = sesi.amanahPn.find((p) => p.peranKerja === "KSBK")?.id;
 
   const [tim, { hasil }, param, libur, antrean, tugasMenunggu, usulanMenunggu, kegiatan, ujiPetik, itemSaya, jurnalHariIni, jurnalBulanIni, pdBulanIni] = await Promise.all([
     anggotaTim(sesi),
@@ -192,23 +193,6 @@ export async function HariIniKsbk({ sesi, hariIni: today, sp }: { sesi: Sesi; ha
             <Statistik ikon={AlarmClock} nada="flame" label="Lewat tenggat" nilai={itemLewat.length + tugasLewat.length} href="/tim" />
             <Statistik ikon={CalendarDays} nada="mint" label="Kegiatan bulan ini" nilai={kegIni.length} href="/tim/kegiatan" />
           </div>
-
-          {/* Aksi cepat */}
-          <section aria-label="Aksi cepat">
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { href: "/verifikasi", label: "Verifikasi", ikon: BadgeCheck, nada: "gold" as const },
-                { href: "/tim/kegiatan", label: "Kegiatan", ikon: CalendarPlus, nada: "mint" as const },
-                { href: "/tim/tugas", label: "Beri tugas", ikon: ClipboardPlus, nada: "ink" as const },
-                { href: "/tim", label: "Tim", ikon: Users, nada: "brand" as const },
-              ].map((a) => (
-                <Link key={a.href} href={a.href} className="flex flex-col items-center gap-1.5 rounded-2xl py-2 text-xs font-medium text-foreground transition active:scale-95">
-                  <PetakIkon ikon={a.ikon} nada={a.nada} besar />
-                  {a.label}
-                </Link>
-              ))}
-            </div>
-          </section>
 
           {/* 1. K1 per SBK */}
           <section id="k1-staf" className="scroll-mt-6">
@@ -401,6 +385,18 @@ export async function HariIniKsbk({ sesi, hariIni: today, sp }: { sesi: Sesi; ha
               sub={ujiPetikAda ? `Sudah diisi untuk ${labelPeriode(periode)}` : akhirBulan ? "Belum diisi; isi sebelum akhir bulan" : "Diisi di akhir bulan (KSBK-1e)"}
             />
           </Kartu>
+
+          {/* KSBK tidak punya + Catat di navigasi bawah; laporan bidang (satu-satunya item manualnya) dicatat dari sini. */}
+          {pnKsbk && param.get("KSBK-3")?.aktif && (
+            <Kartu className="flex items-center gap-3 p-3">
+              <PetakIkon ikon={FileText} nada="netral" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium text-heading">Laporan bidang</span>
+                <span className="block text-xs text-muted-foreground">Serahkan ≤ 5 hari kerja setelah bulan berakhir</span>
+              </span>
+              <TombolCatat label="Catat" varian="outline" preset={{ penugasanId: pnKsbk, kode: "KSBK-3" }} />
+            </Kartu>
+          )}
 
           {itemSaya.length > 0 && (
             <section>

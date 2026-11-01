@@ -1,6 +1,7 @@
 // Peta nama ikon menu → komponen Lucide (dipakai komponen server dan klien).
 
 import {
+  Activity,
   Archive,
   BadgeCheck,
   BookOpen,
@@ -55,4 +56,5 @@ export const IKON_MENU: Record<NamaIkonMenu, LucideIcon> = {
   indikator: Target,
   libur: CalendarOff,
   periode: ClipboardList,
+  aktivitas: Activity,
 };

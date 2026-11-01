@@ -5,10 +5,11 @@ import type { Sesi } from "./sesi";
 export type NamaIkonMenu =
   | "hari-ini" | "item" | "progres" | "tim" | "akun" | "jurnal" | "belajar" | "tugas" | "usulan" | "k4"
   | "verifikasi" | "kegiatan" | "catatan" | "k3" | "arsip" | "kantor" | "kalibrasi" | "rekap"
-  | "absensi" | "pegawai" | "unit" | "penugasan" | "indikator" | "libur" | "periode";
+  | "absensi" | "pegawai" | "unit" | "penugasan" | "indikator" | "libur" | "periode" | "aktivitas";
 
 export type ItemMenu = { href: string; label: string; ikon: NamaIkonMenu; sub?: string };
 export type GrupMenu = { judul: string; item: ItemMenu[] };
+export type TabBawah = { href: string; label: string; ikon: NamaIkonMenu };
 
 /**
  * Menu kerja mengikuti amanah aktif ("Pindah Amanah"); menu fungsi (Sekretariat, Personalia, Keuangan, Admin)
@@ -80,6 +81,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
       judul: "Admin",
       item: [
         { href: "/admin/pegawai", label: "Pegawai & akun", ikon: "pegawai" },
+        { href: "/admin/aktivitas", label: "Aktivitas K1", ikon: "aktivitas" },
         { href: "/admin/unit", label: "Unit", ikon: "unit" },
         { href: "/admin/penugasan", label: "Penugasan", ikon: "penugasan" },
         { href: "/admin/indikator", label: "Indikator", ikon: "indikator" },
@@ -89,10 +91,46 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
     });
   }
 
-  /** Tab ke-5 di ponsel: muncul bila punya peran selain pegawai biasa. */
+  /** Punya peran selain pegawai biasa: hub Tim/Kelola tersedia. */
   const kelola = grup.length > 1;
   const labelKelola = adaTim || ksbk || pimpin ? "Tim" : "Kelola";
-  /** Tab ke-2 di ponsel: Tugas untuk Staf Khusus, Item untuk yang lain. */
-  const tabUtama = sk ? ({ href: "/tugas", label: "Tugas" } as const) : ({ href: "/item", label: "Item" } as const);
-  return { grup, kelola, labelKelola, tabUtama };
+  /**
+   * Navigasi bawah ponsel. KSBK: tiga pekerjaan utamanya (kegiatan SKUO, delegasi tugas, verifikasi) jadi tab,
+   * tanpa tombol + Catat (laporan bidang dicatat dari Hari Ini). Lainnya: Tugas untuk Staf Khusus, Item untuk
+   * yang lain, + Catat di tengah, dan tab Tim/Kelola bila punya peran selain pegawai biasa.
+   */
+  const tabBawah: TabBawah[] = ksbk
+    ? [
+        { href: "/", label: "Hari Ini", ikon: "hari-ini" },
+        { href: "/tim/kegiatan", label: "Kegiatan", ikon: "kegiatan" },
+        { href: "/tim/tugas", label: "Tugas", ikon: "tugas" },
+        { href: "/verifikasi", label: "Verifikasi", ikon: "verifikasi" },
+        { href: "/akun", label: "Akun", ikon: "akun" },
+      ]
+    : [
+        { href: "/", label: "Hari Ini", ikon: "hari-ini" },
+        sk ? { href: "/tugas", label: "Tugas", ikon: "tugas" } : { href: "/item", label: "Item", ikon: "item" },
+        { href: "/progres", label: "Progres", ikon: "progres" },
+        ...(kelola ? [{ href: "/tim", label: labelKelola, ikon: "tim" as const }] : []),
+        { href: "/akun", label: "Akun", ikon: "akun" },
+      ];
+  return { grup, kelola, labelKelola, tabBawah, catat: !ksbk };
+}
+
+/** Semua href menu dan tab: dasar untuk menghitung lencana antrean. */
+export const hrefMenu = (grup: GrupMenu[], tab: TabBawah[]) => new Set([...grup.flatMap((g) => g.item.map((m) => m.href)), ...tab.map((t) => t.href)]);
+
+/**
+ * Lencana menu → lencana tab ponsel. Menu yang punya tab sendiri tampil di tab itu; menu grup "Saya" tanpa tab
+ * (mis. Tugas khusus milik SBK, Item milik KSBK) masuk Hari Ini; menu lain masuk hub Tim/Kelola.
+ */
+export function lencanaTab(tab: TabBawah[], grup: GrupMenu[], jumlah: Record<string, number>) {
+  const ada = new Set(tab.map((t) => t.href));
+  const saya = new Set(grup[0]?.item.map((m) => m.href));
+  const hasil: Record<string, number> = {};
+  for (const [href, n] of Object.entries(jumlah)) {
+    const ke = ada.has(href) ? href : saya.has(href) || !ada.has("/tim") ? "/" : "/tim";
+    hasil[ke] = (hasil[ke] ?? 0) + n;
+  }
+  return hasil;
 }

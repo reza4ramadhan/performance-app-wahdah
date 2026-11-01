@@ -73,6 +73,16 @@ export function Lencana({ nada = "netral", children, className }: { nada?: Nada;
   return <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold", NADA[nada], className)}>{children}</span>;
 }
 
+/** Lencana jumlah antrean (navigasi dan menu); tidak tampil bila nol. */
+export function Hitungan({ n, className }: { n: number; className?: string }) {
+  if (n <= 0) return null;
+  return (
+    <span className={cn("grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-flame-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums", className)}>
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 const NADA_STATUS: Record<StatusItem, Nada> = { terbuka: "netral", diajukan: "gold", disetujui: "mint", ditolak: "flame" };
 export function LencanaStatus({ status }: { status: StatusItem }) {
   return <Lencana nada={NADA_STATUS[status]}>{LABEL_STATUS_ITEM[status]}</Lencana>;

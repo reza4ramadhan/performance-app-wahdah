@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { and, count, eq, inArray } from "drizzle-orm";
-import { TombolCetak } from "./tombol-cetak";
+import { TombolCetak } from "@/components/app/tombol-cetak";
 import { bolehLihatPegawai } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode } from "@/lib/data/ikp";

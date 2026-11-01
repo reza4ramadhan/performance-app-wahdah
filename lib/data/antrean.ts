@@ -1,7 +1,7 @@
 // Antrean verifikasi untuk satu aktor (koordinator, Keuangan, Sekretariat).
 
 import "server-only";
-import { and, eq, inArray, ne, or, type SQL } from "drizzle-orm";
+import { and, count, eq, inArray, ne, or, type SQL } from "drizzle-orm";
 import type { ItemAntrean } from "@/components/app/verifikasi-massal";
 import { getDb, schema as s } from "../db";
 import type { Sesi } from "../sesi";
@@ -27,6 +27,17 @@ export async function kondisiAntrean(sesi: Sesi): Promise<SQL | undefined> {
   if (sesi.peran.has("sekretariat") && kode("sekretariat").length) jalur.push(and(bukanMilikSaya, inArray(s.item.indikatorKode, kode("sekretariat")))!);
   if (!jalur.length) return eq(s.item.id, "-");
   return and(eq(s.item.status, "diajukan"), or(...jalur));
+}
+
+/** Jumlah item di antrean verifikasi aktor ini (lencana navigasi). */
+export async function jumlahAntrean(sesi: Sesi) {
+  const db = await getDb();
+  const [r] = await db
+    .select({ n: count() })
+    .from(s.item)
+    .innerJoin(s.penugasan, eq(s.penugasan.id, s.item.penugasanId))
+    .where(await kondisiAntrean(sesi));
+  return r.n;
 }
 
 /** Baris antrean untuk VerifikasiMassal, yang paling lama diajukan lebih dulu. */

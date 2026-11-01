@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { labelSisa, tenggatItem } from "./ikp/tenggat";
 import {
   geserHariKerja,
+  geserRentang,
   hariKerjaAntara,
   hariKerjaPeriode,
   isHariKerja,
@@ -9,6 +10,7 @@ import {
   keUtc,
   periodeBerikut,
   rentangPeriode,
+  rentangTanggal,
   seninPekan,
   tanggalLokal,
 } from "./waktu";
@@ -68,6 +70,18 @@ describe("periode", () => {
     expect(rentangPeriode("2026-02")).toEqual({ awal: "2026-02-01", akhir: "2026-02-28" });
     expect(periodeBerikut("2026-12")).toBe("2027-01");
     expect(periodeBerikut("2026-01", -1)).toBe("2025-12");
+  });
+
+  it("rentang hari, pekan (Senin–Minggu, bisa lintas bulan), dan bulan", () => {
+    expect(rentangTanggal("hari", "2026-10-21")).toEqual({ awal: "2026-10-21", akhir: "2026-10-21" });
+    expect(rentangTanggal("pekan", "2026-11-01")).toEqual({ awal: "2026-10-26", akhir: "2026-11-01" });
+    expect(rentangTanggal("bulan", "2026-02-14")).toEqual({ awal: "2026-02-01", akhir: "2026-02-28" });
+  });
+
+  it("geser rentang ke sebelum/sesudah", () => {
+    expect(geserRentang("hari", "2026-10-31", 1)).toBe("2026-11-01");
+    expect(geserRentang("pekan", "2026-10-21", -1)).toBe("2026-10-12");
+    expect(geserRentang("bulan", "2026-12-15", 1)).toBe("2027-01-01");
   });
 });
 

@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, ClipboardCheck, House, ListChecks, Plus, UserRound, Users } from "lucide-react";
+import { Plus } from "lucide-react";
 import { IKON_MENU } from "./ikon-menu";
 import { TombolTema } from "./tema";
+import { Hitungan } from "./ui";
 import { cn } from "@/lib/utils";
-import type { GrupMenu } from "@/lib/menu";
+import type { GrupMenu, TabBawah } from "@/lib/menu";
 
 
 
@@ -27,7 +28,7 @@ export function Merek({ kecil = false }: { kecil?: boolean }) {
   );
 }
 
-export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string; peran: string }) {
+export function Sidebar({ grup, nama, peran, lencana = {} }: { grup: GrupMenu[]; nama: string; peran: string; lencana?: Record<string, number> }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
@@ -55,7 +56,8 @@ export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string;
                       )}
                     >
                       <Ikon className="size-[18px]" strokeWidth={1.9} />
-                      {m.label}
+                      <span className="flex-1">{m.label}</span>
+                      <Hitungan n={lencana[m.href] ?? 0} className="h-5 min-w-5 text-[11px]" />
                     </Link>
                   </li>
                 );
@@ -75,17 +77,10 @@ export function Sidebar({ grup, nama, peran }: { grup: GrupMenu[]; nama: string;
   );
 }
 
-/** Navigasi bawah ponsel: 4 tab + tombol Catat di tengah (+ tab Tim/Kelola bila berperan). */
-export function NavBawah({ kelola, labelKelola, tabUtama, onCatat }: { kelola: boolean; labelKelola: string; tabUtama: { href: string; label: string }; onCatat: () => void }) {
+/** Navigasi bawah ponsel: tab sesuai peran (lib/menu.ts), tombol Catat di tengah bila ada, lencana jumlah per href. */
+export function NavBawah({ tab: daftar, onCatat, lencana = {} }: { tab: TabBawah[]; onCatat?: () => void; lencana?: Record<string, number> }) {
   const path = usePathname();
-  const tab = [
-    { href: "/", label: "Hari Ini", Ikon: House },
-    { ...tabUtama, Ikon: tabUtama.href === "/tugas" ? ClipboardCheck : ListChecks },
-    null,
-    { href: "/progres", label: "Progres", Ikon: ChartColumn },
-    ...(kelola ? [{ href: "/tim", label: labelKelola, Ikon: Users }] : []),
-    { href: "/akun", label: "Akun", Ikon: UserRound },
-  ];
+  const tab = onCatat ? [...daftar.slice(0, 2), null, ...daftar.slice(2)] : daftar;
   return (
     <nav
       aria-label="Navigasi utama"
@@ -106,22 +101,30 @@ export function NavBawah({ kelola, labelKelola, tabUtama, onCatat }: { kelola: b
               </button>
             </li>
           ) : (
-            <li key={t.href} className="flex flex-1">
-              <Link
-                href={t.href}
-                aria-current={aktif(path, t.href) ? "page" : undefined}
-                className={cn(
-                  "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
-                  aktif(path, t.href) ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <t.Ikon className="size-[22px]" strokeWidth={aktif(path, t.href) ? 2.2 : 1.8} />
-                {t.label}
-              </Link>
-            </li>
+            <TautanTab key={t.href} tab={t} on={aktif(path, t.href)} jumlah={lencana[t.href] ?? 0} />
           ),
         )}
       </ul>
     </nav>
+  );
+}
+
+function TautanTab({ tab, on, jumlah }: { tab: TabBawah; on: boolean; jumlah: number }) {
+  const Ikon = IKON_MENU[tab.ikon];
+  return (
+    <li className="flex flex-1">
+      <Link
+        href={tab.href}
+        aria-current={on ? "page" : undefined}
+        aria-label={jumlah ? `${tab.label}, ${jumlah} menunggu` : undefined}
+        className={cn("flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium", on ? "text-primary" : "text-muted-foreground")}
+      >
+        <span className="relative">
+          <Ikon className="size-[22px]" strokeWidth={on ? 2.2 : 1.8} />
+          <Hitungan n={jumlah} className="absolute -top-1.5 left-3.5 ring-2 ring-card" />
+        </span>
+        {tab.label}
+      </Link>
+    </li>
   );
 }

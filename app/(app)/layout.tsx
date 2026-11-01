@@ -4,9 +4,10 @@ import { labelAmanah } from "@/lib/amanah";
 import { getDb } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
+import { jumlahMengantre } from "@/lib/data/lencana";
 import { indikatorAktif } from "@/lib/ikp/k1";
 import { LABEL_PERAN_SISTEM, PERAN_MANUAL } from "@/lib/ikp/tipe";
-import { menuUntuk } from "@/lib/menu";
+import { hrefMenu, lencanaTab, menuUntuk } from "@/lib/menu";
 import { bacaSesi } from "@/lib/sesi";
 import { hariIni } from "@/lib/waktu";
 
@@ -27,8 +28,12 @@ async function Navigasi() {
   const sesi = await bacaSesi();
   if (!sesi || sesi.harusGantiPassword) return null;
   const db = await getDb();
-  const [param, minTanggal] = await Promise.all([paramIndikator(db), tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor)]);
-  const { grup, kelola, labelKelola, tabUtama } = menuUntuk(sesi);
+  const { grup, tabBawah, catat } = menuUntuk(sesi);
+  const [param, minTanggal, mengantre] = await Promise.all([
+    paramIndikator(db),
+    tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
+    jumlahMengantre(sesi, hrefMenu(grup, tabBawah)),
+  ]);
   // Catat item hanya untuk amanah aktif; pindah amanah lewat profil.
   const penugasan = sesi.amanahPn.map((p) => ({
     id: p.id,
@@ -42,9 +47,10 @@ async function Navigasi() {
   return (
     <Cangkang
       grup={grup}
-      kelola={kelola}
-      labelKelola={labelKelola}
-      tabUtama={tabUtama}
+      tabBawah={tabBawah}
+      catat={catat}
+      lencana={mengantre}
+      lencanaTab={lencanaTab(tabBawah, grup, mengantre)}
       nama={sesi.nama}
       peran={[amanah, ...peranFungsi].filter(Boolean).join(" · ") || "Pegawai"}
       penugasan={penugasan.filter((p) => p.indikator.length)}
