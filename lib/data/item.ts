@@ -4,7 +4,7 @@ import "server-only";
 import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
 import { getDb, schema as s } from "../db";
 import { indikatorDari } from "../ikp/katalog";
-import { labelSisa, tenggatItem } from "../ikp/tenggat";
+import { labelSisa, tenggatItem, type SisaTenggat } from "../ikp/tenggat";
 import type { StatusItem } from "../ikp/tipe";
 import { hariIni, type Kantor } from "../waktu";
 import { liburPerKantor, paramIndikator } from "./ikp";
@@ -28,7 +28,7 @@ export type BarisItem = {
   diajukanPada: Date | null;
   verifikatorId: string | null;
   data: Record<string, string>;
-  sisa: { teks: string; nada: "netral" | "gold" | "flame" } | null;
+  sisa: SisaTenggat | null;
   lewat: boolean;
 };
 

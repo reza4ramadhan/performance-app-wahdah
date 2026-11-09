@@ -96,6 +96,7 @@ describe("tenggat item", () => {
     expect(labelSisa("2026-10-21", "2026-10-21", L).teks).toBe("Tenggat hari ini");
     expect(labelSisa("2026-10-22", "2026-10-21", L).teks).toBe("Tenggat besok");
     expect(labelSisa("2026-10-26", "2026-10-21", L).teks).toBe("3 hari kerja lagi");
-    expect(labelSisa("2026-10-19", "2026-10-21", L)).toEqual({ teks: "Lewat 2 hari kerja", nada: "flame" });
+    expect(labelSisa("2026-10-19", "2026-10-21", L)).toEqual({ teks: "Lewat 2 hari kerja", nada: "flame", pokok: "Lewat 2", rincian: "hari kerja" });
+    expect(labelSisa("2026-10-26", "2026-10-21", L)).toMatchObject({ pokok: "3", rincian: "hari kerja" });
   });
 });

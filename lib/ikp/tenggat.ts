@@ -36,13 +36,19 @@ export function tenggatItem(
   }
 }
 
-/** "Hari ini", "Besok", "2 hari kerja lagi", "Lewat 1 hari kerja". */
-export function labelSisa(tenggat: string, hariIni: string, libur: ReadonlySet<string>): { teks: string; nada: "netral" | "gold" | "flame" } {
-  if (tenggat === hariIni) return { teks: "Tenggat hari ini", nada: "gold" };
+/** Label sisa tenggat; `pokok`/`rincian` memecah teks jadi dua baris untuk kolom tenggat di daftar. */
+export type SisaTenggat = { teks: string; nada: "netral" | "gold" | "flame"; pokok: string; rincian: string };
+
+/** "Tenggat hari ini", "Tenggat besok", "2 hari kerja lagi", "Lewat 1 hari kerja". */
+export function labelSisa(tenggat: string, hariIni: string, libur: ReadonlySet<string>): SisaTenggat {
+  if (tenggat === hariIni) return { teks: "Tenggat hari ini", nada: "gold", pokok: "Hari ini", rincian: "tenggat" };
   const n = hariKerjaAntara(hariIni, tenggat, libur);
-  if (tenggat < hariIni) return { teks: `Lewat ${Math.max(1, -n)} hari kerja`, nada: "flame" };
-  if (n <= 1) return { teks: "Tenggat besok", nada: "gold" };
-  return { teks: `${n} hari kerja lagi`, nada: "netral" };
+  if (tenggat < hariIni) {
+    const lewat = Math.max(1, -n);
+    return { teks: `Lewat ${lewat} hari kerja`, nada: "flame", pokok: `Lewat ${lewat}`, rincian: "hari kerja" };
+  }
+  if (n <= 1) return { teks: "Tenggat besok", nada: "gold", pokok: "Besok", rincian: "tenggat" };
+  return { teks: `${n} hari kerja lagi`, nada: "netral", pokok: String(n), rincian: "hari kerja" };
 }
 
 /** Sisa waktu tenggat tugas khusus (berjam): "45 menit lagi", "5 jam lagi", "Tenggat besok", "3 hari lagi". */
