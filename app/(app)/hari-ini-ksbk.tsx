@@ -241,7 +241,18 @@ function PanelK1({ k1, staf, acuan, besar }: { k1: number | null; staf: StafKont
       ))}
     </span>
   );
-  const angkaK1 = k1 === null ? "—" : satuDesimal.format(k1);
+  const angkaK1 = k1 === null ? "belum ada" : satuDesimal.format(k1);
+  // Grafik hanya berarti bila minimal satu staf sudah punya K1.
+  const adaNilai = urut.some((t) => t.k1 !== null);
+  const nilai = (besar: boolean) =>
+    k1 === null ? (
+      <span className="flex flex-col gap-1">
+        <span className={cn("leading-none font-extrabold tracking-tight", besar ? "text-3xl" : "text-[26px]")}>Belum ada</span>
+        <span className="text-[13px] text-white/75">Muncul setelah staf punya pekerjaan bulan ini</span>
+      </span>
+    ) : (
+      <span className={cn("leading-none font-extrabold tracking-tight tabular-nums", besar ? "text-5xl" : "text-[40px]")}>{angkaK1}</span>
+    );
 
   if (!besar)
     return (
@@ -249,9 +260,9 @@ function PanelK1({ k1, staf, acuan, besar }: { k1: number | null; staf: StafKont
         <OrnamenK1 />
         <span className="flex flex-col gap-1">
           <span className="text-[13px] text-white/80">K1 Anda</span>
-          <span className="text-[40px] leading-none font-extrabold tracking-tight tabular-nums">{angkaK1}</span>
+          {nilai(false)}
         </span>
-        {urut.length > 0 && <span className="flex w-44 justify-end">{grafik("h-14 w-full")}</span>}
+        {adaNilai && <span className="flex w-44 justify-end">{grafik("h-14 w-full")}</span>}
       </Link>
     );
 
@@ -263,13 +274,13 @@ function PanelK1({ k1, staf, acuan, besar }: { k1: number | null; staf: StafKont
           <h2 id="judul-k1" className="text-[13px] font-normal text-white/80">
             K1 Anda
           </h2>
-          <span className="text-5xl leading-none font-extrabold tracking-tight tabular-nums">{angkaK1}</span>
+          {nilai(true)}
         </div>
         <Link href="/progres" className="inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold text-white/85 hover:text-white">
           Rincian <ChevronRight className="size-4" />
         </Link>
       </div>
-      {urut.length > 0 && (
+      {adaNilai && (
         <div className="flex flex-col gap-1.5">
           {grafik("h-18")}
           <span aria-hidden className="flex gap-1.5 text-center text-[11px] font-semibold text-white/75">
