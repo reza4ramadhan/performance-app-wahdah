@@ -144,11 +144,13 @@ Kegiatan SKUO wajib memiliki SKUO dan penanggung jawab (boleh staf SKUO lain di 
 | KSBK-1c | Tanggal input kegiatan bulanan | 100 jika kegiatan diinput ≤ tgl 5, selain itu 0 |
 | KSBK-1d | Tanggal item SBK-4 dibuat vs tanggal kegiatan | layanan diajukan ≤ H-3 |
 | KSBK-1e | Form uji petik arsip bulanan (min. 10 dokumen) | dokumen lengkap dan sesuai indeks ÷ dokumen diuji |
-| KSBK-1 | — | rata-rata skor sub-indikator aktif (1a, 1c–1e), masing-masing dibatasi 100 |
-| KSBK-2 | Otomatis | rata-rata skor K1 staf di bidangnya (tanpa dirinya) ÷ 85 × 100, maks. 100 |
-| KSBK-3 | Item laporan bidang bulanan (link) | laporan tepat waktu, diverifikasi Sekretariat |
+| KSBK-1 | — | rata-rata skor sub-indikator aktif (1a, 1c–1e), masing-masing dibatasi 100. *Nonaktif sejak simplifikasi November 2026* |
+| KSBK-2 | Otomatis | rata-rata K1 staf di bidangnya (tanpa dirinya), apa adanya; acuan 85 hanya penanda staf yang perlu perhatian |
+| KSBK-3 | Item laporan bidang bulanan (link) | laporan tepat waktu, diverifikasi Sekretariat. *Nonaktif sejak simplifikasi November 2026* |
 
-Sebagian besar KSBK-1 dihitung dari jejak waktu yang sudah ada di aplikasi, sehingga KSBK tidak perlu mengisi ulang.
+**K1 KSBK = rata-rata K1 staf** (hanya KSBK-2 aktif; migrasi `0008`). Rata-rata staf 82 berarti K1 KSBK 82. KSBK-1 dan KSBK-3 tetap ada di katalog dan bisa diaktifkan lagi oleh Admin lewat menu Indikator; bila aktif, K1 KSBK kembali menjadi rata-rata indikator aktif. Batas input kegiatan tanggal 5 tetap berlaku sebagai aturan kerja dan diingatkan di Beranda.
+
+**Tampilan KSBK (simplifikasi November 2026).** Lima menu utama (sidebar desktop dan bilah mengambang di ponsel, tanpa tombol + Catat): Beranda, Kegiatan SKUO, Tugas staf, Jurnal, Belajar. Akun lewat foto profil. Beranda menampilkan **satu langkah berikutnya** dalam kartu besar dengan satu tombol, menurut prioritas: input kegiatan SKUO yang belum ada (bulan ini; mulai tanggal 25 juga bulan depan) → setujui pekerjaan staf (mode periksa `/tim/periksa`, satu pekerjaan per layar, Setujui/Tolak dengan alasan singkat) → putuskan usulan tugas → tindak lanjuti pekerjaan telat → "Semua beres". Langkah kedua tampil sebagai satu baris "Setelah itu". Di bawahnya K1 Anda (rata-rata K1 staf, batang per staf) dan daftar staf (nama, satu keterangan singkat, angka K1) yang menaut ke halaman detail staf `/tim/staf/[id]` (persetujuan, pekerjaan telat, rincian K1, jurnal, K3, rapor). Menu lain (catatan perilaku, K3, jurnal staf, uji petik, periksa K4, item saya, progres, inovasi K4) ada di grup "Kontrol staf" sidebar dan di bagian "Lainnya" Beranda ponsel.
 
 ### 6.3 Staf Khusus (SK)
 | Kode | Sumber | Target = | Realisasi = | Standar |

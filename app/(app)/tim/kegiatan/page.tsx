@@ -11,21 +11,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { hapusKegiatan, salinKegiatanBulanLalu, simpanKegiatan } from "@/app/aksi/tim";
 import { getDb, schema as s } from "@/lib/db";
+import { daftarItem } from "@/lib/data/item";
 import { stafBidang } from "@/lib/data/tim";
 import { unitDalamBidang } from "@/lib/data/unit";
 import { kelompokkan } from "@/lib/format";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelPeriode, labelTanggalPanjang, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
-export const metadata: Metadata = { title: "Kegiatan bulanan" };
+export const metadata: Metadata = { title: "Kegiatan SKUO" };
 
 export default function HalamanKegiatan(props: PageProps<"/tim/kegiatan">) {
   return (
     <>
       <Kepala
-        judul="Kegiatan bulanan"
-        kembali="/tim"
-        sub="Input paling lambat tanggal 5 (KSBK-1c). Setiap kegiatan langsung masuk ke dashboard penanggung jawab: pengingat H-6 & H-2, serta SPP & SPB bila dicentang."
+        judul="Kegiatan SKUO"
+        sub="Input paling lambat tanggal 5. Setiap kegiatan langsung masuk ke penanggung jawab: pengingat H-6 & H-2, serta SPP & SPB bila dicentang."
       />
       <Suspense fallback={<Kerangka />}>
         <Isi searchParams={props.searchParams} />
@@ -61,6 +61,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     stafBidang(db, unit.id, periode),
   ]);
   const perTanggal = kelompokkan(kegiatan, (x) => x.k.tanggal);
+  // Pantau pekerjaan staf per kegiatan: item otomatis (pengingat, SPP, SPB) dan layanan yang sudah disetujui.
+  const itemKeg = kegiatan.length ? await daftarItem(inArray(s.item.kegiatanId, kegiatan.map((x) => x.k.id)), { kantor: sesi.kantor, batas: 1000 }) : [];
+  const progres = new Map(
+    kegiatan.map(({ k }) => {
+      const items = itemKeg.filter((i) => i.kegiatanId === k.id);
+      return [k.id, { n: items.length, beres: items.filter((i) => i.status === "disetujui").length, lewat: items.filter((i) => i.lewat).length }];
+    }),
+  );
 
   return (
     <>
@@ -92,6 +100,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                           )}
                           {pj && <Lencana>PJ: {pj}</Lencana>}
                           {k.sumber === "salin" && <Lencana nada="gold">Disalin</Lencana>}
+                          <LencanaProgres {...progres.get(k.id)!} />
                         </div>
                       </div>
                       <TombolAksi aksi={hapusKegiatan.bind(null, k.id)} konfirmasi="Hapus kegiatan ini?" varian="ghost" ukuran="icon" label="Hapus kegiatan">
@@ -155,5 +164,16 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
         </Kartu>
       </div>
     </>
+  );
+}
+
+/** Kemajuan item staf untuk satu kegiatan; lewat tenggat didahulukan. */
+function LencanaProgres({ n, beres, lewat }: { n: number; beres: number; lewat: number }) {
+  if (lewat) return <Lencana nada="flame">{lewat} lewat tenggat</Lencana>;
+  if (!n) return null;
+  return (
+    <Lencana nada={beres === n ? "mint" : "netral"}>
+      {beres}/{n} item selesai
+    </Lencana>
   );
 }

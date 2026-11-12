@@ -10,16 +10,28 @@ import { PARAMETER } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
 import { labelTanggalPanjang } from "@/lib/waktu";
 
-/** Sapaan, tanggal, pindah amanah, avatar, dan pesan dari redirect. */
-export function SapaanHariIni({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
+/**
+ * Sapaan, tanggal, pindah amanah, avatar, dan pesan dari redirect.
+ * `ringkas`: tanggal di atas nama, tanpa salam (Beranda KSBK).
+ */
+export function SapaanHariIni({ sesi, hariIni, sp, ringkas = false }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined>; ringkas?: boolean }) {
   const namaPanggil = sesi.nama.replace(/^(Ust\.|Ustadz|Ustadzah)\s+/i, "").split(" ")[0];
   return (
     <>
-      <header className="mb-5 flex items-start justify-between gap-3">
+      <header className={ringkas ? "mb-4 flex items-center justify-between gap-3" : "mb-5 flex items-start justify-between gap-3"}>
         <div>
-          <p className="text-sm text-muted-foreground">Assalamu&apos;alaikum,</p>
-          <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
+          {ringkas ? (
+            <>
+              <p className="text-[13px] text-muted-foreground">{labelTanggalPanjang(hariIni).replace(/ \d{4}$/, "")}</p>
+              <h1 className="text-[26px] leading-tight font-extrabold tracking-tight text-heading">{namaPanggil}</h1>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Assalamu&apos;alaikum,</p>
+              <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
+              <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
+            </>
+          )}
           {sesi.daftarAmanah.length > 1 && sesi.amanahPn.length > 0 && (
             <Link href="/akun#amanah" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
               <ArrowLeftRight className="size-3.5" /> {labelAmanah(sesi.amanahPn)}

@@ -52,7 +52,7 @@ function BarisIndikator({ i, ringkas, kecil = false }: { i: HasilIndikator; ring
           </span>
         ) : i.kode === "KSBK-2" ? (
           <span>
-            Rata-rata K1 {bilangan(i.target)} staf: {angka(i.realisasi)} · acuan {bilangan(i.standar * 100)}
+            Rata-rata K1 dari {bilangan(i.target)} staf
           </span>
         ) : turunan ? (
           <span>Rata-rata sub-indikator</span>

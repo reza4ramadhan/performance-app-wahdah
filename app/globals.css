@@ -140,10 +140,26 @@
 
 /* Ruang aman bawah untuk navigasi ponsel (iPhone dengan home indicator). */
 .pb-nav {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
 }
 @media (min-width: 1024px) {
   .pb-nav {
     padding-bottom: 2.5rem;
+  }
+}
+
+/* Batang K1 staf tumbuh dari bawah sekali saat Beranda KSBK dibuka. */
+@keyframes tumbuh {
+  from {
+    transform: scaleY(0);
+  }
+}
+.tumbuh {
+  transform-origin: bottom;
+  animation: tumbuh 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tumbuh {
+    animation: none;
   }
 }

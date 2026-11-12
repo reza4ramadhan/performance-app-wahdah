@@ -24,8 +24,8 @@ describe("lencana navigasi bawah", () => {
     expect(tab(sesi("SK"), { "/item": 9, "/tugas": 2 })).toEqual({ "/tugas": 2 });
   });
 
-  it("KSBK: verifikasi dan tugas staf di tabnya sendiri, item laporan bidang di Hari Ini", () => {
-    expect(tab(sesi("KSBK", ["koordinator"], ["SBK"]), { "/item": 1, "/verifikasi": 4, "/tim/tugas": 2 })).toEqual({ "/": 1, "/verifikasi": 4, "/tim/tugas": 2 });
+  it("KSBK: verifikasi dan item sendiri di Beranda, tugas staf dan kegiatan di tabnya sendiri", () => {
+    expect(tab(sesi("KSBK", ["koordinator"], ["SBK"]), { "/item": 1, "/verifikasi": 4, "/tim/tugas": 2, "/tim/kegiatan": 1 })).toEqual({ "/": 5, "/tim/tugas": 2, "/tim/kegiatan": 1 });
   });
 
   it("koordinator lain: antrean verifikasi dan tugas staf terkumpul di tab Tim", () => {
@@ -36,5 +36,26 @@ describe("lencana navigasi bawah", () => {
     const s = sesi("SBK", ["keuangan"]);
     expect(menuUntuk(s).tabBawah.find((t) => t.href === "/tim")?.label).toBe("Kelola");
     expect(tab(s, { "/verifikasi": 5 })).toEqual({ "/tim": 5 });
+  });
+});
+
+describe("menu KSBK", () => {
+  const m = menuUntuk(sesi("KSBK", ["koordinator"], ["SBK"]));
+
+  it("lima tab mengambang tanpa + Catat dan tanpa Akun", () => {
+    expect(m.tabBawah.map((t) => t.href)).toEqual(["/", "/tim/kegiatan", "/tim/tugas", "/jurnal", "/pengembangan-diri"]);
+    expect(m).toMatchObject({ catat: false, mengambang: true });
+  });
+
+  it("sidebar: Utama lalu Kontrol staf; tanpa menu Verifikasi dan Tim hari ini", () => {
+    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf"]);
+    const semua = m.grup.flatMap((g) => g.item.map((x) => x.href));
+    expect(semua).not.toContain("/verifikasi");
+    expect(semua).not.toContain("/tim");
+    expect(semua).toContain("/tim/uji-petik");
+  });
+
+  it("fungsi lain tetap tampil (Admin)", () => {
+    expect(menuUntuk(sesi("KSBK", ["koordinator", "admin"], ["SBK"])).grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf", "Kantor", "Admin"]);
   });
 });

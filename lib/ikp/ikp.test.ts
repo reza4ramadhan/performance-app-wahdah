@@ -85,6 +85,12 @@ function konteks(): KonteksK1 {
 }
 
 const ind = (h: ReturnType<typeof hitungK1>, pn: string, kode: string) => h.get(pn)!.indikator.find((i) => i.kode === kode)!;
+/** KSBK-1 & KSBK-3 nonaktif secara bawaan; Admin bisa mengaktifkannya lagi lewat menu Indikator. */
+function denganPengendalian(ctx: KonteksK1): KonteksK1 {
+  const param = new Map(ctx.param);
+  for (const kode of ["KSBK-1", "KSBK-3"]) param.set(kode, { ...param.get(kode)!, aktif: true });
+  return { ...ctx, param };
+}
 
 describe("skor indikator", () => {
   it("min(100; capaian ÷ standar × 100); target 0 dikecualikan", () => {
@@ -164,14 +170,21 @@ describe("K1 Staf Bidang Kerja: poin tambahan", () => {
 describe("K1 koordinator & Staf Khusus", () => {
   const h = hitungK1(konteks());
 
-  it("KSBK-1: sub a, c, d, e dari jejak waktu (1b nonaktif); KSBK-2 dari K1 staf ÷ 85; KSBK-3 belum jatuh tempo", () => {
-    const k1 = ind(h, "pK", "KSBK-1");
+  it("K1 KSBK bawaan = rata-rata K1 staf apa adanya (hanya KSBK-2 aktif)", () => {
+    const rataStaf = (h.get("pA")!.k1! + h.get("pB")!.k1!) / 2;
+    expect(h.get("pK")!.indikator.map((i) => i.kode)).toEqual(["KSBK-2"]);
+    expect(ind(h, "pK", "KSBK-2")).toMatchObject({ target: 2, standar: 0.85 });
+    expect(ind(h, "pK", "KSBK-2").skor).toBeCloseTo(rataStaf);
+    expect(h.get("pK")!.k1).toBeCloseTo(rataStaf);
+  });
+
+  it("bila diaktifkan Admin: KSBK-1 sub a, c, d, e dari jejak waktu (1b nonaktif); KSBK-3 belum jatuh tempo", () => {
+    const h2 = hitungK1(denganPengendalian(konteks()));
+    const k1 = ind(h2, "pK", "KSBK-1");
     expect(k1.sub!.map((s) => [s.kode, s.target, s.realisasi])).toEqual([["KSBK-1a", 3, 2], ["KSBK-1c", 1, 1], ["KSBK-1d", 1, 1], ["KSBK-1e", 10, 9]]);
     expect(k1.skor).toBeCloseTo(((2 / 3 / 0.9) * 100 + 300) / 4);
-
-    const rataStaf = (h.get("pA")!.k1! + h.get("pB")!.k1!) / 2;
-    expect(ind(h, "pK", "KSBK-2").skor).toBeCloseTo(Math.min(100, rataStaf / 0.85));
-    expect(ind(h, "pK", "KSBK-3")).toMatchObject({ dikecualikan: true, alasan: "Belum jatuh tempo" });
+    expect(ind(h2, "pK", "KSBK-3")).toMatchObject({ dikecualikan: true, alasan: "Belum jatuh tempo" });
+    expect(h2.get("pK")!.k1).toBeCloseTo((k1.skor! + ind(h2, "pK", "KSBK-2").skor!) / 2);
   });
 
   it("SK-TK: tugas jatuh tempo (lewat tenggat atau sudah diselesaikan) jadi target; realisasi tepat waktu & disetujui", () => {
@@ -213,7 +226,7 @@ describe("K1 koordinator & Staf Khusus", () => {
   });
 
   it("item & tugas disetujui setelah batas verifikasi tidak dihitung; kewajiban bulanan jadi jatuh tempo", () => {
-    const ctx = { ...konteks(), batasVerifikasi: w("2026-10-20", "23:00") };
+    const ctx = { ...denganPengendalian(konteks()), batasVerifikasi: w("2026-10-20", "23:00") };
     ctx.tugas = ctx.tugas.map((t) => (t.penugasanId === "pA" ? { ...t, diverifikasiPada: w("2026-10-21") } : t));
     const h2 = hitungK1(ctx);
     expect(ind(h2, "pA", "SBK-1").realisasi).toBe(1); // item ketiga baru diverifikasi 21 Okt

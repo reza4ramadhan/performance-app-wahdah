@@ -18,6 +18,8 @@ export function Cangkang(p: {
   tabBawah: TabBawah[];
   /** Tampilkan tombol + Catat di tengah navigasi bawah. */
   catat: boolean;
+  /** Navigasi bawah berupa bilah mengambang (KSBK). */
+  mengambang?: boolean;
   /** Jumlah antrean per href menu (sidebar) dan per href tab (navigasi bawah). */
   lencana: Record<string, number>;
   lencanaTab: Record<string, number>;
@@ -50,7 +52,7 @@ export function Cangkang(p: {
     <>
       <DaftarkanSW />
       <Sidebar grup={p.grup} nama={p.nama} peran={p.peran} lencana={p.lencana} />
-      <NavBawah tab={p.tabBawah} onCatat={p.catat ? bukaSheet : undefined} lencana={p.lencanaTab} />
+      <NavBawah tab={p.tabBawah} onCatat={p.catat ? bukaSheet : undefined} lencana={p.lencanaTab} mengambang={p.mengambang} />
       <SheetCatat key={putaran} buka={buka} setBuka={setBuka} penugasan={p.penugasan} hariIni={p.hariIni} minTanggal={p.minTanggal} preset={preset} />
     </>
   );

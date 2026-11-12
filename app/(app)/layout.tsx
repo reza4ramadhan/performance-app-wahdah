@@ -28,7 +28,7 @@ async function Navigasi() {
   const sesi = await bacaSesi();
   if (!sesi || sesi.harusGantiPassword) return null;
   const db = await getDb();
-  const { grup, tabBawah, catat } = menuUntuk(sesi);
+  const { grup, tabBawah, catat, mengambang } = menuUntuk(sesi);
   const [param, minTanggal, mengantre] = await Promise.all([
     paramIndikator(db),
     tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
@@ -49,6 +49,7 @@ async function Navigasi() {
       grup={grup}
       tabBawah={tabBawah}
       catat={catat}
+      mengambang={mengambang}
       lencana={mengantre}
       lencanaTab={lencanaTab(tabBawah, grup, mengantre)}
       nama={sesi.nama}

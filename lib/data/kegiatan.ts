@@ -2,12 +2,13 @@
 // Masuk ke penugasan penanggung jawab sebagai item terbuka; staf tinggal menandai selesai.
 
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { schema as s, type Db } from "../db";
 import { pemikulKegiatan } from "../ikp/k1";
 import { indikatorDari } from "../ikp/katalog";
 import { PARAMETER } from "../ikp/tipe";
-import { periodeDari } from "../waktu";
+import { bulanWajibKegiatan, kegiatanBelumDiinput, type KegiatanBelumDiinput } from "../kegiatan-wajib";
+import { periodeDari, rentangPeriode } from "../waktu";
 import { kondisiPenugasanBerlaku, paramIndikator } from "./ikp";
 import { unitDalamBidang } from "./unit";
 
@@ -71,3 +72,14 @@ export async function buatItemOtomatis(db: Db, kegiatan: Kegiatan[], aktorId: st
 /** Item kegiatan yang belum disentuh staf (otomatis, masih terbuka, belum ada tanggal selesai/bukti) boleh ikut terhapus. */
 export const itemBelumDisentuh = (i: typeof s.item.$inferSelect) =>
   !!indikatorDari(i.indikatorKode)?.otomatis && i.status === "terbuka" && !i.tglSelesai && !i.linkBukti;
+
+/** Bidang × bulan wajib (bulan ini; mulai tgl 25 juga bulan depan) yang belum punya kegiatan SKUO sama sekali. */
+export async function kegiatanWajibKosong(db: Db, bidangIds: string[], hariIni: string): Promise<KegiatanBelumDiinput[]> {
+  if (!bidangIds.length) return [];
+  const bulan = bulanWajibKegiatan(hariIni);
+  const rows = await db
+    .select({ unitId: s.kegiatan.unitId, tanggal: s.kegiatan.tanggal })
+    .from(s.kegiatan)
+    .where(and(inArray(s.kegiatan.unitId, bidangIds), gte(s.kegiatan.tanggal, rentangPeriode(bulan[0]).awal), lte(s.kegiatan.tanggal, rentangPeriode(bulan.at(-1)!).akhir)));
+  return kegiatanBelumDiinput(hariIni, bidangIds, (u, p) => rows.filter((r) => r.unitId === u && periodeDari(r.tanggal) === p).length);
+}

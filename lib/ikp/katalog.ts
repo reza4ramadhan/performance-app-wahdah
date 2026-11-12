@@ -209,7 +209,8 @@ export const KATALOG: DefinisiIndikator[] = [
     tenggat: null,
     satuanTenggat: null,
     verifikator: "koordinator",
-    aktif: true,
+    // Nonaktif: K1 KSBK kini murni rata-rata K1 staf (KSBK-2). Admin bisa mengaktifkannya lagi lewat Indikator.
+    aktif: false,
     aturan: "Rata-rata skor 1a, 1c–1e, masing-masing dibatasi 100. Dihitung dari jejak waktu di aplikasi.",
     sub: [
       { kode: "a", nama: "Draf surat diperiksa ≤ 1 hari kerja", aturan: "Item SBK-1 staf yang diverifikasi ≤ 1 hari kerja setelah ditandai selesai." },
@@ -230,7 +231,7 @@ export const KATALOG: DefinisiIndikator[] = [
     satuanTenggat: null,
     verifikator: "koordinator",
     aktif: true,
-    aturan: "Rata-rata K1 staf di bidangnya (tanpa dirinya) ÷ 85 × 100, maksimal 100.",
+    aturan: "Rata-rata K1 staf di bidangnya (tanpa dirinya), apa adanya. Acuan 85 hanya untuk menandai staf yang perlu perhatian.",
   },
   {
     kode: "KSBK-3",
@@ -242,7 +243,8 @@ export const KATALOG: DefinisiIndikator[] = [
     tenggat: 5,
     satuanTenggat: "hari_kerja",
     verifikator: "sekretariat",
-    aktif: true,
+    // Nonaktif bersama KSBK-1: K1 KSBK = rata-rata K1 staf.
+    aktif: false,
     aturan: "Satu laporan per bulan, diserahkan ≤ 5 hari kerja setelah bulan berakhir dan diverifikasi Sekretariat.",
     item: {
       kegiatan: "tidak",

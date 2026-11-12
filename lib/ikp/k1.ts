@@ -311,8 +311,8 @@ class Evaluasi {
           .filter((k): k is number => k !== null);
         const rata = rataRata(nilai);
         if (rata === null) return kosong(def, p.standar, "Belum ada K1 staf");
-        // Rata-rata K1 dipakai sebagai capaian (pecahan) lalu dibagi standar 85.
-        return { ...hasil(def, 1, rata / 100, p.standar), target: nilai.length, realisasi: rata, volumeKecil: false };
+        // Skor = rata-rata K1 staf apa adanya; standar hanya acuan tampilan, tidak membagi skor.
+        return { ...hasil(def, 1, rata / 100, 1), standar: p.standar, target: nilai.length, realisasi: rata, volumeKecil: false };
       }
       default:
         return kosong(def, p.standar, "Belum ada aturan hitung");

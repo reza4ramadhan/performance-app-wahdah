@@ -7,6 +7,7 @@ import { hrefMenu, menuUntuk } from "../menu";
 import type { Sesi } from "../sesi";
 import { hariIni, keUtc, tambahHari } from "../waktu";
 import { jumlahAntrean } from "./antrean";
+import { kegiatanWajibKosong } from "./kegiatan";
 import { jumlahTugasMenunggu, jumlahUsulanMenunggu, kondisiTugasPenugasan } from "./tugas";
 
 /**
@@ -36,6 +37,11 @@ export async function jumlahMengantre(sesi: Sesi, hrefs: ReadonlySet<string>, ca
       return r.n;
     },
     "/verifikasi": () => jumlahAntrean(sesi),
+    // Bulan wajib (bulan ini; mulai tgl 25 juga bulan depan) yang belum punya kegiatan SKUO di bidang KSBK ini.
+    "/tim/kegiatan": async () => {
+      const bidang = sesi.amanahPn.filter((p) => p.peranKerja === "KSBK").map((p) => p.unitId);
+      return (await kegiatanWajibKosong(db, bidang, hariIni(sesi.kantor))).length;
+    },
     // Tugas staf yang diajukan selesai dan usulan Staf Khusus, keduanya menunggu keputusan saya.
     "/tim/tugas": async () => {
       const tim = cakupTim ? sesi.tim.map((b) => b.id) : undefined;

@@ -30,6 +30,8 @@ export type BarisItem = {
   data: Record<string, string>;
   sisa: SisaTenggat | null;
   lewat: boolean;
+  /** Tanggal tenggat (YYYY-MM-DD) apa pun statusnya; null bila indikator tanpa tenggat tanggal. */
+  tenggat: string | null;
 };
 
 /** Judul ringkas item: perihal/judul/uraian, atau nama kegiatan. */
@@ -68,8 +70,9 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
   return rows.map((r) => {
     const kantor = r.kantor as Kantor;
     const today = hariIni(kantor);
-    const t = r.item.status === "terbuka" || r.item.status === "ditolak" ? tenggatItem(r.item, r.kegiatanTanggal, param.get(r.item.indikatorKode)?.tenggat ?? null, libur(kantor), kantor) : null;
-    const sisa = t ? labelSisa(t.tanggal, today, libur(kantor)) : null;
+    const t = tenggatItem(r.item, r.kegiatanTanggal, param.get(r.item.indikatorKode)?.tenggat ?? null, libur(kantor), kantor);
+    const buka = r.item.status === "terbuka" || r.item.status === "ditolak";
+    const sisa = t && buka ? labelSisa(t.tanggal, today, libur(kantor)) : null;
     return {
       id: r.item.id,
       judul: judulItem(r.item.indikatorKode, r.item.data, r.kegiatanNama),
@@ -91,6 +94,7 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
       data: r.item.data,
       sisa,
       lewat: sisa?.nada === "flame",
+      tenggat: t?.tanggal ?? null,
     };
   });
 }

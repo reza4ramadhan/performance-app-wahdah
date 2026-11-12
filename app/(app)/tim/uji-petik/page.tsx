@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Uji petik arsip" };
 export default function HalamanUjiPetik() {
   return (
     <>
-      <Kepala judul="Uji petik arsip" kembali="/tim" sub="KSBK-1e: periksa minimal 10 dokumen arsip bidang setiap bulan. Hitung yang lengkap dan sesuai indeks." />
+      <Kepala judul="Uji petik arsip" kembali="/tim" sub="Periksa minimal 10 dokumen arsip bidang setiap bulan. Hitung yang lengkap dan sesuai indeks." />
       <Suspense fallback={<Kerangka />}>
         <Isi />
       </Suspense>

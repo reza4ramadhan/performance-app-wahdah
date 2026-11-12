@@ -57,7 +57,7 @@ export function Sidebar({ grup, nama, peran, lencana = {} }: { grup: GrupMenu[];
                     >
                       <Ikon className="size-[18px]" strokeWidth={1.9} />
                       <span className="flex-1">{m.label}</span>
-                      <Hitungan n={lencana[m.href] ?? 0} className="h-5 min-w-5 text-[11px]" />
+                      <Hitungan n={lencana[m.lencana ?? m.href] ?? 0} className="h-5 min-w-5 text-[11px]" />
                     </Link>
                   </li>
                 );
@@ -77,9 +77,43 @@ export function Sidebar({ grup, nama, peran, lencana = {} }: { grup: GrupMenu[];
   );
 }
 
-/** Navigasi bawah ponsel: tab sesuai peran (lib/menu.ts), tombol Catat di tengah bila ada, lencana jumlah per href. */
-export function NavBawah({ tab: daftar, onCatat, lencana = {} }: { tab: TabBawah[]; onCatat?: () => void; lencana?: Record<string, number> }) {
+/**
+ * Navigasi bawah ponsel: tab sesuai peran (lib/menu.ts), tombol Catat di tengah bila ada, lencana jumlah per href.
+ * `mengambang`: bilah membulat yang melayang di atas konten; tab aktif jadi pil berwarna utama.
+ */
+export function NavBawah({ tab: daftar, onCatat, lencana = {}, mengambang = false }: { tab: TabBawah[]; onCatat?: () => void; lencana?: Record<string, number>; mengambang?: boolean }) {
   const path = usePathname();
+  if (mengambang)
+    return (
+      <nav aria-label="Navigasi utama" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 lg:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+        <ul className="pointer-events-auto mx-auto flex max-w-md items-stretch gap-1 rounded-[1.75rem] border border-border/80 bg-card/92 p-1.5 shadow-[0_18px_40px_-16px_rgb(8_41_47/0.45),0_2px_8px_rgb(8_41_47/0.08)] backdrop-blur-xl dark:shadow-[0_18px_40px_-12px_rgb(0_0_0/0.7)]">
+          {daftar.map((t) => {
+            const Ikon = IKON_MENU[t.ikon];
+            const on = aktif(path, t.href);
+            const jumlah = lencana[t.href] ?? 0;
+            return (
+              <li key={t.href} className="flex flex-1">
+                <Link
+                  href={t.href}
+                  aria-current={on ? "page" : undefined}
+                  aria-label={jumlah ? `${t.label}, ${jumlah} perlu tindakan` : undefined}
+                  className={cn(
+                    "flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.375rem] text-[11px] font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                    on ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30" : "text-muted-foreground active:bg-muted",
+                  )}
+                >
+                  <span className="relative">
+                    <Ikon className="size-[21px]" strokeWidth={on ? 2.2 : 1.8} />
+                    <Hitungan n={jumlah} className={cn("absolute -top-1.5 left-3.5 ring-2", on ? "ring-primary" : "ring-card")} />
+                  </span>
+                  {t.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    );
   const tab = onCatat ? [...daftar.slice(0, 2), null, ...daftar.slice(2)] : daftar;
   return (
     <nav
