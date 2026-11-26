@@ -149,3 +149,14 @@ Migrasi `drizzle/0011_set_tugas.sql` (1.9–1.11): `set_tugas`, `set_tugas_item`
 - **Admin**: aturan tugas lewat tengah malam per set (jam ganti hari) di halaman ubah set; unggah izin/sakit/cuti per hari di `/absensi`. Tugas rutin pada hari itu keluar dari target SK-TK.
 
 Perbedaan dari rencana: `set_tugas_staf` memakai `penugasan_id` (bukan `pegawai_id`) agar staf rangkap tetap tepat; aturan tengah malam disimpan sebagai jam ganti hari (`ganti_hari_jam`). "Setiap hari" = setiap hari kerja (mengikuti kalender libur). Fitur "tukar dua set sekaligus" di mockup KR-5 belum dibuat.
+
+### Fase 5 (sebagian) — pengingat & notifikasi, selesai di branch `rombak-ux-v2` (26 Nov 2026)
+
+Aturan pesan di [lib/notifikasi.ts](../../lib/notifikasi.ts) (fungsi murni, diuji); pengiriman lewat web push yang sudah ada.
+
+- **Cron `pengingat` pukul 15.00** (sebelumnya 16.00; jadwal UTC di README): Staf Administrasi bila belum ada aktivitas hari ini atau masih ada tugas hari ini/terlambat; Staf Tugas Rutin bila masih ada tugas belum ditandai selesai; koordinator hanya untuk tugas pribadinya.
+- **Cron `tenggat` pagi** untuk koordinator: item dan tugas staf menunggu diperiksa > 1 hari kerja (tautan `/tim/verifikasi`), serta rencana kegiatan yang belum dikonfirmasi sejak tgl 25 sampai batas tgl 5.
+- **Notifikasi kejadian** (langsung dari aksi, tidak pernah menggagalkan aksi): item/tugas ditolak, delegasi baru, rotasi set tugas, usulan disetujui/ditolak, dana SPB cair, checklist kegiatan terbit/bergeser/ditunda/batal, dan PJ baru dari Manage tim.
+- Cron `rutin` masuk README (00.30 WITA).
+
+Belum: **impor rencana SIMAKPRO/RKA tahunan** — menunggu contoh berkas RKA dari pemilik.

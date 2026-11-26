@@ -92,15 +92,19 @@ Password sementara setiap akun ditulis ke `data/kredensial-awal.csv`. Bagikan la
 Semua tugas memakai `POST` dengan header rahasia, dan semuanya idempoten. Jadwal di bawah memakai jam server **UTC**:
 
 ```cron
-# 16.00 WITA: pengingat pegawai Makassar yang belum mengisi (Senin–Jumat)
-0 8 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=makassar"
-# 16.00 WIB: pengingat pegawai Jakarta
-0 9 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=jakarta"
-# 08.00 WITA: koordinator dengan verifikasi tertunda > 1 hari kerja
+# 15.00 WITA: pengingat harian pegawai Makassar (Senin–Jumat) — lib/notifikasi.ts
+0 7 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=makassar"
+# 15.00 WIB: pengingat harian pegawai Jakarta
+0 8 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=jakarta"
+# 08.00 WITA: koordinator — pekerjaan staf menunggu > 1 hari kerja, dan rencana belum dikonfirmasi (tgl 25 s.d. 5)
 0 0 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/tenggat"
 # 00.05 WIB setiap hari: buat periode baru; bulan lalu pindah ke masa verifikasi
 5 17 * * *    curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/tutup-periode"
+# 00.30 WITA setiap hari: terbitkan jadwal tugas rutin (Set Tugas) sampai Minggu pekan depan
+30 16 * * *   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/rutin"
 ```
+
+Notifikasi kejadian (ditolak, delegasi baru, rotasi set tugas, usulan diputuskan, dana SPB cair, checklist kegiatan terbit/bergeser/batal) dikirim langsung dari aksinya, tanpa cron.
 
 `--retry` mengantisipasi *cold start* Neon pada paket gratis.
 

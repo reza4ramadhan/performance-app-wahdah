@@ -754,6 +754,21 @@ describe("Set Tugas & Atur Tugas Staf (rombak v2)", () => {
   });
 });
 
+describe("cron pengingat & notifikasi (rombak v2)", () => {
+  it("pengingat 15.00, pagi koordinator, dan rutin berjalan tanpa galat", async () => {
+    process.env.CRON_SECRET = "rahasia-uji";
+    const { POST } = await import("@/app/api/cron/[tugas]/route");
+    const panggil = (tugas: string, kunci = "rahasia-uji") =>
+      POST(new Request(`http://uji/api/cron/${tugas}?kantor=makassar`, { method: "POST", headers: { authorization: `Bearer ${kunci}` } }), { params: Promise.resolve({ tugas }) } as never);
+    expect((await panggil("pengingat", "salah")).status).toBe(401);
+    for (const t of ["pengingat", "tenggat", "rutin"]) {
+      const r = await panggil(t);
+      expect(r.status).toBe(200);
+      expect(await r.json()).not.toHaveProperty("galat");
+    }
+  });
+});
+
 describe("admin penugasan", () => {
   it("Kepala Kantor dan WaKa tidak perlu memilih unit: otomatis unit Kantor; peran lain wajib unit", async () => {
     sebagai("sekr", ["admin"]);

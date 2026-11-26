@@ -18,7 +18,7 @@ export async function simpanLanggananPush(sub: unknown): Promise<HasilAksi> {
     .insert(s.pushSubscription)
     .values({ pegawaiId: sesi.pegawaiId, endpoint: p.data.endpoint, keys: p.data.keys })
     .onConflictDoUpdate({ target: s.pushSubscription.endpoint, set: { pegawaiId: sesi.pegawaiId, keys: p.data.keys } });
-  const n = await kirimPush([sesi.pegawaiId], { title: "Notifikasi aktif", body: "Pengingat pukul 16.00 akan muncul di perangkat ini.", tag: "uji" });
+  const n = await kirimPush([sesi.pegawaiId], { title: "Notifikasi aktif", body: "Pengingat pukul 15.00 akan muncul di perangkat ini.", tag: "uji" });
   return berhasil(n ? "Notifikasi aktif. Cek notifikasi uji di perangkat Anda." : "Notifikasi tersimpan.");
 }
 

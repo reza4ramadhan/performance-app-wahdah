@@ -73,7 +73,7 @@ export function SakelarNotifikasi() {
     "belum-diatur": "Notifikasi belum diaktifkan di server (kunci VAPID belum diisi).",
     "perlu-pasang": "Di iPhone, pasang aplikasi ke Home Screen dulu (iOS 16.4+).",
     diblokir: "Notifikasi diblokir. Izinkan lewat pengaturan browser.",
-    mati: "Pengingat pukul 16.00 bila belum mengisi.",
+    mati: "Pengingat pukul 15.00, tugas ditolak, dan tugas baru dari koordinator.",
     aktif: "Aktif di perangkat ini.",
   }[status];
 

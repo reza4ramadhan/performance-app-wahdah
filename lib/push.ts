@@ -37,3 +37,17 @@ export async function kirimPush(pegawaiIds: string[], pesan: PesanPush) {
   );
   return terkirim;
 }
+
+/**
+ * Notifikasi kejadian dari Server Action (ditolak, delegasi baru, dll.): tidak pernah menggagalkan aksinya.
+ * Pegawai yang memicu aksi tidak diberi tahu dirinya sendiri (`kecuali`).
+ */
+export async function beritahu(pegawaiIds: (string | null | undefined)[], pesan: PesanPush, kecuali?: string) {
+  const ids = [...new Set(pegawaiIds.filter((x): x is string => !!x && x !== kecuali))];
+  try {
+    return await kirimPush(ids, pesan);
+  } catch (e) {
+    console.error("[push]", e);
+    return 0;
+  }
+}

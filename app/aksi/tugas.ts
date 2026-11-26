@@ -15,8 +15,9 @@ import { getDb, schema as s, type Db } from "@/lib/db";
 import { FREKUENSI_TUGAS, type FrekuensiTugas } from "@/lib/ikp/tipe";
 import { MAKS_JADWAL, MAKS_SEKALIGUS, pecahDaftarJudul, tanggalJadwal } from "@/lib/ikp/tugas";
 import { koordinatorAtauWakil } from "@/lib/akses";
+import { beritahu } from "@/lib/push";
 import { wajibSesi } from "@/lib/sesi";
-import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "@/lib/waktu";
+import { hariIni, keUtc, periodeDari, tambahHari, type Kantor, labelTanggal } from "@/lib/waktu";
 
 const galatDari = (e: z.ZodError) => Object.fromEntries(e.issues.map((i) => [String(i.path[0]), i.message]));
 const tanggal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Isi tanggal.");
@@ -158,6 +159,11 @@ export async function kirimDelegasi(_: HasilAksi | null, fd: FormData): Promise<
   await db.transaction(async (tx) => {
     for (const r of sah) await simpanTugas(tx, r.pn.id, r.kantor as Kantor, rencana, daftar.get(r.pn.id)!, sesi.pegawaiId);
   });
+  await beritahu(
+    sah.map((r) => r.pn.pegawaiId),
+    { title: "Tugas baru dari koordinator", body: `${x.judul} · tenggat ${labelTanggal(x.tanggal)} ${x.jamTenggat.replace(":", ".")}${rencana.linkWajib ? " · link bukti wajib" : ""}`, url: "/", tag: `delegasi-${x.tanggal}-${x.judul.slice(0, 20)}` },
+    sesi.pegawaiId,
+  );
   refresh();
   return berhasil(sah.length > 1 ? `Tugas dikirim ke ${sah.length} staf.` : "Tugas dikirim.");
 }
@@ -217,6 +223,7 @@ export async function verifikasiTugas(ids: string[], keputusan: "setuju" | "tola
         : { status: "ditolak" as const, verifikatorId: sesi.pegawaiId, diverifikasiPada: new Date(), alasanTolak: alasan!.trim(), persen: Math.min(r.j.persen, 99) };
     await db.update(s.tugasKhususJadwal).set(sesudah).where(eq(s.tugasKhususJadwal.id, r.j.id));
     await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: keputusan === "setuju" ? "setujui" : "tolak", entitas: "tugas_khusus_jadwal", entitasId: r.j.id, sebelum: { status: r.j.status }, sesudah, alasan: alasan?.trim() || null });
+    if (keputusan === "tolak") await beritahu([r.pemilikId], { title: "Tugas perlu diperbaiki", body: `Ditolak: “${alasan!.trim()}”. Perbaiki lalu tandai selesai lagi.`, url: `/tugas/${r.j.id}`, tag: `tolak-${r.j.id}` }, sesi.pegawaiId);
     n++;
   }
   refresh();
@@ -356,6 +363,7 @@ export async function putuskanUsulan(ids: string[], keputusan: "setuju" | "tolak
       const sesudah = { ...putusan, status: "ditolak" as const, alasanTolak: alasan!.trim() };
       await db.update(s.usulanTugas).set(sesudah).where(and(eq(s.usulanTugas.id, u.id), eq(s.usulanTugas.status, "diajukan")));
       await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "tolak", entitas: "usulan_tugas", entitasId: u.id, sebelum: { status: u.status }, sesudah, alasan: alasan!.trim() });
+      await beritahu([pn.pegawaiId], { title: "Usulan tugas ditolak", body: `${u.judul}: “${alasan!.trim()}”`, url: "/tugas/usulan", tag: `usulan-${u.id}` }, sesi.pegawaiId);
       n++;
       continue;
     }
@@ -382,7 +390,10 @@ export async function putuskanUsulan(ids: string[], keputusan: "setuju" | "tolak
       await catatAudit(tx, { aktorId: sesi.pegawaiId, aksi: "setujui", entitas: "usulan_tugas", entitasId: u.id, sebelum: { status: u.status }, sesudah: { status: "disetujui", tugasId: t.id } });
       return true;
     });
-    if (jadi) n++;
+    if (jadi) {
+      n++;
+      await beritahu([pn.pegawaiId], { title: "Usulan tugas disetujui", body: `${u.judul} masuk daftar tugas Anda.`, url: "/", tag: `usulan-${u.id}` }, sesi.pegawaiId);
+    }
   }
   refresh();
   if (!n) return gagal(dilewati[0] ?? "Tidak ada usulan yang bisa diproses.");

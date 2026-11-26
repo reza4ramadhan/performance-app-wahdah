@@ -10,9 +10,10 @@ import { buatItemOtomatis } from "@/lib/data/kegiatan";
 import { paramIndikator } from "@/lib/data/ikp";
 import { periksaIsian, skemaItem, type IsianItem } from "@/lib/ikp/form-item";
 import { koordinatorAtauWakil } from "@/lib/akses";
+import { beritahu } from "@/lib/push";
 import { indikatorDari } from "@/lib/ikp/katalog";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
-import { hariIni, jamLokal, keUtc, periodeDari, tambahHari, tanggalLokal, type Kantor } from "@/lib/waktu";
+import { hariIni, jamLokal, keUtc, periodeDari, tambahHari, tanggalLokal, type Kantor, labelTanggal } from "@/lib/waktu";
 
 /** "2026-10-21" atau "2026-10-21T08:15" di zona kantor → Date UTC. */
 function keWaktu(nilai: string, kantor: Kantor) {
@@ -244,6 +245,7 @@ export async function konfirmasiDanaCair(id: string, tanggal: string): Promise<H
   const nilai = { danaCairPada: tanggal, danaCairOleh: sesi.pegawaiId };
   await db.update(s.item).set(nilai).where(eq(s.item.id, id));
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "dana-cair", entitas: "item", entitasId: id, sebelum: { danaCairPada: r.item.danaCairPada }, sesudah: nilai });
+  await beritahu([r.pn.pegawaiId], { title: "Dana SPP sudah cair", body: `Input SPB paling lambat ${labelTanggal(tambahHari(tanggal, 7))}.`, url: `/item/${id}`, tag: `cair-${id}` }, sesi.pegawaiId);
   refresh();
   return berhasil("Tanggal dana cair tersimpan. Tenggat SPB staf berjalan lagi: 7 hari sejak cair.");
 }

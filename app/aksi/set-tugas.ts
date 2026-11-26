@@ -12,9 +12,10 @@ import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s, type Db } from "@/lib/db";
 import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
 import { pemakaiSet, regenerasiRutin } from "@/lib/data/set-tugas";
-import { seninDari } from "@/lib/set-tugas";
+import { beritahu } from "@/lib/push";
+import { seninDari, setBerlaku } from "@/lib/set-tugas";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
-import { hariIni, periodeDari, tambahHari } from "@/lib/waktu";
+import { hariIni, labelTanggal, periodeDari, tambahHari } from "@/lib/waktu";
 
 const galatDari = (e: z.ZodError) => Object.fromEntries(e.issues.map((i) => [String(i.path[0]), i.message]));
 const jam = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Isi jam tenggat.");
@@ -154,9 +155,15 @@ export async function aturSetStaf(penugasanId: string, setTugasId: string | null
   }
   const senin = seninDari(today);
   const pekanMulai = pekan === "ini" ? senin : tambahHari(senin, 7);
+  const sebelum = setBerlaku(await db.select().from(s.setTugasStaf).where(eq(s.setTugasStaf.penugasanId, penugasanId)), pekanMulai);
   await db.insert(s.setTugasStaf).values({ penugasanId, setTugasId, pekanMulai, dibuatOleh: sesi.pegawaiId });
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "atur", entitas: "set_tugas_staf", entitasId: penugasanId, sesudah: { setTugasId, pekanMulai } });
   await regenerasiRutin(db, [penugasanId]);
+  // Staf yang dirotasi menerima notifikasi set tugas barunya (mockup KR-5).
+  if (sebelum !== setTugasId) {
+    const [baru] = setTugasId ? await db.select({ nama: s.setTugas.nama }).from(s.setTugas).where(eq(s.setTugas.id, setTugasId)) : [];
+    await beritahu([pn.pegawaiId], { title: "Set tugas Anda berubah", body: `${baru ? baru.nama : "Tanpa set tugas"} mulai ${pekan === "ini" ? "besok" : `Senin, ${labelTanggal(pekanMulai)}`}.`, url: "/tugas/besok", tag: `set-${penugasanId}-${pekanMulai}` }, sesi.pegawaiId);
+  }
   refresh();
   return berhasil(pekan === "ini" ? "Tersimpan. Berlaku mulai besok." : "Tersimpan untuk pekan depan.");
 }
@@ -212,6 +219,7 @@ export async function putuskanUsulanRutin(usulanId: string, keputusan: "setuju" 
     if (!opsi.alasan?.trim()) return gagal("Tulis alasan penolakan.", { alasan: "Alasan wajib diisi." });
     await db.update(s.usulanTugas).set({ ...putusan, status: "ditolak", alasanTolak: opsi.alasan.trim() }).where(eq(s.usulanTugas.id, usulanId));
     await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "tolak", entitas: "usulan_tugas", entitasId: usulanId, alasan: opsi.alasan.trim() });
+    await beritahu([r.pn.pegawaiId], { title: "Usulan tugas ditolak", body: `${r.u.judul}: “${opsi.alasan.trim()}”`, url: "/tugas/usulan", tag: `usulan-${usulanId}` }, sesi.pegawaiId);
     refresh();
     return berhasil("Usulan ditolak.");
   }
@@ -228,6 +236,7 @@ export async function putuskanUsulanRutin(usulanId: string, keputusan: "setuju" 
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "setujui", entitas: "usulan_tugas", entitasId: usulanId, sesudah: { setTugasId: setId, item: it.id } });
   const pemakai = await pemakaiSet(db, setId);
   await regenerasiRutin(db, pemakai);
+  await beritahu([r.pn.pegawaiId], { title: "Usulan tugas disetujui", body: `${r.u.judul} masuk ke ${set.nama}, mulai besok.`, url: "/tugas/besok", tag: `usulan-${usulanId}` }, sesi.pegawaiId);
   refresh();
   return berhasil(`Disetujui dan masuk ke ${set.nama}. Berlaku mulai besok${pemakai.length ? ` untuk ${pemakai.length} staf` : ""}.`);
 }

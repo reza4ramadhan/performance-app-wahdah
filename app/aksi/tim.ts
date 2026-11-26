@@ -14,8 +14,9 @@ import { unitDalamBidang } from "@/lib/data/unit";
 import { NILAI_K3, type SkorK3 } from "@/lib/ikp/tipe";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
 import { bulanBerikutnya } from "@/lib/kegiatan-wajib";
+import { beritahu } from "@/lib/push";
 import { plotBerlaku } from "@/lib/plot";
-import { hariIni, labelPeriode, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
+import { hariIni, labelPeriode, labelTanggal, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
 const galatDari = (e: z.ZodError) => Object.fromEntries(e.issues.map((i) => [String(i.path[0]), i.message]));
 const tanggal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Isi tanggal.");
@@ -76,6 +77,7 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
     .returning();
   const n = await buatItemOtomatis(db, [k], sesi.pegawaiId);
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "kegiatan", entitasId: k.id, sesudah: { ...k, itemOtomatis: n } });
+  if (n) await beritahu([pj], { title: "Checklist kegiatan baru", body: `${k.nama} · ${labelTanggal(k.tanggal)}: ${n} tugas masuk ke Tugas Anda.`, url: "/", tag: `kegiatan-${k.id}` }, sesi.pegawaiId);
   refresh();
   return berhasil(`Kegiatan tersimpan. ${n} tugas masuk ke penanggung jawab.`);
 }
@@ -143,6 +145,14 @@ export async function ubahStatusKegiatan(id: string, input: unknown): Promise<Ha
   }
   if (x.status === "batal") pesan = "Kegiatan dibatalkan. Checklist yang belum selesai keluar dari target.";
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: `status-${x.status}`, entitas: "kegiatan", entitasId: id, sebelum: { status: k.status, tanggal: k.tanggal }, sesudah, alasan: x.status === "batal" ? x.alasan : undefined });
+  // PJ diberi tahu bila checklist-nya terbit, bergeser, atau keluar dari target.
+  const kabar = {
+    jalan: k.status === "rencana" ? { title: "Checklist kegiatan baru", body: `${k.nama} · ${labelTanggal(k.tanggal)}: pengingat${k.perluSpp ? ", SPP, dan SPB" : ""} masuk ke Tugas Anda.` } : null,
+    geser: { title: "Tanggal kegiatan bergeser", body: `${k.nama} pindah ke ${labelTanggal(tanggalBaru)}. Tenggat checklist ikut bergeser.` },
+    tunda: { title: "Kegiatan ditunda", body: `${k.nama} ditunda ke bulan berikutnya. Checklist yang belum selesai keluar dari target.` },
+    batal: { title: "Kegiatan dibatalkan", body: `${k.nama} batal. Checklist yang belum selesai keluar dari target.` },
+  }[x.status];
+  if (kabar) await beritahu([k.penanggungJawabId], { ...kabar, url: "/", tag: `kegiatan-${id}` }, sesi.pegawaiId);
   refresh();
   return berhasil(pesan);
 }
@@ -188,6 +198,7 @@ export async function simpanPlot(unitId: string, skuoId: string, pegawaiIds: str
       if (item.length) await db.delete(s.item).where(inArray(s.item.id, item.map((i) => i.id)));
       const [b] = await db.update(s.kegiatan).set({ penanggungJawabId: utama }).where(eq(s.kegiatan.id, k.id)).returning();
       await buatItemOtomatis(db, [b], sesi.pegawaiId);
+      await beritahu([utama], { title: "Anda menjadi PJ kegiatan", body: `${k.nama} · ${labelTanggal(k.tanggal)}: checklistnya masuk ke Tugas Anda.`, url: "/", tag: `kegiatan-${k.id}` }, sesi.pegawaiId);
       pindah++;
     }
   }

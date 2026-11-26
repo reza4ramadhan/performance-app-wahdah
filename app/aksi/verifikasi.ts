@@ -7,6 +7,7 @@ import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
 import { paramIndikator } from "@/lib/data/ikp";
+import { beritahu } from "@/lib/push";
 import { wajibSesi } from "@/lib/sesi";
 
 /**
@@ -52,6 +53,7 @@ export async function verifikasiItem(ids: string[], keputusan: "setuju" | "tolak
     };
     await db.update(s.item).set(sesudah).where(eq(s.item.id, r.item.id));
     await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: keputusan === "setuju" ? "setujui" : "tolak", entitas: "item", entitasId: r.item.id, sebelum: { status: r.item.status }, sesudah, alasan: sesudah.alasanTolak });
+    if (keputusan === "tolak") await beritahu([r.pemilikId], { title: "Pekerjaan perlu diperbaiki", body: `Ditolak: “${sesudah.alasanTolak}”. Perbaiki lalu ajukan lagi.`, url: `/item/${r.item.id}`, tag: `tolak-${r.item.id}` }, sesi.pegawaiId);
     n++;
   }
   refresh();
