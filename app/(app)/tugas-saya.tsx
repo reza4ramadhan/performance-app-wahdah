@@ -14,7 +14,25 @@ import { kelompokkanTugasSaya, rentangPekan, unitDari, unitPendek, type BarisTug
 import { cn } from "@/lib/utils";
 import { keUtc, labelTanggal, labelTanggalPanjang, periodeDari } from "@/lib/waktu";
 
-export async function TugasSaya({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
+/**
+ * `segmen`: tab Saya | Tim untuk koordinator (ditampilkan di bawah judul); `sub`: baris kecil di atas judul.
+ * `dasar`: awalan URL filter unit (koordinator: "/?segmen=saya&").
+ */
+export async function TugasSaya({
+  sesi,
+  hariIni,
+  sp,
+  segmen,
+  sub,
+  dasar = "/?",
+}: {
+  sesi: Sesi;
+  hariIni: string;
+  sp: Record<string, string | string[] | undefined>;
+  segmen?: React.ReactNode;
+  sub?: string;
+  dasar?: string;
+}) {
   const [{ baris }, { hasil }] = await Promise.all([muatTugasSaya(sesi), hasilPeriode(periodeDari(hariIni))]);
   const k1 = hasil.find((h) => h.pegawaiId === sesi.pegawaiId)?.k1 ?? null;
   const unit = unitDari(baris.length ? baris : sesi.penugasan.map((p) => ({ unitId: p.unitId, unitNama: p.unitNama })));
@@ -28,8 +46,8 @@ export async function TugasSaya({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: st
     <div className="mx-auto max-w-xl pb-24 lg:pb-0">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-[13px] text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
-          <h1 className="text-xl font-bold text-heading">Tugas saya</h1>
+          <p className="text-[13px] text-muted-foreground">{sub ?? labelTanggalPanjang(hariIni)}</p>
+          <h1 className="text-xl font-bold text-heading">{segmen ? "Tugas" : "Tugas saya"}</h1>
           <Link href="/progres" className="mt-0.5 inline-flex h-7 items-center gap-1.5 self-start rounded-full border border-border bg-card px-2.5 text-[12.5px]">
             <span className="text-muted-foreground">Skor K1 berjalan</span>
             <strong className="text-primary">{k1 === null ? "belum ada" : angka(k1)}</strong>
@@ -40,6 +58,8 @@ export async function TugasSaya({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: st
           <Avatar nama={sesi.nama} ukuran="lg" />
         </Link>
       </header>
+
+      {segmen}
 
       {sp.akses === "ditolak" && <p className="mb-4 rounded-xl bg-flame-500/10 px-4 py-3 text-sm font-medium text-flame-700 dark:text-flame-100">Halaman itu tidak tersedia untuk peran Anda.</p>}
 
@@ -56,7 +76,7 @@ export async function TugasSaya({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: st
             return (
               <Link
                 key={u.id ?? "semua"}
-                href={u.id ? `/?unit=${u.id}` : "/"}
+                href={u.id ? `${dasar}unit=${u.id}` : dasar.replace(/[?&]$/, "") || "/"}
                 aria-current={on ? "true" : undefined}
                 className={cn("inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[13px]", on ? "bg-heading font-semibold text-white dark:bg-primary" : "border border-border bg-card font-medium")}
               >

@@ -1,0 +1,1 @@
+ALTER TABLE "tugas_khusus" ADD COLUMN "link_wajib" boolean DEFAULT false NOT NULL;

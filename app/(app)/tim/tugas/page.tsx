@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { koordinatorAtauWakil, idKoordinator } from "@/lib/akses";
 import { ClipboardList, Trash2 } from "lucide-react";
 import { TombolAksi } from "@/components/app/tombol-aksi";
-import { FormTugasBaru, KartuTugas, KartuUsulan, PutusanTugas } from "@/components/app/tugas";
+import { FormDelegasi } from "@/components/app/form-delegasi";
+import { KartuUsulan, PutusanTugas } from "@/components/app/tugas";
 import { Batang, JudulBagian, Kartu, Kepala, Kerangka, Kosong, Lencana } from "@/components/app/ui";
 import { hapusTugasKhusus, putuskanUsulan } from "@/app/aksi/tugas";
 import { getDb, schema as s } from "@/lib/db";
 import { anggotaTim } from "@/lib/data/tim";
+import { bebanPekanIni } from "@/lib/data/tim-koordinator";
+import { unitPendek } from "@/lib/tugas-saya";
 import { daftarTugas, daftarUsulan, kondisiTugasMenunggu, kondisiUsulanMenunggu, type BarisUsulan } from "@/lib/data/tugas";
 import { kelompokAmanah } from "@/lib/amanah";
 import { LABEL_FREKUENSI_TUGAS, LABEL_PERAN_KERJA } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, labelTanggal, periodeDari, rentangPeriode, tanggalLokal, type Kantor } from "@/lib/waktu";
 
-export const metadata: Metadata = { title: "Tugas khusus staf" };
+export const metadata: Metadata = { title: "Delegasi" };
 
 export default function HalamanTugasStaf() {
   return (
     <>
-      <Kepala judul="Tugas khusus" kembali="/tim" sub="Beri tugas ber-tenggat kepada staf, putuskan usulan tugas dari Staf Khusus, lalu verifikasi yang ditandai selesai. Tugas selesai tepat waktu menambah K1 staf." />
+      <Kepala judul="Delegasi" kembali="/?segmen=tim" sub="Tugas sekali untuk staf, dengan tenggat tanggal dan jam. Selesai tepat waktu menambah K1 staf; pemeriksaan ada di Verifikasi." />
       <Suspense fallback={<Kerangka />}>
         <Isi />
       </Suspense>
@@ -33,10 +37,14 @@ async function Isi() {
   const today = hariIni(sesi.kantor);
   // Tugas khusus hanya untuk penugasan yang saya koordinasikan (bukan yang sekadar saya nilai K3-nya).
   // Satu pilihan per amanah: staf yang rangkap SKUO di bidang yang sama cukup tampil sekali (K1-nya pun gabungan).
-  const staf = (await anggotaTim(sesi)).flatMap((t) => {
+  const tim = await anggotaTim(sesi);
+  const staf = tim.flatMap((t) => {
     const amanah = kelompokAmanah(t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && koordinatorAtauWakil(sesi, p.koordinatorId)));
-    return amanah.map((g) => ({ id: g[0].id, label: amanah.length > 1 ? `${t.nama} · ${LABEL_PERAN_KERJA[g[0].peranKerja]} ${g.map((p) => p.unitNama).join(", ")}` : t.nama }));
+    return amanah.map((g) => ({ id: g[0].id, pegawaiId: t.pegawaiId, label: amanah.length > 1 ? `${t.nama} · ${LABEL_PERAN_KERJA[g[0].peranKerja]} ${g.map((p) => p.unitNama).join(", ")}` : t.nama }));
   });
+  // Beban lintas unit: jumlah tugas staf pekan ini dari semua unit (docs/rombak-v2/01 Rangkap jabatan).
+  const beban = await bebanPekanIni([...new Set(staf.map((x) => x.pegawaiId))], sesi.kantor);
+  const unitSaya = new Set(sesi.penugasan.filter((p) => p.peranKerja === "KSBK").map((p) => p.unitNama));
   const db = await getDb();
   const [menunggu, usulan, induk] = await Promise.all([
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
@@ -74,19 +82,12 @@ async function Isi() {
           </section>
         )}
         {menunggu.length > 0 && (
-          <section>
-            <JudulBagian>Menunggu verifikasi · {menunggu.length}</JudulBagian>
-            <ul className="space-y-2">
-              {menunggu.map((t) => (
-                <li key={t.id}>
-                  <KartuTugas tugas={t} sebagai="pemberi" tampilStaf />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <Link href="/tim/verifikasi?jenis=Delegasi" className="flex min-h-12 items-center justify-between rounded-2xl border border-primary/40 bg-primary/8 px-4 text-sm font-semibold text-heading">
+            {menunggu.length} tugas menunggu diperiksa <span className="text-primary">Periksa ›</span>
+          </Link>
         )}
         <section>
-          <JudulBagian>Tugas yang diberikan</JudulBagian>
+          <JudulBagian>Sudah diberikan</JudulBagian>
           {induk.length ? (
             <ul className="space-y-2">
               {induk.map(({ t, staf: nama }) => {
@@ -126,8 +127,14 @@ async function Isi() {
 
       {staf.length > 0 && (
         <Kartu className="order-1 lg:order-2 lg:sticky lg:top-8">
-          <h2 className="text-[15px] font-semibold text-heading">Tugas baru</h2>
-          <FormTugasBaru staf={staf} hariIni={today} />
+          <h2 className="mb-3 text-[15px] font-semibold text-heading">Tugas baru</h2>
+          <FormDelegasi
+            hariIni={today}
+            staf={staf.map((x) => {
+              const b = beban.get(x.pegawaiId);
+              return { penugasanId: x.id, nama: x.label, beban: b?.n ?? 0, unitLain: [...(b?.unit ?? [])].filter((u) => !unitSaya.has(u)).map((u) => unitPendek(u).split(" ")[0]) };
+            })}
+          />
         </Kartu>
       )}
     </div>

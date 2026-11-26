@@ -13,7 +13,9 @@ import { stafBidang } from "@/lib/data/tim";
 import { unitDalamBidang } from "@/lib/data/unit";
 import { NILAI_K3, type SkorK3 } from "@/lib/ikp/tipe";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
-import { hariIni, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
+import { bulanBerikutnya } from "@/lib/kegiatan-wajib";
+import { plotBerlaku } from "@/lib/plot";
+import { hariIni, labelPeriode, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
 const galatDari = (e: z.ZodError) => Object.fromEntries(e.issues.map((i) => [String(i.path[0]), i.message]));
 const tanggal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Isi tanggal.");
@@ -76,6 +78,122 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "kegiatan", entitasId: k.id, sesudah: { ...k, itemOtomatis: n } });
   refresh();
   return berhasil(`Kegiatan tersimpan. ${n} tugas masuk ke penanggung jawab.`);
+}
+
+// ── Konfirmasi rencana (rombak v2, mockup Kor-3) ─────────────────────────────
+
+const skemaStatusKegiatan = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("jalan") }),
+  z.object({ status: z.literal("geser"), tanggal }),
+  z.object({ status: z.literal("tunda") }),
+  z.object({ status: z.literal("batal"), alasan: z.string().trim().min(3, "Tulis alasan batal.").max(300) }),
+]);
+
+/**
+ * Status satu kegiatan: Jalan · Geser (tanggal baru) · Ditunda (masuk rencana bulan berikutnya) · Batal (alasan wajib).
+ * Checklist staf dibuat saat Jalan/Geser. Tunda/Batal: item terbuka tetap tersimpan tetapi keluar dari target
+ * (K1 hanya menghitung kegiatan jalan/geser). Geser: tenggat checklist ikut bergeser karena dibaca dari tanggal kegiatan.
+ */
+export async function ubahStatusKegiatan(id: string, input: unknown): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  const p = skemaStatusKegiatan.safeParse(input);
+  if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
+  const db = await getDb();
+  const [k] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.id, id));
+  if (!k || !pengelolaUnit(sesi, k.unitId)) return gagal("Kegiatan tidak ditemukan.");
+  if (k.status === "tunda") return gagal("Kegiatan ini sudah ditunda ke bulan berikutnya; ubah salinannya di rencana bulan itu.");
+  const x = p.data;
+  const tanggalBaru = x.status === "geser" ? x.tanggal : k.tanggal;
+  for (const per of new Set([periodeDari(k.tanggal), periodeDari(tanggalBaru)]))
+    if (["sementara", "disahkan"].includes(await periodeStatus(per))) return gagal("Periode kegiatan itu sudah dikunci.");
+  if (x.status === "geser" && x.tanggal === k.tanggal) return gagal("Pilih tanggal baru.", { tanggal: "Tanggal baru sama dengan tanggal semula." });
+
+  const sesudah = {
+    status: x.status,
+    tanggal: tanggalBaru,
+    tanggalRencana: x.status === "geser" ? (k.tanggalRencana ?? k.tanggal) : k.tanggalRencana,
+    alasanBatal: x.status === "batal" ? x.alasan : null,
+  };
+  const [baru] = await db.update(s.kegiatan).set(sesudah).where(eq(s.kegiatan.id, id)).returning();
+  let pesan = "Status tersimpan.";
+  if (x.status === "geser") {
+    // Item kegiatan ikut pindah periode bila tanggalnya pindah bulan.
+    await db.update(s.item).set({ periodeId: periodeDari(tanggalBaru) }).where(and(eq(s.item.kegiatanId, id), inArray(s.item.status, ["terbuka", "ditolak"])));
+  }
+  if (x.status === "jalan" || x.status === "geser") {
+    const n = await buatItemOtomatis(db, [baru], sesi.pegawaiId);
+    pesan = n ? `Tersimpan. ${n} checklist masuk ke PJ.` : "Tersimpan.";
+  }
+  if (x.status === "tunda") {
+    const tgl = bulanBerikutnya(k.tanggal);
+    await db.insert(s.kegiatan).values({
+      unitId: k.unitId,
+      skuoId: k.skuoId,
+      nama: k.nama,
+      tanggal: tgl,
+      tanggalRencana: tgl,
+      perluSpp: k.perluSpp,
+      perluSpb: k.perluSpb,
+      penanggungJawabId: k.penanggungJawabId,
+      dibuatOleh: sesi.pegawaiId,
+      sumber: "rencana",
+      status: "rencana",
+    });
+    pesan = `Ditunda. Masuk rencana ${labelPeriode(periodeDari(tgl))} untuk dikonfirmasi lagi.`;
+  }
+  if (x.status === "batal") pesan = "Kegiatan dibatalkan. Checklist yang belum selesai keluar dari target.";
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: `status-${x.status}`, entitas: "kegiatan", entitasId: id, sebelum: { status: k.status, tanggal: k.tanggal }, sesudah, alasan: x.status === "batal" ? x.alasan : undefined });
+  refresh();
+  return berhasil(pesan);
+}
+
+// ── Manage tim: plot staf ke departemen (rombak v2, mockup Kor-5) ─────────────
+
+/**
+ * Atur staf yang melayani satu departemen (SKUO) dan PJ utamanya, berlaku mulai hari ini. Kegiatan departemen itu
+ * yang belum berjalan dan checklist-nya belum disentuh pindah ke PJ baru; yang sudah berjalan tetap pada PJ lama.
+ */
+export async function simpanPlot(unitId: string, skuoId: string, pegawaiIds: string[], utamaId: string | null): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  if (!pengelolaUnit(sesi, unitId)) return gagal("Hanya koordinator unit ini yang bisa mengatur tim.");
+  const db = await getDb();
+  const today = hariIni(sesi.kantor);
+  const periode = periodeDari(today);
+  if (!(await unitDalamBidang(db, unitId)).includes(skuoId) || skuoId === unitId) return gagal("Departemen tidak berada di unit ini.");
+  const staf = new Set((await stafBidang(db, unitId, periode)).map((x) => x.id));
+  const pilih = [...new Set(pegawaiIds)];
+  if (pilih.some((x) => !staf.has(x))) return gagal("Hanya staf unit ini (sesuai SK) yang bisa diplot.");
+  const utama = utamaId && pilih.includes(utamaId) ? utamaId : pilih.length === 1 ? pilih[0] : null;
+  if (pilih.length > 1 && !utama) return gagal("Pilih PJ utama bila departemen dilayani lebih dari satu staf.");
+
+  const lama = plotBerlaku(await db.select().from(s.plotSkuo).where(and(eq(s.plotSkuo.unitId, unitId), eq(s.plotSkuo.skuoId, skuoId))), today);
+  const baris: (typeof s.plotSkuo.$inferInsert)[] = [];
+  for (const l of lama) if (!pilih.includes(l.pegawaiId)) baris.push({ unitId, skuoId, pegawaiId: l.pegawaiId, utama: false, aktif: false, berlakuMulai: today, dibuatOleh: sesi.pegawaiId });
+  for (const id of pilih) {
+    const l = lama.find((x) => x.pegawaiId === id);
+    if (!l || l.utama !== (id === utama)) baris.push({ unitId, skuoId, pegawaiId: id, utama: id === utama, aktif: true, berlakuMulai: today, dibuatOleh: sesi.pegawaiId });
+  }
+  if (!baris.length) return berhasil("Tidak ada perubahan.");
+  await db.insert(s.plotSkuo).values(baris);
+
+  // Pindahkan kegiatan yang belum berjalan (hari ini atau sesudahnya) ke PJ utama baru, bila checklist belum disentuh.
+  let pindah = 0;
+  const pjLama = lama.find((l) => l.utama)?.pegawaiId ?? (lama.length === 1 ? lama[0].pegawaiId : null);
+  if (utama && utama !== pjLama) {
+    const kegiatan = await db.select().from(s.kegiatan).where(and(eq(s.kegiatan.unitId, unitId), eq(s.kegiatan.skuoId, skuoId), gte(s.kegiatan.tanggal, today), inArray(s.kegiatan.status, ["rencana", "jalan", "geser"])));
+    for (const k of kegiatan) {
+      if (k.penanggungJawabId === utama) continue;
+      const item = await db.select().from(s.item).where(eq(s.item.kegiatanId, k.id));
+      if (item.some((i) => !itemBelumDisentuh(i))) continue;
+      if (item.length) await db.delete(s.item).where(inArray(s.item.id, item.map((i) => i.id)));
+      const [b] = await db.update(s.kegiatan).set({ penanggungJawabId: utama }).where(eq(s.kegiatan.id, k.id)).returning();
+      await buatItemOtomatis(db, [b], sesi.pegawaiId);
+      pindah++;
+    }
+  }
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "plot", entitas: "plot_skuo", entitasId: skuoId, sebelum: lama, sesudah: { staf: pilih, utama, kegiatanPindah: pindah } });
+  refresh();
+  return berhasil(pindah ? `Plot tersimpan. ${pindah} kegiatan yang belum berjalan pindah ke PJ baru.` : "Plot tersimpan.");
 }
 
 export async function hapusKegiatan(id: string): Promise<HasilAksi> {

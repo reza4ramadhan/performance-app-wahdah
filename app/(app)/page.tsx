@@ -17,7 +17,7 @@ import { pemikulKegiatan } from "@/lib/ikp/k1";
 import { idKoordinator, pimpinan } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
-import { HariIniKsbk } from "./hari-ini-ksbk";
+import { TugasKoordinator } from "./tugas-koordinator";
 import { HariIniSk } from "./hari-ini-sk";
 import { TugasSaya } from "./tugas-saya";
 
@@ -38,7 +38,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   // Staf Khusus punya dashboard sendiri yang berpusat pada tugas khusus.
   if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} hariIni={today} sp={sp} />;
   // KSBK: dashboard pemantauan K1 staf, kegiatan SKUO, tugas khusus, dan verifikasi.
-  if (sesi.amanah?.peranKerja === "KSBK") return <HariIniKsbk sesi={sesi} hariIni={today} sp={sp} />;
+  if (sesi.amanah?.peranKerja === "KSBK") return <TugasKoordinator sesi={sesi} hariIni={today} sp={sp} />;
   // Rombak v2: Staf Administrasi membuka tab Tugas · Saya (daftar gabungan).
   if (sesi.amanah?.peranKerja === "SBK") return <TugasSaya sesi={sesi} hariIni={today} sp={sp} />;
   const db = await getDb();

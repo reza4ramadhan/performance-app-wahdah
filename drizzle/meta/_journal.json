@@ -71,6 +71,13 @@
       "when": 1795674696776,
       "tag": "0009_rombak_v2_data",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795676625111,
+      "tag": "0010_delegasi_link_wajib",
+      "breakpoints": true
     }
   ]
 }

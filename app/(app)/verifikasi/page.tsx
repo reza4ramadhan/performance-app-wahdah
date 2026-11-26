@@ -9,6 +9,7 @@ import { daftarItem } from "@/lib/data/item";
 import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/data/tugas";
 import { ringkasanTugasTim } from "@/lib/format";
 import { getDb } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { wajibPeran } from "@/lib/sesi";
 import { idKoordinator } from "@/lib/akses";
 
@@ -27,6 +28,8 @@ export default function HalamanVerifikasi() {
 
 async function Isi() {
   const sesi = await wajibPeran("koordinator", "keuangan", "admin", "waka", "kepala");
+  // Rombak v2: koordinator unit memeriksa lewat segmen Tim.
+  if (sesi.amanah?.peranKerja === "KSBK") redirect("/tim/verifikasi");
   const db = await getDb();
   const [items, libur, tugas, usulan] = await Promise.all([
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),

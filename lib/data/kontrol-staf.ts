@@ -53,7 +53,8 @@ export async function kontrolStaf(sesi: Sesi) {
   ]);
 
   // SBK binaan amanah ini; staf yang rangkap SKUO di bidang yang sama tampil sekali (K1-nya gabungan).
-  const sbk = tim.map((t) => ({ ...t, sbk: t.penugasan.filter((p) => p.peranKerja === "SBK") })).filter((t) => t.sbk.length);
+  // Staf administrasi (SBK) dan tugas rutin (SK) binaan saya.
+  const sbk = tim.map((t) => ({ ...t, sbk: t.penugasan.filter((p) => p.peranKerja === "SBK" || p.peranKerja === "SK") })).filter((t) => t.sbk.length);
   const pnStaf = sbk.flatMap((t) => t.sbk.map((p) => p.id));
   const [itemStaf, tugasStaf] = await Promise.all([
     pnStaf.length ? daftarItem(kondisiItemPenugasan(pnStaf, ["terbuka", "ditolak"]), { kantor: sesi.kantor, batas: 400 }) : Promise.resolve([]),

@@ -13,27 +13,22 @@ export type GrupMenu = { judul: string; item: ItemMenu[] };
 export type TabBawah = { href: string; label: string; ikon: NamaIkonMenu; lencana?: string };
 
 /**
- * Menu utama KSBK: Beranda (kontrol staf + verifikasi), input kegiatan SKUO, tugas staf, jurnal, dan belajar.
- * Sama untuk sidebar dan navigasi bawah; verifikasi tidak punya menu sendiri, angkanya tampil di Beranda.
+ * Koordinator (dan Wakil) unit — rombak v2: 4 tab sama dengan staf. Fungsi koordinator ada di segmen Tim pada tab
+ * Tugas; sidebar desktop menampilkannya langsung. Angka antrean verifikasi tampil di tab Tugas.
  */
-const UTAMA_KSBK: ItemMenu[] = [
-  { href: "/", label: "Beranda", ikon: "hari-ini", lencana: "/verifikasi" },
-  { href: "/tim/kegiatan", label: "Kegiatan SKUO", ikon: "kegiatan" },
-  { href: "/tim/tugas", label: "Tugas staf", ikon: "tugas" },
+const UTAMA_KOORDINATOR: ItemMenu[] = [
+  { href: "/", label: "Tugas", ikon: "tugas", lencana: "/verifikasi" },
   { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
-  { href: "/jurnal?tab=belajar", label: "Belajar", ikon: "belajar" },
+  { href: "/progres", label: "Progres", ikon: "progres" },
+  { href: "/akun", label: "Akun", ikon: "akun" },
 ];
 
-/** Menu pendukung KSBK; di ponsel tampil di bagian bawah Beranda. */
-export const KONTROL_KSBK: ItemMenu[] = [
-  { href: "/tim/catatan", label: "Catatan perilaku", pendek: "Catatan", ikon: "catatan", sub: "Bahan penilaian K3 staf" },
-  { href: "/tim/k3", label: "Penilaian K3", pendek: "Nilai K3", ikon: "k3", sub: "Nilai staf di akhir bulan" },
-  { href: "/tim/jurnal", label: "Jurnal staf", ikon: "jurnal", sub: "Pekerjaan di luar indikator" },
-  { href: "/tim/uji-petik", label: "Uji petik arsip", pendek: "Uji petik", ikon: "arsip", sub: "Periksa kelengkapan arsip bidang" },
-  { href: "/tim/k4", label: "Periksa K4", ikon: "k4", sub: "Usulan inovasi staf" },
-  { href: "/item", label: "Item saya", ikon: "item", sub: "Item yang Anda catat sendiri" },
-  { href: "/progres", label: "Progres", ikon: "progres", sub: "Rincian K1 Anda" },
-  { href: "/k4", label: "Inovasi K4", ikon: "k4", sub: "Usulan inovasi Anda" },
+/** Segmen Tim (tab Tugas) koordinator unit administrasi A–M. */
+export const TIM_KOORDINATOR: ItemMenu[] = [
+  { href: "/tim/verifikasi", label: "Verifikasi", ikon: "verifikasi", lencana: "/verifikasi" },
+  { href: "/tim/kegiatan", label: "Jadwal", ikon: "kegiatan", sub: "Konfirmasi rencana" },
+  { href: "/tim/tugas", label: "Delegasi", ikon: "tugas" },
+  { href: "/tim/plot", label: "Manage tim", ikon: "tim" },
 ];
 
 /**
@@ -75,11 +70,11 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
           { href: "/k4", label: "Inovasi K4", ikon: "k4" },
         ],
       };
-  // KSBK: menu tim sudah tercakup di Utama & Kontrol staf.
+  // Koordinator: Utama (4 tab) lalu Tim (segmen Tim).
   const grup: GrupMenu[] = ksbk
     ? [
-        { judul: "Utama", item: UTAMA_KSBK },
-        { judul: "Kontrol staf", item: KONTROL_KSBK },
+        { judul: "Utama", item: UTAMA_KOORDINATOR },
+        { judul: "Tim", item: TIM_KOORDINATOR },
       ]
     : [saya];
 
@@ -145,7 +140,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
    * tengah, dan tab Tim/Kelola bila punya peran selain pegawai biasa.
    */
   const tabBawah: TabBawah[] = ksbk
-    ? UTAMA_KSBK.map((m) => ({ ...m, label: m.href === "/tim/kegiatan" ? "Kegiatan" : m.href === "/tim/tugas" ? "Tugas" : m.label }))
+    ? UTAMA_KOORDINATOR
     : staf
       ? [
           { href: "/", label: "Tugas", ikon: "tugas" },
@@ -161,7 +156,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
         { href: "/akun", label: "Akun", ikon: "akun" },
       ];
   // Staf: + Catat berupa tombol melayang di tab Tugas (bukan di tengah navigasi).
-  return { grup, kelola, labelKelola, tabBawah, catat: !ksbk && !staf, mengambang: ksbk };
+  return { grup, kelola, labelKelola, tabBawah, catat: !ksbk && !staf, mengambang: false };
 }
 
 /** Semua href menu dan tab (termasuk kunci `lencana`): dasar untuk menghitung lencana antrean. */

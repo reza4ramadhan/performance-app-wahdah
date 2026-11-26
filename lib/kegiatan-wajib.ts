@@ -8,6 +8,15 @@ export const TANGGAL_BATAS_INPUT = 5;
 /** Mulai tanggal ini, kegiatan bulan depan ikut diingatkan supaya batas tanggal 5 tidak terlewat. */
 export const TANGGAL_INGAT_BULAN_DEPAN = 25;
 
+/** Tanggal yang sama bulan berikutnya, dibatasi akhir bulan (kegiatan Ditunda → rencana bulan depan). */
+export function bulanBerikutnya(tanggal: string): string {
+  const [y, m, d] = tanggal.split("-").map(Number);
+  const akhir = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return `${ny}-${String(nm).padStart(2, "0")}-${String(Math.min(d, akhir)).padStart(2, "0")}`;
+}
+
 export type KegiatanBelumDiinput = {
   unitId: string;
   periode: string;

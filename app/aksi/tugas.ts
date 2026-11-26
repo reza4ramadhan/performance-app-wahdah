@@ -65,7 +65,7 @@ function daftarJudulDari(x: { cara: "satu" | "banyak"; judul?: string; daftarJud
   return { judul };
 }
 
-type RencanaTugas = { judul: string; uraian?: string | null; frekuensi: FrekuensiTugas; tanggalMulai: string; tanggalAkhir?: string; jamTenggat: string };
+type RencanaTugas = { judul: string; uraian?: string | null; frekuensi: FrekuensiTugas; tanggalMulai: string; tanggalAkhir?: string; jamTenggat: string; linkWajib?: boolean };
 
 /** Tanggal-tanggal jadwal yang sah untuk rencana tugas, atau galat per field. */
 async function rencanaJadwal(db: Db, kantor: Kantor, x: Omit<RencanaTugas, "judul" | "uraian" | "jamTenggat">): Promise<{ daftar: string[] } | Extract<HasilAksi, { ok: false }>> {
@@ -85,7 +85,7 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 async function simpanTugas(db: Db | Tx, penugasanId: string, kantor: Kantor, x: RencanaTugas, daftar: string[], oleh: string) {
   const [t] = await db
     .insert(s.tugasKhusus)
-    .values({ penugasanId, judul: x.judul, uraian: x.uraian || null, frekuensi: x.frekuensi, tanggalMulai: x.tanggalMulai, tanggalAkhir: x.frekuensi === "sekali" ? x.tanggalMulai : x.tanggalAkhir!, jamTenggat: x.jamTenggat, dibuatOleh: oleh })
+    .values({ penugasanId, judul: x.judul, uraian: x.uraian || null, frekuensi: x.frekuensi, tanggalMulai: x.tanggalMulai, tanggalAkhir: x.frekuensi === "sekali" ? x.tanggalMulai : x.tanggalAkhir!, jamTenggat: x.jamTenggat, linkWajib: !!x.linkWajib, dibuatOleh: oleh })
     .returning();
   await db.insert(s.tugasKhususJadwal).values(daftar.map((d) => ({ tugasId: t.id, periodeId: periodeDari(d), tenggat: keUtc(d, kantor, x.jamTenggat) })));
   await catatAudit(db, { aktorId: oleh, aksi: "buat", entitas: "tugas_khusus", entitasId: t.id, sesudah: { ...t, jadwal: daftar.length } });
@@ -119,6 +119,47 @@ export async function simpanTugasKhusus(_: HasilAksi | null, fd: FormData): Prom
   refresh();
   const jadwal = r.daftar.length > 1 ? ` dengan ${r.daftar.length} jadwal${j.judul.length > 1 ? " masing-masing" : ""}` : "";
   return berhasil(j.judul.length > 1 ? `${j.judul.length} tugas tersimpan${jadwal}.` : `Tugas tersimpan${jadwal}.`);
+}
+
+const skemaDelegasi = z.object({
+  penugasanId: z.array(z.string().min(1)).min(1, "Pilih minimal satu staf.").max(30),
+  judul: judulTugas,
+  uraian: z.string().trim().max(1000).optional(),
+  tanggal,
+  jamTenggat: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Isi jam tenggat."),
+  linkWajib: z.literal("on").optional(),
+});
+
+/**
+ * Delegasi (rombak v2, mockup Kor-4): satu tugas sekali untuk satu atau beberapa staf sekaligus, dengan tenggat
+ * tanggal + jam dan pilihan link bukti wajib. Satu baris tugas per staf; semua tersimpan atau tidak sama sekali.
+ */
+export async function kirimDelegasi(_: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  const p = skemaDelegasi.safeParse({ ...Object.fromEntries(fd), penugasanId: fd.getAll("penugasanId").map(String).filter(Boolean) });
+  if (!p.success) return gagal("Periksa isian delegasi.", galatDari(p.error));
+  const x = p.data;
+  const db = await getDb();
+  const rows = await db
+    .select({ pn: s.penugasan, kantor: s.pegawai.kantor })
+    .from(s.penugasan)
+    .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+    .where(and(inArray(s.penugasan.id, x.penugasanId), kondisiPenugasanBerlaku(periodeDari(hariIni(sesi.kantor)))));
+  const sah = rows.filter((r) => koordinatorAtauWakil(sesi, r.pn.koordinatorId) && r.pn.pegawaiId !== sesi.pegawaiId && ["SBK", "SK"].includes(r.pn.peranKerja));
+  if (sah.length !== new Set(x.penugasanId).size) return gagal("Periksa staf.", { penugasanId: "Delegasi hanya untuk staf yang Anda koordinasikan." });
+  const rencana = { judul: x.judul, uraian: x.uraian || null, frekuensi: "sekali" as const, tanggalMulai: x.tanggal, jamTenggat: x.jamTenggat, linkWajib: x.linkWajib === "on" };
+  const daftar = new Map<string, string[]>();
+  for (const r of sah) {
+    const kantor = r.kantor as Kantor;
+    const j = await rencanaJadwal(db, kantor, rencana);
+    if (!("daftar" in j)) return j.galat?.tanggalMulai ? gagal(j.pesan, { tanggal: j.galat.tanggalMulai }) : j.galat?.tanggalAkhir ? gagal("Periksa tanggal.", { tanggal: "Tanggal tenggat jatuh pada hari libur." }) : j;
+    daftar.set(r.pn.id, j.daftar);
+  }
+  await db.transaction(async (tx) => {
+    for (const r of sah) await simpanTugas(tx, r.pn.id, r.kantor as Kantor, rencana, daftar.get(r.pn.id)!, sesi.pegawaiId);
+  });
+  refresh();
+  return berhasil(sah.length > 1 ? `Tugas dikirim ke ${sah.length} staf.` : "Tugas dikirim.");
 }
 
 /** Hapus tugas: jadwal yang sudah disetujui tetap tersimpan, sisanya dihapus. */
@@ -198,11 +239,12 @@ export async function perbaruiTugas(jadwalId: string, input: unknown): Promise<H
   if (!p.success) return gagal("Periksa isian.", galatDari(p.error));
   const db = await getDb();
   const [r] = await db
-    .select({ j: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId })
+    .select({ j: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId, linkWajib: s.tugasKhusus.linkWajib })
     .from(s.tugasKhususJadwal)
     .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
     .where(eq(s.tugasKhususJadwal.id, jadwalId));
   if (!r || !sesi.penugasan.some((x) => x.id === r.penugasanId)) return gagal("Tugas tidak ditemukan.");
+  if (p.data.status === "selesai" && r.linkWajib && !p.data.linkBukti) return gagal("Tugas ini meminta link bukti.", { linkBukti: "Link bukti wajib untuk tugas ini." });
   if (r.j.status === "disetujui") return gagal("Tugas ini sudah disetujui.");
   if (r.j.status === "diajukan") return gagal("Tugas ini sedang menunggu verifikasi pemberi tugas.");
   if (!periodeTerbuka((await statusPeriode([r.j.periodeId]))(r.j.periodeId))) return gagal("Periode tugas ini sudah dikunci.");

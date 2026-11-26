@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Penilaian K3" };
 export default function HalamanK3(props: PageProps<"/tim/k3">) {
   return (
     <>
-      <Kepala judul="Penilaian K3" kembali="/tim" sub="Satu penilaian per pegawai yang Anda koordinasikan, walau ia memegang beberapa amanah. Isi setelah bulan berakhir, paling lambat 5 hari kerja." />
+      <Kepala judul="Penilaian K3" kembali="/?segmen=tim" sub="Satu penilaian per pegawai yang Anda koordinasikan, walau ia memegang beberapa amanah. Isi setelah bulan berakhir, paling lambat 5 hari kerja." />
       <Suspense fallback={<Kerangka />}>
         <Isi searchParams={props.searchParams} />
       </Suspense>

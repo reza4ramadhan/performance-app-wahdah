@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Periksa K4" };
 export default function HalamanPeriksaK4() {
   return (
     <>
-      <Kepala judul="Periksa inovasi K4" kembali="/tim" sub="Pastikan inovasi benar berjalan dan buktinya bisa dibuka, lalu teruskan ke WaKa untuk penetapan tingkat." />
+      <Kepala judul="Periksa inovasi K4" kembali="/?segmen=tim" sub="Pastikan inovasi benar berjalan dan buktinya bisa dibuka, lalu teruskan ke WaKa untuk penetapan tingkat." />
       <Suspense fallback={<Kerangka />}>
         <Isi />
       </Suspense>

@@ -276,6 +276,8 @@ export const tugasKhusus = pgTable(
     tanggalAkhir: date("tanggal_akhir").notNull(),
     /** "HH:MM" di zona kantor staf. */
     jamTenggat: text("jam_tenggat").notNull(),
+    /** Delegasi: staf wajib menyertakan link bukti saat menandai selesai. */
+    linkWajib: boolean("link_wajib").notNull().default(false),
     dibuatOleh: text("dibuat_oleh").notNull().references(() => pegawai.id),
     dibuatPada: dibuat(),
   },

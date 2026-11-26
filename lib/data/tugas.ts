@@ -29,6 +29,8 @@ export type BarisTugas = {
   kantor: Kantor;
   pemberiId: string;
   pemberiNama: string;
+  /** Link bukti wajib saat menandai selesai. */
+  linkWajib: boolean;
   /** Belum selesai dan tenggat sudah lewat. */
   lewat: boolean;
   /** Sisa waktu menuju tenggat, dihitung di server agar sama saat hidrasi. */
@@ -70,6 +72,7 @@ export async function daftarTugas(where: SQL | undefined, batas = 300): Promise<
     kantor: r.kantor as Kantor,
     pemberiId: r.t.dibuatOleh,
     pemberiNama: r.pemberiNama,
+    linkWajib: r.t.linkWajib,
     lewat: (r.j.status === "belum" || r.j.status === "dikerjakan" || r.j.status === "ditolak") && r.j.tenggat.getTime() < kini,
     sisa: labelSisaTugas(r.j.tenggat, r.kantor as Kantor, kini),
   }));

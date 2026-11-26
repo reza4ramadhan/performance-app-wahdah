@@ -136,8 +136,8 @@ function UbahStatusTugas({ tugas: t, tutup }: { tugas: BarisTugas; tutup: () => 
       <Kolom label="Catatan (opsional)" galat={galat.catatan}>
         <textarea value={catatan} onChange={(e) => setCatatan(e.target.value)} rows={2} className={kelasTeks} placeholder="mis. Menunggu data dari SKUO" />
       </Kolom>
-      <Kolom label="Link bukti (opsional)" galat={galat.linkBukti}>
-        <Input type="url" inputMode="url" value={linkBukti} onChange={(e) => setLinkBukti(e.target.value)} placeholder="https://drive.google.com/…" />
+      <Kolom label={t.linkWajib ? "Link bukti (wajib saat selesai)" : "Link bukti (opsional)"} galat={galat.linkBukti}>
+        <Input type="url" inputMode="url" value={linkBukti} onChange={(e) => setLinkBukti(e.target.value)} required={t.linkWajib && status === "selesai"} placeholder="https://drive.google.com/…" />
       </Kolom>
       <div className="flex gap-2">
         <Button type="submit" className="flex-1" disabled={proses}>

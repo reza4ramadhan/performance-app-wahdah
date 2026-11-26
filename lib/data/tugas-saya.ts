@@ -52,8 +52,10 @@ export async function muatTugasSaya(sesi: Sesi) {
     ),
   ]);
 
+  // Checklist kegiatan yang ditunda/batal dan belum dikerjakan tidak lagi menjadi tugas.
+  const keluar = (i: BarisItem) => !!i.kegiatanStatus && !["jalan", "geser"].includes(i.kegiatanStatus) && (i.status === "terbuka" || i.status === "ditolak");
   const baris: BarisTugasSaya[] = [
-    ...item.map((i) => ({
+    ...item.filter((i) => !keluar(i)).map((i) => ({
       id: i.id,
       jenis: "item" as const,
       judul: aksiItem(i),

@@ -9,6 +9,8 @@ import { Cincin, JudulBagian, Kartu, Kepala, Kerangka, Kosong, Lencana, LencanaP
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode, liburPerKantor } from "@/lib/data/ikp";
 import { jendelaK4 } from "@/lib/data/k4";
+import { kontrolStaf } from "@/lib/data/kontrol-staf";
+import { rataRata } from "@/lib/ikp/k1";
 import { idPenugasan, unitPenugasan } from "@/lib/ikp/hitung";
 import { angka } from "@/lib/format";
 import { LABEL_PERAN_KERJA, LABEL_STATUS_PERIODE } from "@/lib/ikp/tipe";
@@ -49,6 +51,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     db.selectDistinct({ d: s.jurnal.tanggal }).from(s.jurnal).where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir))),
     jendelaK4(sesi.kantor),
   ]);
+  // Koordinator: K1 = rata-rata K1 staf unitnya; tampilkan daftar staf (bulan berjalan).
+  const stafKoordinator = periode === kini && sesi.penugasan.some((p) => p.peranKerja === "KSBK") ? (await kontrolStaf(sesi)).staf : [];
   const saya = hasil.find((h) => h.pegawaiId === sesi.pegawaiId);
   const namaUnit = new Map(unit.map((u) => [u.id, u.nama]));
   const hk = hariKerjaPeriode(periode, libur(sesi.kantor), today);
@@ -102,6 +106,27 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                   )}
                 </Kartu>
               ))}
+
+            {stafKoordinator.length > 0 && (
+              <Kartu>
+                <JudulBagian>Staf · K1 di unit Anda</JudulBagian>
+                <ul className="divide-y divide-border text-sm">
+                  {stafKoordinator.map((t) => (
+                    <li key={t.pegawaiId} className="flex items-center justify-between gap-3 py-2.5">
+                      <Link href={`/tim/staf/${t.pegawaiId}`} className="min-w-0 truncate font-medium text-heading hover:underline">
+                        {t.nama}
+                      </Link>
+                      <strong className="tabular-nums">{angka(t.k1)}</strong>
+                    </li>
+                  ))}
+                  <li className="flex items-center justify-between gap-3 pt-2.5 font-semibold">
+                    <span>Rata-rata</span>
+                    <span className="tabular-nums">{angka(rataRata(stafKoordinator.map((t) => t.k1).filter((x): x is number => x !== null)))}</span>
+                  </li>
+                </ul>
+                <p className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">Item yang belum Anda periksa belum dihitung sebagai realisasi staf. Verifikasi yang terlambat menurunkan skor staf, dan ikut menurunkan skor Anda.</p>
+              </Kartu>
+            )}
           </div>
 
           <aside className="space-y-4">

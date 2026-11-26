@@ -12,6 +12,8 @@ import { geserHariKerja, keUtc, rentangPeriode, type Kantor } from "../waktu";
 import { penilaiK3 } from "../akses";
 import { petaBidang, petaWaka } from "./unit";
 
+const KEGIATAN_JALAN: readonly string[] = ["jalan", "geser"];
+
 export async function liburPerKantor(db: Db) {
   const rows = await db.select().from(s.hariLibur);
   const set = (k: Kantor) => new Set(rows.filter((r) => !r.kantor || r.kantor === k).map((r) => r.tanggal));
@@ -53,11 +55,20 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
     petaWaka(db),
   ]);
   const kantorOf = new Map(pegawai.map((p) => [p.id, p.kantor as Kantor]));
+  /** Checklist kegiatan yang ditunda/batal (atau masih rencana) dan belum dikerjakan: dikeluarkan dari target. */
+  const keluar = (r: { item: { status: string }; kegiatanStatus: string | null }) =>
+    r.kegiatanStatus !== null && !KEGIATAN_JALAN.includes(r.kegiatanStatus) && (r.item.status === "terbuka" || r.item.status === "ditolak");
   const pnAktif = penugasan.filter((p) => kantorOf.has(p.pegawaiId));
   const pnIds = pnAktif.map((p) => p.id);
 
-  const [item, kegiatan, tugas, jurnal, uji, absensi, k3, pd, k4] = await Promise.all([
-    pnIds.length ? db.select().from(s.item).where(and(eq(s.item.periodeId, periode), inArray(s.item.penugasanId, pnIds))) : [],
+  const [itemSemua, kegiatan, tugas, jurnal, uji, absensi, k3, pd, k4] = await Promise.all([
+    pnIds.length
+      ? db
+          .select({ item: s.item, kegiatanStatus: s.kegiatan.status })
+          .from(s.item)
+          .leftJoin(s.kegiatan, eq(s.kegiatan.id, s.item.kegiatanId))
+          .where(and(eq(s.item.periodeId, periode), inArray(s.item.penugasanId, pnIds)))
+      : [],
     // Hanya kegiatan yang pasti berjalan (jalan/geser) menjadi target K1; rencana, tunda, dan batal tidak.
     db.select().from(s.kegiatan).where(and(gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir), inArray(s.kegiatan.status, ["jalan", "geser"]))),
     db
@@ -76,6 +87,7 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
       .innerJoin(s.k4Pengusul, eq(s.k4Pengusul.k4Id, s.k4Pengajuan.id))
       .where(and(eq(s.k4Pengajuan.periodeId, periode), inArray(s.k4Pengajuan.status, ["ditetapkan", "disahkan"]))),
   ]);
+  const item = itemSemua.filter((r) => !keluar(r)).map((r) => r.item);
 
   const poinK4 = new Map<string, number>();
   for (const r of k4) poinK4.set(r.pegawaiId, (poinK4.get(r.pegawaiId) ?? 0) + (r.poin ?? 0));

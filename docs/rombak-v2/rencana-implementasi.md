@@ -123,3 +123,18 @@ Perbedaan dari rencana (perlu dikonfirmasi pemilik):
 - **Akun**: tautan Jurnal/Belajar/Tugas/K4 tidak diulang untuk staf.
 
 Perbedaan dari mockup: konfirmasi dana cair oleh **koordinator unit** (keputusan 02 butir 1.8), bukan Keuangan seperti teks mockup Adm-10/11. Layar Staf Tugas Rutin (`/` untuk SK) masih tampilan lama sampai Fase 4.
+
+### Fase 3 — selesai di branch `rombak-ux-v2` (26 Nov 2026)
+
+Migrasi `drizzle/0010_delegasi_link_wajib.sql` (`tugas_khusus.link_wajib`).
+
+- **Koordinator (dan Wakil) memakai 4 tab yang sama.** `/` = Tugas dengan segmen **Saya | Tim**; Tim terbuka bawaan bila ada pekerjaan menunggu. Sidebar desktop: Utama + Tim (Verifikasi, Jadwal, Delegasi, Manage tim). Beranda KSBK lama (`hari-ini-ksbk.tsx`) dan mode periksa satu per satu dihapus; `/tim`, `/verifikasi`, `/tim/periksa` dialihkan.
+- **Segmen Tim** ([app/(app)/tugas-koordinator.tsx](../../app/(app)/tugas-koordinator.tsx)): Perlu diperiksa · Terlambat · Pending dana, kartu "Rencana [bulan]: n kegiatan" (sejak tgl 25), 4 pintasan, Kartu Penilaian (K3 — tidak untuk wakil, K4, uji petik) hanya di jendela akhir bulan, daftar staf dengan beban pekan ini dan unit lain.
+- **Verifikasi** (`/tim/verifikasi`): saring per jenis, Setujui/Tolak (alasan wajib) per baris, **Setujui semua yang tepat waktu** (`setujuiSemuaTepatWaktu`: item terlambat tidak ikut), dan SPB pending dengan konfirmasi tanggal cair.
+- **Jadwal** (`/tim/kegiatan`): konfirmasi rencana Jalan · Geser · Tunda · Batal (`ubahStatusKegiatan`). Checklist terbit saat Jalan/Geser; Geser memindah tanggal (tenggat ikut) dan menyimpan tanggal rencana; Tunda menyalin kegiatan ke bulan berikutnya berstatus rencana; Batal wajib alasan. Checklist terbuka dari kegiatan tunda/batal keluar dari target K1 dan dari daftar Tugas staf. + Kegiatan tambahan dengan PJ otomatis dari plot.
+- **Delegasi** (`/tim/tugas`, `kirimDelegasi`): banyak staf sekaligus, tenggat tanggal + jam, link bukti wajib; tampil beban tugas pekan ini tiap staf dari semua unit.
+- **Manage tim** (`/tim/plot`, `simpanPlot`): plot staf ke departemen + PJ utama, berlaku hari ini; kegiatan yang belum berjalan dan belum disentuh pindah ke PJ baru; tercatat di audit log.
+- **Profil staf**: K1, beban pekan ini, terlambat, departemen yang dipegang, jurnal terbaru, tombol tulis catatan perilaku.
+- **Progres koordinator**: daftar K1 tiap staf + rata-rata.
+
+Catatan: rencana SIMAKPRO baru masuk setelah impor tahunan (Fase 5); sampai itu kegiatan tambahan langsung berstatus Jalan. Notifikasi "item menunggu > 1 hari kerja" dan "rencana belum dikonfirmasi" dikerjakan bersama cron di Fase 5.

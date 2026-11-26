@@ -32,7 +32,8 @@ async function Isi() {
   const sesi = await wajibSesi();
   const { grup, kelola, labelKelola } = menuUntuk(sesi);
   // KSBK: Beranda sudah menjadi hub kontrol staf.
-  if (!kelola || sesi.amanah?.peranKerja === "KSBK") redirect("/");
+  if (sesi.amanah?.peranKerja === "KSBK") redirect("/?segmen=tim");
+  if (!kelola) redirect("/");
   const [tim, antrean, tugasMenunggu, usulanMenunggu, mengantre] = await Promise.all([
     anggotaTim(sesi),
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),

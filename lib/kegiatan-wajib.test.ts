@@ -18,3 +18,12 @@ describe("kewajiban input kegiatan SKUO", () => {
     ]);
   });
 });
+
+describe("bulan berikutnya (kegiatan ditunda)", () => {
+  it("tanggal sama bulan depan, dibatasi akhir bulan, melewati pergantian tahun", async () => {
+    const { bulanBerikutnya } = await import("./kegiatan-wajib");
+    expect(bulanBerikutnya("2026-11-13")).toBe("2026-12-13");
+    expect(bulanBerikutnya("2027-01-31")).toBe("2027-02-28");
+    expect(bulanBerikutnya("2026-12-20")).toBe("2027-01-20");
+  });
+});

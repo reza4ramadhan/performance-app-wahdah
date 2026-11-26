@@ -26,8 +26,8 @@ describe("lencana navigasi bawah", () => {
     expect(menuUntuk(sesi("SBK")).grup[0].item.map((i) => i.href)).not.toContain("/tugas/usulan");
   });
 
-  it("KSBK: verifikasi dan item sendiri di Beranda, tugas staf dan kegiatan di tabnya sendiri", () => {
-    expect(tab(sesi("KSBK", ["koordinator"], ["SBK"]), { "/item": 1, "/verifikasi": 4, "/tim/tugas": 2, "/tim/kegiatan": 1 })).toEqual({ "/": 5, "/tim/tugas": 2, "/tim/kegiatan": 1 });
+  it("koordinator unit: antrean verifikasi, delegasi, dan jadwal terkumpul di tab Tugas", () => {
+    expect(tab(sesi("KSBK", ["koordinator"], ["SBK"]), { "/verifikasi": 4, "/tim/tugas": 2, "/tim/kegiatan": 1 })).toEqual({ "/": 7 });
   });
 
   it("koordinator lain: antrean verifikasi dan tugas staf terkumpul di tab Tim", () => {
@@ -44,22 +44,19 @@ describe("lencana navigasi bawah", () => {
 describe("menu KSBK", () => {
   const m = menuUntuk(sesi("KSBK", ["koordinator"], ["SBK"]));
 
-  it("lima tab mengambang tanpa + Catat dan tanpa Akun", () => {
-    expect(m.tabBawah.map((t) => t.href)).toEqual(["/", "/tim/kegiatan", "/tim/tugas", "/jurnal", "/jurnal?tab=belajar"]);
-    expect(m).toMatchObject({ catat: false, mengambang: true });
+  it("4 tab sama dengan staf, tanpa + Catat di navigasi", () => {
+    expect(m.tabBawah.map((t) => t.label)).toEqual(["Tugas", "Jurnal", "Progres", "Akun"]);
+    expect(m).toMatchObject({ catat: false, mengambang: false });
   });
 
-  it("sidebar: Utama lalu Kontrol staf; tanpa menu Verifikasi dan Tim hari ini", () => {
-    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf"]);
-    const semua = m.grup.flatMap((g) => g.item.map((x) => x.href));
-    expect(semua).not.toContain("/verifikasi");
-    expect(semua).not.toContain("/tim");
-    expect(semua).toContain("/tim/uji-petik");
+  it("sidebar: Utama lalu Tim (Verifikasi, Jadwal, Delegasi, Manage tim)", () => {
+    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Tim"]);
+    expect(m.grup[1].item.map((x) => x.href)).toEqual(["/tim/verifikasi", "/tim/kegiatan", "/tim/tugas", "/tim/plot"]);
   });
 
   it("fungsi lain tetap tampil (Admin), termasuk kuasa sementara; menu Kantor hanya untuk pimpinan", () => {
     const m = menuUntuk(sesi("KSBK", ["koordinator", "admin"], ["SBK"]));
-    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf", "Admin"]);
+    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Tim", "Admin"]);
     expect(m.grup.at(-1)!.item.map((i) => i.href)).toEqual(expect.arrayContaining(["/kantor/rekap", "/absensi", "/kantor/k4"]));
   });
 });

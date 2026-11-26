@@ -15,19 +15,20 @@ import { hariIni, labelTanggal, tambahHari } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Catatan perilaku" };
 
-export default function HalamanCatatan() {
+export default function HalamanCatatan(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   return (
     <>
-      <Kepala judul="Catatan perilaku" kembali="/tim" sub="Catat kejadian kapan saja. Catatan ini tampil sebagai bahan “contoh perilaku” saat menilai K3 di akhir bulan." />
+      <Kepala judul="Catatan perilaku" kembali="/?segmen=tim" sub="Catat kejadian kapan saja. Catatan ini tampil sebagai bahan “contoh perilaku” saat menilai K3 di akhir bulan." />
       <Suspense fallback={<Kerangka />}>
-        <Isi />
+        <Isi searchParams={props.searchParams} />
       </Suspense>
     </>
   );
 }
 
-async function Isi() {
+async function Isi({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesi = await wajibSesi();
+  const sp = await searchParams;
   const tim = await anggotaTim(sesi);
   if (!tim.length) return <Kosong ikon={MessageSquareText} judul="Belum ada anggota tim" />;
   const db = await getDb();
@@ -65,7 +66,7 @@ async function Isi() {
           <input type="hidden" name="tanggal" value={today} />
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-heading">Staf</span>
-            <PilihCari name="pegawaiId" opsi={tim.map((t) => ({ id: t.pegawaiId, nama: t.nama }))} kosong={null} placeholder="Pilih staf…" required />
+            <PilihCari name="pegawaiId" opsi={tim.map((t) => ({ id: t.pegawaiId, nama: t.nama }))} nilaiAwal={typeof sp.pegawai === "string" ? sp.pegawai : undefined} kosong={null} placeholder="Pilih staf…" required />
             <Galat nama="pegawaiId" />
           </label>
           <label className="block">

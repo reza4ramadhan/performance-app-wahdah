@@ -23,6 +23,8 @@ export type BarisItem = {
   kegiatanId: string | null;
   kegiatanNama: string | null;
   kegiatanTanggal: string | null;
+  /** Status kegiatan (rencana/jalan/geser/tunda/batal); null bila tanpa kegiatan. */
+  kegiatanStatus: string | null;
   /** SPB: ditandai pending (dana belum cair) dan belum dikonfirmasi cair. */
   pendingDana: boolean;
   danaCairPada: string | null;
@@ -61,6 +63,7 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
         unitNama: s.unit.nama,
         kegiatanNama: s.kegiatan.nama,
         kegiatanTanggal: s.kegiatan.tanggal,
+        kegiatanStatus: s.kegiatan.status,
       })
       .from(s.item)
       .innerJoin(s.penugasan, eq(s.penugasan.id, s.item.penugasanId))
@@ -93,6 +96,7 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
       kegiatanId: r.item.kegiatanId,
       kegiatanNama: r.kegiatanNama,
       kegiatanTanggal: r.kegiatanTanggal,
+      kegiatanStatus: r.kegiatanStatus,
       pendingDana: !!r.item.pendingDanaSejak && !r.item.danaCairPada,
       danaCairPada: r.item.danaCairPada,
       tglMasuk: r.item.tglMasuk,
