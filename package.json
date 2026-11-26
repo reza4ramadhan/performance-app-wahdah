@@ -18,6 +18,7 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.10",
     "@neondatabase/serverless": "^1.2.0",
+    "@vercel/speed-insights": "^2.1.0",
     "better-auth": "^1.7.12",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
