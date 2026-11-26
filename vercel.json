@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "schedules": {
+    "pengingat-makassar": {
+      "schedule": "0 15 * * 1-5",
+      "timezone": "Asia/Makassar",
+      "path": "/api/cron/pengingat-makassar"
+    },
+    "pengingat-jakarta": {
+      "schedule": "0 15 * * 1-5",
+      "timezone": "Asia/Jakarta",
+      "path": "/api/cron/pengingat-jakarta"
+    },
+    "tenggat-koordinator": {
+      "schedule": "0 8 * * 1-5",
+      "timezone": "Asia/Makassar",
+      "path": "/api/cron/tenggat"
+    },
+    "tutup-periode": {
+      "schedule": "5 0 * * *",
+      "timezone": "Asia/Jakarta",
+      "path": "/api/cron/tutup-periode"
+    },
+    "terbitkan-rutin": {
+      "schedule": "30 0 * * *",
+      "timezone": "Asia/Makassar",
+      "path": "/api/cron/rutin"
+    }
+  }
+}

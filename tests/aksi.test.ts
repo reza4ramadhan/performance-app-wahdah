@@ -755,13 +755,17 @@ describe("Set Tugas & Atur Tugas Staf (rombak v2)", () => {
 });
 
 describe("cron pengingat & notifikasi (rombak v2)", () => {
-  it("pengingat 15.00, pagi koordinator, dan rutin berjalan tanpa galat", async () => {
+  it("semua tugas di vercel.json berjalan tanpa galat; tanpa CRON_SECRET yang benar ditolak", async () => {
     process.env.CRON_SECRET = "rahasia-uji";
     const { POST } = await import("@/app/api/cron/[tugas]/route");
     const panggil = (tugas: string, kunci = "rahasia-uji") =>
       POST(new Request(`http://uji/api/cron/${tugas}?kantor=makassar`, { method: "POST", headers: { authorization: `Bearer ${kunci}` } }), { params: Promise.resolve({ tugas }) } as never);
     expect((await panggil("pengingat", "salah")).status).toBe(401);
-    for (const t of ["pengingat", "tenggat", "rutin"]) {
+    // Setiap path di vercel.json harus dikenali route cron.
+    const { readFileSync } = await import("node:fs");
+    const jadwal = Object.values(JSON.parse(readFileSync("vercel.json", "utf8")).schedules as Record<string, { path: string }>).map((x) => x.path.replace("/api/cron/", ""));
+    expect(jadwal).toHaveLength(5);
+    for (const t of ["pengingat", ...jadwal]) {
       const r = await panggil(t);
       expect(r.status).toBe(200);
       expect(await r.json()).not.toHaveProperty("galat");

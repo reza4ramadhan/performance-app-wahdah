@@ -1,6 +1,6 @@
-// Tugas terjadwal, dipanggil cron server Cloudways (plan.md Bagian 10):
-//   curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/pengingat?kantor=makassar
-// Jadwal (UTC) ada di README: pengingat 15.00 setempat, tenggat pagi, tutup-periode, rutin.
+// Tugas terjadwal, dipanggil Vercel Schedules (`schedules` di vercel.json) dengan POST dan header
+// `Authorization: Bearer $CRON_SECRET`. Uji manual:
+//   curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/pengingat-makassar
 // Semua tugas idempoten: aman dijalankan ulang.
 
 import { timingSafeEqual } from "node:crypto";
@@ -24,6 +24,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/cron/[tugas]">)
   const url = new URL(req.url);
   try {
     if (tugas === "pengingat") return Response.json(await pengingatHarian(url.searchParams.get("kantor") === "jakarta" ? "jakarta" : "makassar"));
+    // Vercel Schedules (vercel.json) memanggil path tanpa query: kantor ada di nama tugas.
+    if (tugas === "pengingat-makassar") return Response.json(await pengingatHarian("makassar"));
+    if (tugas === "pengingat-jakarta") return Response.json(await pengingatHarian("jakarta"));
     if (tugas === "tenggat") return Response.json(await pengingatVerifikasi());
     if (tugas === "tutup-periode") return Response.json(await tutupPeriode());
     if (tugas === "rutin") return Response.json(await terbitkanRutin());

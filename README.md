@@ -33,40 +33,34 @@ npm run lint
 
 ---
 
-## Deploy ke Cloudways
+## Deploy ke Vercel
 
-Aplikasi berjalan sebagai server Node (`next start`) di bawah PM2, dengan reverse proxy Cloudways ke port `PORT`. Basis data ada di Neon, bukan di server Cloudways.
+Aplikasi berjalan di Vercel (Next.js, runtime Node.js). Basis data di Neon lewat integrasi Vercel Marketplace, yang mengisi `DATABASE_URL` dan `DATABASE_URL_UNPOOLED` otomatis. `ecosystem.config.cjs` hanya untuk server PM2 lama dan tidak dipakai di Vercel.
 
-### 1. Siapkan Neon
+### 1. Variabel lingkungan
 
-1. Buat project PostgreSQL di Neon (region Singapura).
-2. Salin dua connection string: **pooled** (host berisi `-pooler`) untuk `DATABASE_URL`, dan **unpooled** untuk `DATABASE_URL_UNPOOLED`.
-
-### 2. Variabel lingkungan
-
-Buat `.env.production.local` di folder aplikasi di server (jangan di-commit). Isinya mengikuti [`.env.example`](.env.example):
+Atur di Project Settings › Environment Variables (atau `vercel env add`). Isinya mengikuti [`.env.example`](.env.example):
 
 | Variabel | Keterangan |
 | --- | --- |
-| `DATABASE_URL` | Neon pooled. Tanpa ini aplikasi menolak berjalan di produksi. |
+| `DATABASE_URL` | Neon pooled (dari integrasi). Tanpa ini aplikasi menolak berjalan di produksi. |
 | `DATABASE_URL_UNPOOLED` | Neon unpooled, untuk migrasi. |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Jangan diubah setelah live, karena semua sesi akan keluar. |
 | `BETTER_AUTH_URL` | Alamat publik, mis. `https://ikp.wahdah.or.id`. |
-| `CRON_SECRET` | `openssl rand -hex 24`. |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`. Kunci publik ditanam saat build, jadi isi **sebelum** `npm run build`. |
-| `PORT` | Port yang diteruskan reverse proxy. |
+| `CRON_SECRET` | `openssl rand -hex 24`. Vercel Schedules mengirimnya sebagai `Authorization: Bearer …`. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`. Tanpa ketiganya **notifikasi tidak terkirim**. Kunci publik ditanam saat build, jadi deploy ulang setelah mengisinya. |
 
-### 3. Build dan jalankan
+### 2. Migrasi basis data
+
+Migrasi tidak berjalan otomatis saat deploy. Jalankan dari komputer dengan `DATABASE_URL_UNPOOLED` produksi **sebelum** deploy yang membutuhkan skema baru:
 
 ```bash
-git pull
-npm ci                 # sertakan devDependencies; dibutuhkan untuk build & migrasi
 npm run db:migrate     # aman dijalankan berulang
-npm run build          # build tidak menyentuh basis data
-pm2 startOrReload ecosystem.config.cjs && pm2 save
 ```
 
-Node minimal 20.9. Layanan berjalan dengan satu instans. Pembatas login disimpan di basis data, jadi menambah instans tetap aman.
+### 3. Deploy
+
+`git push` ke branch produksi (atau `vercel deploy --prod`). Build tidak menyentuh basis data.
 
 ### 4. Akun Admin pertama
 
@@ -87,26 +81,28 @@ npm run impor:struktur -- --folder ./impor --tulis    # simpan + buat akun
 
 Password sementara setiap akun ditulis ke `data/kredensial-awal.csv`. Bagikan langsung ke pegawai lalu hapus berkasnya.
 
-### 6. Cron Cloudways
+### 6. Jadwal (Vercel Schedules)
 
-Semua tugas memakai `POST` dengan header rahasia, dan semuanya idempoten. Jadwal di bawah memakai jam server **UTC**:
+Jadwal ada di [`vercel.json`](vercel.json) (`schedules`) dan berlaku saat deployment produksi menjadi aktif. Zona waktu ditulis per jadwal, jadi tidak perlu menghitung UTC. Semua tugas idempoten.
 
-```cron
-# 15.00 WITA: pengingat harian pegawai Makassar (Senin–Jumat) — lib/notifikasi.ts
-0 7 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=makassar"
-# 15.00 WIB: pengingat harian pegawai Jakarta
-0 8 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/pengingat?kantor=jakarta"
-# 08.00 WITA: koordinator — pekerjaan staf menunggu > 1 hari kerja, dan rencana belum dikonfirmasi (tgl 25 s.d. 5)
-0 0 * * 1-5   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/tenggat"
-# 00.05 WIB setiap hari: buat periode baru; bulan lalu pindah ke masa verifikasi
-5 17 * * *    curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/tutup-periode"
-# 00.30 WITA setiap hari: terbitkan jadwal tugas rutin (Set Tugas) sampai Minggu pekan depan
-30 16 * * *   curl -fsS --retry 3 --retry-delay 20 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://DOMAIN/api/cron/rutin"
+| Nama | Waktu | Tugas |
+| --- | --- | --- |
+| `pengingat-makassar` | Senin–Jumat 15.00 WITA | Pengingat harian pegawai Makassar (`lib/notifikasi.ts`) |
+| `pengingat-jakarta` | Senin–Jumat 15.00 WIB | Pengingat harian pegawai Jakarta |
+| `tenggat-koordinator` | Senin–Jumat 08.00 WITA | Pekerjaan staf menunggu > 1 hari kerja; rencana belum dikonfirmasi (tgl 25 s.d. 5) |
+| `tutup-periode` | Setiap hari 00.05 WIB | Buat periode baru; bulan lalu pindah ke masa verifikasi |
+| `terbitkan-rutin` | Setiap hari 00.30 WITA | Terbitkan jadwal tugas rutin (Set Tugas) sampai Minggu pekan depan |
+
+Pantau dan jalankan manual:
+
+```bash
+vercel schedules list
+vercel schedules invoke pengingat-makassar
+vercel schedules executions list tenggat-koordinator --since 7d
 ```
 
-Notifikasi kejadian (ditolak, delegasi baru, rotasi set tugas, usulan diputuskan, dana SPB cair, checklist kegiatan terbit/bergeser/batal) dikirim langsung dari aksinya, tanpa cron.
+Di paket Hobby jadwal bisa bergeser sampai 15 menit (jitter). Notifikasi kejadian (ditolak, delegasi baru, rotasi set tugas, usulan diputuskan, dana SPB cair, checklist kegiatan terbit/bergeser/batal) dikirim langsung dari aksinya, tanpa jadwal.
 
-`--retry` mengantisipasi *cold start* Neon pada paket gratis.
 
 ### Bila sebelumnya sudah ada versi lama di Cloudways
 
