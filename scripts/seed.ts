@@ -98,6 +98,8 @@ async function main() {
   const pCitra2 = await pn(citra.id, "SBK", bk2.id, dani.id, 40);
   const pEka = await pn(eka.id, "SBK", bk2.id, dani.id);
   await pn(fajar.id, "KU", lu.id, waka.id);
+  // Rombak v2: koordinator unit tugas rutin (N–R) = KSBK di unit itu.
+  await pn(fajar.id, "KSBK", keamanan.id, waka.id);
   const pHasan = await pn(hasan.id, "SK", keamanan.id, fajar.id);
   // Pegawai pendukung juga staf Kesetjenan agar punya K1.
   for (const p of [sekr, pers, keu, adm]) await pn(p.id, "SBK", setjen.id, ahmad.id);

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, gte, lte } from "drizzle-orm";
 import { ChipFilter } from "@/components/app/filter";
+import { FormAksi } from "@/components/app/form-aksi";
 import { UnggahAbsensi } from "@/components/app/unggah-absensi";
+import { simpanAbsensiHari } from "@/app/aksi/absensi";
 import { Kartu, Kepala, Kerangka, Lencana } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
 import { wajibPeran } from "@/lib/sesi";
-import { hariIni, labelPeriode, periodeBerikut, periodeDari } from "@/lib/waktu";
+import { hariIni, labelPeriode, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Unggah absensi" };
 
@@ -28,9 +30,11 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const pilihan = [periodeBerikut(kini, -1), kini];
   const periode = pilihan.includes(String(sp.periode)) ? String(sp.periode) : pilihan[0];
   const db = await getDb();
-  const [[ada], [aktif]] = await Promise.all([
+  const { awal, akhir } = rentangPeriode(periode);
+  const [[ada], [aktif], [hari]] = await Promise.all([
     db.select({ n: count() }).from(s.absensi).where(eq(s.absensi.periodeId, periode)),
     db.select({ n: count() }).from(s.pegawai).where(eq(s.pegawai.aktif, true)),
+    db.select({ n: count() }).from(s.absensiHari).where(and(gte(s.absensiHari.tanggal, awal), lte(s.absensiHari.tanggal, akhir))),
   ]);
 
   return (
@@ -46,6 +50,18 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       <p className="mt-4 text-xs text-muted-foreground">
         Rumus K2 = 0,6 × (hadir ÷ hari kerja wajib) + 0,4 × (hadir tepat waktu ÷ hadir). Kehadiran &lt; 85% atau sanksi disiplin berat ditandai “tidak memenuhi syarat insentif”.
       </p>
+
+      <Kartu className="mt-6 space-y-3">
+        <div>
+          <h2 className="text-[15px] font-semibold text-heading">Izin, sakit, cuti per hari</h2>
+          <p className="text-sm text-muted-foreground">
+            Kolom <code>nip</code> (atau <code>no_hp</code>), <code>tanggal</code> (YYYY-MM-DD), <code>jenis</code> (izin/sakit/cuti). Tugas rutin pada tanggal itu dikeluarkan dari target K1. Sudah tercatat {labelPeriode(periode)}: {hari.n} hari.
+          </p>
+        </div>
+        <FormAksi aksi={simpanAbsensiHari} tombol="Unggah" className="space-y-3">
+          <input type="file" name="berkas" accept=".csv,.xlsx" required className="block w-full text-sm" />
+        </FormAksi>
+      </Kartu>
     </>
   );
 }

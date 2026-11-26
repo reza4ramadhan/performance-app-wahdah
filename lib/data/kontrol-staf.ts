@@ -48,7 +48,7 @@ export async function kontrolStaf(sesi: Sesi) {
     paramIndikator(db),
     liburPerKantor(db),
     kondisiAntrean(sesi).then((k) => daftarItem(k, { kantor: sesi.kantor, batas: 300 })),
-    daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+    daftarTugas(kondisiTugasMenunggu(idKoordinator(sesi))),
     jumlahUsulanMenunggu(idKoordinator(sesi)),
   ]);
 

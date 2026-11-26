@@ -346,6 +346,10 @@ export async function putuskanUsulan(ids: string[], keputusan: "setuju" | "tolak
       continue;
     }
     if (u.status !== "diajukan") continue;
+    if (u.setTugasId) {
+      dilewati.push("Usulan tugas rutin diputuskan di menu Usulan (masuk ke Set Tugas).");
+      continue;
+    }
     const putusan = { diputusOleh: sesi.pegawaiId, diputusPada: new Date() };
 
     if (keputusan === "tolak") {

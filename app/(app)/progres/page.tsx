@@ -10,6 +10,7 @@ import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode, liburPerKantor } from "@/lib/data/ikp";
 import { jendelaK4 } from "@/lib/data/k4";
 import { kontrolStaf } from "@/lib/data/kontrol-staf";
+import { daftarTugas, kondisiTugasPenugasan } from "@/lib/data/tugas";
 import { rataRata } from "@/lib/ikp/k1";
 import { idPenugasan, unitPenugasan } from "@/lib/ikp/hitung";
 import { angka } from "@/lib/format";
@@ -52,6 +53,21 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     jendelaK4(sesi.kantor),
   ]);
   // Koordinator: K1 = rata-rata K1 staf unitnya; tampilkan daftar staf (bulan berjalan).
+  // Staf tugas rutin: rincian tugas jatuh tempo bulan ini, dipisah rutin dan delegasi (mockup Rtn-6).
+  const pnSk = sesi.penugasan.filter((p) => p.peranKerja === "SK").map((p) => p.id);
+  const rincianTugas = pnSk.length
+    ? (await daftarTugas(and(kondisiTugasPenugasan(pnSk), eq(s.tugasKhususJadwal.periodeId, periode)), 3000)).filter((t) => t.lewat || t.status === "diajukan" || t.status === "disetujui" || t.status === "ditolak")
+    : [];
+  const hitungTugas = (rutin: boolean) => {
+    const xs = rincianTugas.filter((t) => !!t.setTugasItemId === rutin);
+    return {
+      jatuh: xs.length,
+      tepat: xs.filter((t) => t.status === "disetujui" && t.selesaiPada && t.selesaiPada <= t.tenggat).length,
+      terlambat: xs.filter((t) => t.lewat || (t.selesaiPada && t.selesaiPada > t.tenggat)).length,
+      ditolak: xs.filter((t) => t.status === "ditolak").length,
+      menunggu: xs.filter((t) => t.status === "diajukan").length,
+    };
+  };
   const stafKoordinator = periode === kini && sesi.penugasan.some((p) => p.peranKerja === "KSBK") ? (await kontrolStaf(sesi)).staf : [];
   const saya = hasil.find((h) => h.pegawaiId === sesi.pegawaiId);
   const namaUnit = new Map(unit.map((u) => [u.id, u.nama]));
@@ -106,6 +122,45 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                   )}
                 </Kartu>
               ))}
+
+            {rincianTugas.length > 0 && (
+              <Kartu>
+                <JudulBagian>Rincian tugas</JudulBagian>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      <th scope="col" className="py-1.5 text-left font-semibold">Status</th>
+                      <th scope="col" className="py-1.5 text-right font-semibold">Rutin</th>
+                      <th scope="col" className="py-1.5 text-right font-semibold">Delegasi</th>
+                      <th scope="col" className="py-1.5 text-right font-semibold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(
+                      [
+                        ["jatuh", "Jatuh tempo", ""],
+                        ["tepat", "Tepat waktu, disetujui", "text-mint-700 dark:text-mint-100"],
+                        ["terlambat", "Terlambat", "text-gold-700 dark:text-gold-100"],
+                        ["ditolak", "Ditolak", "text-flame-600 dark:text-flame-100"],
+                        ["menunggu", "Menunggu diperiksa", "text-muted-foreground"],
+                      ] as const
+                    ).map(([k, label, warna]) => {
+                      const r = hitungTugas(true)[k];
+                      const d = hitungTugas(false)[k];
+                      return (
+                        <tr key={k}>
+                          <td className={`py-2 ${warna}`}>{label}</td>
+                          <td className="py-2 text-right tabular-nums">{r}</td>
+                          <td className="py-2 text-right tabular-nums">{d}</td>
+                          <td className="py-2 text-right font-semibold tabular-nums">{r + d}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">Tugas yang menunggu diperiksa belum dihitung. Hari izin, sakit, atau cuti dikeluarkan setelah absensi diunggah.</p>
+              </Kartu>
+            )}
 
             {stafKoordinator.length > 0 && (
               <Kartu>

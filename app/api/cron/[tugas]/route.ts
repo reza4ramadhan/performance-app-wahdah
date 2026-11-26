@@ -24,6 +24,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/cron/[tugas]">)
     if (tugas === "pengingat") return Response.json(await pengingatHarian(url.searchParams.get("kantor") === "jakarta" ? "jakarta" : "makassar"));
     if (tugas === "tenggat") return Response.json(await pengingatVerifikasi());
     if (tugas === "tutup-periode") return Response.json(await tutupPeriode());
+    if (tugas === "rutin") return Response.json(await terbitkanRutin());
     return Response.json({ galat: "Tugas tidak dikenal" }, { status: 404 });
   } catch (e) {
     console.error(`[cron ${tugas}]`, e);
@@ -94,4 +95,23 @@ async function tutupPeriode() {
     return { periodeBaru: kini, verifikasi: lalu };
   }
   return { periodeBaru: kini, verifikasi: null };
+}
+
+/**
+ * Harian (mis. 00.30): pastikan jadwal tugas rutin dari Set Tugas sudah terbit sampai Minggu pekan depan untuk
+ * semua staf tugas rutin. Halaman Tugas juga memanggilnya, jadi cron ini hanya jaring pengaman.
+ */
+async function terbitkanRutin() {
+  const db = await getDb();
+  const { pastikanRutin } = await import("@/lib/data/set-tugas");
+  let dibuat = 0;
+  for (const kantor of ["makassar", "jakarta"] as const) {
+    const pn = await db
+      .select({ id: s.penugasan.id })
+      .from(s.penugasan)
+      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
+      .where(and(eq(s.pegawai.aktif, true), eq(s.pegawai.kantor, kantor), eq(s.penugasan.peranKerja, "SK"), kondisiPenugasanBerlaku(periodeDari(hariIni(kantor)))));
+    dibuat += await pastikanRutin(db, pn.map((p) => p.id), kantor);
+  }
+  return { dibuat };
 }

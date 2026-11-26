@@ -15,7 +15,7 @@ import { kontrolStaf, tepatWaktuItem } from "@/lib/data/kontrol-staf";
 import { aksiItem } from "@/lib/data/tugas-saya";
 import { wajibSesi } from "@/lib/sesi";
 import { cn } from "@/lib/utils";
-import { hariKerjaAntara, labelTanggal, tanggalLokal } from "@/lib/waktu";
+import { hariKerjaAntara, jamLokal, labelTanggal, tanggalLokal } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Verifikasi" };
 
@@ -62,14 +62,14 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
     ...k.tugasMenunggu.map((t) => {
       const tepat = t.selesaiPada ? t.selesaiPada <= t.tenggat : null;
       return {
-        kunci: "Delegasi",
+        kunci: t.setNama ?? "Delegasi",
         jenis: "tugas" as const,
         id: t.id,
         judul: t.judul,
-        ket: `Delegasi · ${nama(t.stafNama)}`,
+        ket: `${t.setNama ? `${t.setNama} · ${jamLokal(t.tenggat, t.kantor).replace(":", ".")}` : "Delegasi"} · ${nama(t.stafNama)}`,
         linkBukti: t.linkBukti,
         tepat,
-        label: tepat === false ? "Terlambat" : "Tepat waktu",
+        label: tepat === false ? `Terlambat ${Math.max(1, Math.round((t.selesaiPada!.getTime() - t.tenggat.getTime()) / 60_000))} menit` : "Tepat waktu",
         href: `/tim/tugas#${t.id}`,
       };
     }),

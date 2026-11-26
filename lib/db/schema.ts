@@ -278,6 +278,8 @@ export const tugasKhusus = pgTable(
     jamTenggat: text("jam_tenggat").notNull(),
     /** Delegasi: staf wajib menyertakan link bukti saat menandai selesai. */
     linkWajib: boolean("link_wajib").notNull().default(false),
+    /** Tugas rutin hasil Set Tugas (lib/data/set-tugas.ts); null = delegasi / tugas khusus biasa. */
+    setTugasItemId: text("set_tugas_item_id"),
     dibuatOleh: text("dibuat_oleh").notNull().references(() => pegawai.id),
     dibuatPada: dibuat(),
   },
@@ -326,6 +328,10 @@ export const usulanTugas = pgTable(
     diputusPada: tz("diputus_pada"),
     /** Tugas khusus yang terbentuk saat disetujui. */
     tugasId: text("tugas_id").references(() => tugasKhusus.id, { onDelete: "set null" }),
+    /** Unit tugas rutin: Set Tugas tujuan usulan (dipilih staf, boleh dipindah koordinator). */
+    setTugasId: text("set_tugas_id"),
+    /** Frekuensi pekanan: hari (0 = Minggu … 6 = Sabtu). */
+    hari: integer("hari"),
     dibuatPada: dibuat(),
   },
   (t) => [index("usulan_tugas_penugasan_idx").on(t.penugasanId, t.status)],
@@ -350,6 +356,77 @@ export const plotSkuo = pgTable(
     dibuatPada: dibuat(),
   },
   (t) => [index("plot_skuo_unit_idx").on(t.unitId, t.skuoId)],
+);
+
+// ── Set Tugas (unit tugas rutin N–R) ───────────────────────────────────────────
+
+/** Kumpulan tugas rutin bernama, seperti folder (mis. "Keamanan shift pagi"). Milik satu unit. */
+export const setTugas = pgTable("set_tugas", {
+  id: id(),
+  unitId: text("unit_id").notNull().references(() => unit.id),
+  nama: text("nama").notNull(),
+  /**
+   * Aturan tugas lewat tengah malam (hanya Admin): tugas berjam lebih awal dari jam ini dijadwalkan pada hari
+   * berikutnya (mis. "06:00" untuk shift malam 22.00–06.00). Kosong = semua tugas pada hari yang sama.
+   */
+  gantiHariJam: text("ganti_hari_jam"),
+  aktif: boolean("aktif").notNull().default(true),
+  dibuatOleh: text("dibuat_oleh").references(() => pegawai.id),
+  dibuatPada: dibuat(),
+});
+
+export const setTugasItem = pgTable(
+  "set_tugas_item",
+  {
+    id: id(),
+    setTugasId: text("set_tugas_id").notNull().references(() => setTugas.id, { onDelete: "cascade" }),
+    judul: text("judul").notNull(),
+    uraian: text("uraian"),
+    /** harian = setiap hari kerja; pekanan = sepekan sekali pada `hari`. */
+    frekuensi: text("frekuensi", { enum: ["harian", "pekanan"] }).notNull(),
+    /** 0 = Minggu … 6 = Sabtu (pekanan). */
+    hari: integer("hari"),
+    /** "HH:MM" zona kantor staf. */
+    jamTenggat: text("jam_tenggat").notNull(),
+    linkWajib: boolean("link_wajib").notNull().default(false),
+    urutan: integer("urutan").notNull().default(0),
+    /** Dihapus dari set: jadwal sesudah hari ini tidak dibuat lagi, riwayat tetap. */
+    aktif: boolean("aktif").notNull().default(true),
+    /** Versi pertama tugas ini (ubah = versi baru): jadwal yang sudah dikerjakan tidak diterbitkan ganda. */
+    asalId: text("asal_id"),
+    dibuatPada: dibuat(),
+  },
+  (t) => [index("set_tugas_item_set_idx").on(t.setTugasId)],
+);
+
+/**
+ * Atur Tugas Staf per pekan: baris terbaru per penugasan dengan `pekan_mulai` ≤ Senin pekan itu berlaku, jadi
+ * susunan pekan lalu otomatis berlanjut tanpa menyalin data. `set_tugas_id` null = tanpa set.
+ */
+export const setTugasStaf = pgTable(
+  "set_tugas_staf",
+  {
+    id: id(),
+    penugasanId: text("penugasan_id").notNull().references(() => penugasan.id, { onDelete: "cascade" }),
+    setTugasId: text("set_tugas_id").references(() => setTugas.id, { onDelete: "set null" }),
+    /** Senin (YYYY-MM-DD). */
+    pekanMulai: date("pekan_mulai").notNull(),
+    dibuatOleh: text("dibuat_oleh").references(() => pegawai.id),
+    dibuatPada: dibuat(),
+  },
+  (t) => [index("set_tugas_staf_pn_idx").on(t.penugasanId, t.pekanMulai)],
+);
+
+/** Izin, sakit, cuti per tanggal (diunggah Admin). Tugas rutin pada tanggal ini keluar dari target SK-TK. */
+export const absensiHari = pgTable(
+  "absensi_hari",
+  {
+    pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
+    tanggal: date("tanggal").notNull(),
+    jenis: text("jenis", { enum: ["izin", "sakit", "cuti"] }).notNull(),
+    diunggahOleh: text("diunggah_oleh").references(() => pegawai.id),
+  },
+  (t) => [primaryKey({ columns: [t.pegawaiId, t.tanggal] })],
 );
 
 // ── Penilaian ─────────────────────────────────────────────────────────────────

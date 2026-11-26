@@ -18,7 +18,7 @@ import { idKoordinator, pimpinan } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
 import { TugasKoordinator } from "./tugas-koordinator";
-import { HariIniSk } from "./hari-ini-sk";
+import { TugasRutin } from "./tugas-rutin";
 import { TugasSaya } from "./tugas-saya";
 
 export const metadata: Metadata = { title: "Hari Ini" };
@@ -36,7 +36,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const sp = await searchParams;
   const today = hariIni(sesi.kantor);
   // Staf Khusus punya dashboard sendiri yang berpusat pada tugas khusus.
-  if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} hariIni={today} sp={sp} />;
+  // Rombak v2: Staf Tugas Rutin (unit N–R) membuka Tugas hari ini dari Set Tugas.
+  if (sesi.amanah?.peranKerja === "SK") return <TugasRutin sesi={sesi} hariIni={today} />;
   // KSBK: dashboard pemantauan K1 staf, kegiatan SKUO, tugas khusus, dan verifikasi.
   if (sesi.amanah?.peranKerja === "KSBK") return <TugasKoordinator sesi={sesi} hariIni={today} sp={sp} />;
   // Rombak v2: Staf Administrasi membuka tab Tugas · Saya (daftar gabungan).
@@ -89,7 +90,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
           .where(and(inArray(s.penugasan.koordinatorId, idKoordinator(sesi)), inArray(s.penugasan.id, timIds), eq(s.item.status, "diajukan"), ne(s.item.indikatorKode, "KSBK-3")))
       : Promise.resolve(null),
     timIds.length
-      ? db.select({ n: count() }).from(s.tugasKhususJadwal).innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId)).where(kondisiTugasMenunggu(sesi.pegawaiId))
+      ? db.select({ n: count() }).from(s.tugasKhususJadwal).innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId)).where(kondisiTugasMenunggu(idKoordinator(sesi)))
       : Promise.resolve(null),
     timIds.length ? jumlahUsulanMenunggu(idKoordinator(sesi)) : Promise.resolve(0),
   ]);

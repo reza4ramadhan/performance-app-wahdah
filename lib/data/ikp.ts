@@ -8,7 +8,7 @@ import { hitungIkp, type HasilIkp, type MasukanIkp } from "../ikp/hitung";
 import type { ParamIndikator } from "../ikp/k1";
 import { KATALOG } from "../ikp/katalog";
 import { PARAMETER, type StatusPeriode } from "../ikp/tipe";
-import { geserHariKerja, keUtc, rentangPeriode, type Kantor } from "../waktu";
+import { geserHariKerja, keUtc, rentangPeriode, tanggalLokal, type Kantor } from "../waktu";
 import { penilaiK3 } from "../akses";
 import { petaBidang, petaWaka } from "./unit";
 
@@ -72,9 +72,11 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
     // Hanya kegiatan yang pasti berjalan (jalan/geser) menjadi target K1; rencana, tunda, dan batal tidak.
     db.select().from(s.kegiatan).where(and(gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir), inArray(s.kegiatan.status, ["jalan", "geser"]))),
     db
-      .select({ jadwal: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId })
+      .select({ jadwal: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId, rutin: s.tugasKhusus.setTugasItemId, pegawaiId: s.penugasan.pegawaiId, kantor: s.pegawai.kantor })
       .from(s.tugasKhususJadwal)
       .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
+      .innerJoin(s.penugasan, eq(s.penugasan.id, s.tugasKhusus.penugasanId))
+      .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
       .where(eq(s.tugasKhususJadwal.periodeId, periode)),
     db.select({ pegawaiId: s.jurnal.pegawaiId, n: count() }).from(s.jurnal).where(and(gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir))).groupBy(s.jurnal.pegawaiId),
     db.select().from(s.ujiPetikArsip).where(eq(s.ujiPetikArsip.periodeId, periode)),
@@ -87,6 +89,9 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
       .innerJoin(s.k4Pengusul, eq(s.k4Pengusul.k4Id, s.k4Pengajuan.id))
       .where(and(eq(s.k4Pengajuan.periodeId, periode), inArray(s.k4Pengajuan.status, ["ditetapkan", "disahkan"]))),
   ]);
+  // Izin, sakit, cuti (absensi per hari): tugas rutin pada tanggal itu keluar dari target SK-TK.
+  const absen = new Set((await db.select({ p: s.absensiHari.pegawaiId, t: s.absensiHari.tanggal }).from(s.absensiHari).where(and(gte(s.absensiHari.tanggal, awal), lte(s.absensiHari.tanggal, akhir)))).map((a) => `${a.p}|${a.t}`));
+  const tugasDihitung = tugas.filter((t) => !(t.rutin && absen.has(`${t.pegawaiId}|${tanggalLokal(t.jadwal.tenggat, t.kantor as Kantor)}`)));
   const item = itemSemua.filter((r) => !keluar(r)).map((r) => r.item);
 
   const poinK4 = new Map<string, number>();
@@ -116,7 +121,7 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
         danaCairPada: i.danaCairPada,
       })),
       kegiatan: kegiatan.map((k) => ({ id: k.id, unitId: k.unitId, tanggal: k.tanggal, perluSpp: k.perluSpp, perluSpb: k.perluSpb, dibuatPada: k.dibuatPada, penanggungJawabId: k.penanggungJawabId, skuoId: k.skuoId })),
-      tugas: tugas.map(({ jadwal: j, penugasanId }) => ({ penugasanId, tenggat: j.tenggat, status: j.status, selesaiPada: j.selesaiPada, diverifikasiPada: j.diverifikasiPada })),
+      tugas: tugasDihitung.map(({ jadwal: j, penugasanId }) => ({ penugasanId, tenggat: j.tenggat, status: j.status, selesaiPada: j.selesaiPada, diverifikasiPada: j.diverifikasiPada })),
       jurnal: new Map(jurnal.map((j) => [j.pegawaiId, j.n])),
       ujiPetik: uji.map((u) => ({ unitId: u.unitId, jumlahDiuji: u.jumlahDiuji, jumlahSesuai: u.jumlahSesuai })),
     },

@@ -11,7 +11,7 @@ import { getAuth } from "./auth";
 import { getDb, schema as s } from "./db";
 import { peranTertinggi } from "./amanah";
 import type { PeranKerja, PeranSistem } from "./ikp/tipe";
-import { bidangDari, wakaDari } from "./unit";
+import { bidangDari, polaBawaan, wakaDari, type PolaKerja } from "./unit";
 import { hariIni, periodeBerikut, periodeDari, type Kantor } from "./waktu";
 
 export type Sesi = Aktor & {
@@ -20,7 +20,7 @@ export type Sesi = Aktor & {
   kantor: Kantor;
   harusGantiPassword: boolean;
   /** Penugasan yang berlaku bulan ini. `bidangId`: bidang unit itu (SKUO → bidang induknya), null bila di luar bidang. */
-  penugasan: { id: string; peranKerja: PeranKerja; unitId: string; unitNama: string; bidangId: string | null; koordinatorId: string | null }[];
+  penugasan: { id: string; peranKerja: PeranKerja; unitId: string; unitNama: string; bidangId: string | null; koordinatorId: string | null; /** Pola kerja unit (rombak v2). */ polaKerja: PolaKerja | null }[];
   /**
    * Penugasan orang lain (atau milik sendiri bila rangkap) yang saya koordinasikan, wakili (Wakil Koordinator),
    * atau K3-nya saya nilai, berlaku bulan ini atau bulan lalu (verifikasi bulan lalu masih berjalan sampai hari kerja ke-5).
@@ -72,7 +72,7 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
   const [peran, pn, semuaBinaan] = await Promise.all([
     db.select({ peran: s.peranSistem.peran }).from(s.peranSistem).where(eq(s.peranSistem.pegawaiId, pg.id)),
     db
-      .select({ id: s.penugasan.id, peranKerja: s.penugasan.peranKerja, unitId: s.penugasan.unitId, unitNama: s.unit.nama, koordinatorId: s.penugasan.koordinatorId })
+      .select({ id: s.penugasan.id, peranKerja: s.penugasan.peranKerja, unitId: s.penugasan.unitId, unitNama: s.unit.nama, koordinatorId: s.penugasan.koordinatorId, polaUnit: s.unit.polaKerja, jenisUnit: s.unit.jenis })
       .from(s.penugasan)
       .innerJoin(s.unit, eq(s.unit.id, s.penugasan.unitId))
       .where(
@@ -102,7 +102,7 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
       ),
   ]);
 
-  const penugasan = pn.map((p) => ({ ...p, bidangId: bidang.get(p.unitId) ?? null }));
+  const penugasan = pn.map(({ polaUnit, jenisUnit, ...p }) => ({ ...p, bidangId: bidang.get(p.unitId) ?? null, polaKerja: polaUnit ?? polaBawaan(jenisUnit) }));
 
   return {
     userId: data.user.id,

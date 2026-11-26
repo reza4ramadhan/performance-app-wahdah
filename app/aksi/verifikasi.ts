@@ -2,7 +2,7 @@
 
 import { eq, inArray } from "drizzle-orm";
 import { refresh } from "next/cache";
-import { bolehVerifikasiItem } from "@/lib/akses";
+import { bolehVerifikasiItem, idKoordinator } from "@/lib/akses";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
@@ -73,7 +73,7 @@ export async function setujuiSemuaTepatWaktu(): Promise<HasilAksi> {
     import("@/lib/data/kontrol-staf"),
     import("./tugas"),
   ]);
-  const [item, tugas] = await Promise.all([daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 500 }), daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId), 500)]);
+  const [item, tugas] = await Promise.all([daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 500 }), daftarTugas(kondisiTugasMenunggu(idKoordinator(sesi)), 500)]);
   // Item tanpa tenggat tanggal (mis. laporan) dianggap tepat waktu; milik sendiri tidak ikut persetujuan massal.
   const itemTepat = item.filter((i) => i.pemilikId !== sesi.pegawaiId && tepatWaktuItem(i, sesi) !== false).map((i) => i.id);
   const tugasTepat = tugas.filter((t) => t.selesaiPada && t.selesaiPada <= t.tenggat).map((t) => t.id);

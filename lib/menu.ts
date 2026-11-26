@@ -23,6 +23,15 @@ const UTAMA_KOORDINATOR: ItemMenu[] = [
   { href: "/akun", label: "Akun", ikon: "akun" },
 ];
 
+/** Segmen Tim koordinator unit tugas rutin N–R (docs/rombak-v2/05). */
+export const TIM_KOORDINATOR_RUTIN: ItemMenu[] = [
+  { href: "/tim/verifikasi", label: "Verifikasi", ikon: "verifikasi", lencana: "/verifikasi" },
+  { href: "/tim/set-tugas", label: "Set Tugas", ikon: "item" },
+  { href: "/tim/atur-tugas", label: "Atur Tugas Staf", ikon: "kegiatan" },
+  { href: "/tim/tugas", label: "Delegasi", ikon: "tugas" },
+  { href: "/tim/usulan", label: "Usulan", ikon: "usulan" },
+];
+
 /** Segmen Tim (tab Tugas) koordinator unit administrasi A–M. */
 export const TIM_KOORDINATOR: ItemMenu[] = [
   { href: "/tim/verifikasi", label: "Verifikasi", ikon: "verifikasi", lencana: "/verifikasi" },
@@ -74,7 +83,7 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   const grup: GrupMenu[] = ksbk
     ? [
         { judul: "Utama", item: UTAMA_KOORDINATOR },
-        { judul: "Tim", item: TIM_KOORDINATOR },
+        { judul: "Tim", item: sesi.amanah?.polaKerja === "rutin" ? TIM_KOORDINATOR_RUTIN : TIM_KOORDINATOR },
       ]
     : [saya];
 

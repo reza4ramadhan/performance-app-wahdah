@@ -2,12 +2,14 @@
 // bawaan bila ada pekerjaan staf yang menunggu diperiksa; selain itu Saya.
 
 import Link from "next/link";
-import { CalendarDays, ChevronRight, ClipboardCheck, Send, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, ClipboardCheck, Folder, Send, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar } from "@/components/app/ui";
+import { idKoordinator } from "@/lib/akses";
 import { jumlahAntrean } from "@/lib/data/antrean";
 import { liburPerKantor } from "@/lib/data/ikp";
 import { muatTimKoordinator, unitKoordinator } from "@/lib/data/tim-koordinator";
+import { muatTimRutin, unitRutin } from "@/lib/data/tim-rutin";
 import { jumlahTugasMenunggu } from "@/lib/data/tugas";
 import { getDb } from "@/lib/db";
 import { angka } from "@/lib/format";
@@ -19,7 +21,7 @@ import { labelPeriode, labelTanggal } from "@/lib/waktu";
 import { TugasSaya } from "./tugas-saya";
 
 export async function TugasKoordinator({ sesi, hariIni, sp }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined> }) {
-  const [nItem, nTugas] = await Promise.all([jumlahAntrean(sesi), jumlahTugasMenunggu(sesi.pegawaiId)]);
+  const [nItem, nTugas] = await Promise.all([jumlahAntrean(sesi), jumlahTugasMenunggu(idKoordinator(sesi))]);
   const nPeriksa = nItem + nTugas;
   const segmen = sp.segmen === "saya" || sp.segmen === "tim" ? sp.segmen : nPeriksa ? "tim" : "saya";
   const unit = unitKoordinator(sesi);
@@ -27,6 +29,8 @@ export async function TugasKoordinator({ sesi, hariIni, sp }: { sesi: Sesi; hari
   const sub = `${wakil ? "Wakil Koordinator" : "Koordinator"} · ${unit.map((u) => u.unitNama).join(", ")}`;
   const tab = <Segmen aktif={segmen} nTim={nPeriksa} />;
   if (segmen === "saya") return <TugasSaya sesi={sesi} hariIni={hariIni} sp={sp} segmen={tab} sub={sub} dasar="/?segmen=saya&" />;
+  // Unit tugas rutin (N–R): Set Tugas & Atur Tugas Staf menggantikan Jadwal dan Manage tim.
+  if (unitRutin(sesi).length) return <SegmenTimRutin sesi={sesi} sub={sub} tab={tab} />;
   return <SegmenTim sesi={sesi} hariIni={hariIni} sub={sub} tab={tab} />;
 }
 
@@ -142,6 +146,84 @@ async function SegmenTim({ sesi, hariIni, sub, tab }: { sesi: Sesi; hariIni: str
             </ul>
           ) : (
             <p className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">Belum ada staf di unit Anda bulan ini. Anggota unit diatur Admin sesuai SK.</p>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+async function SegmenTimRutin({ sesi, sub, tab }: { sesi: Sesi; sub: string; tab: React.ReactNode }) {
+  const t = await muatTimRutin(sesi);
+  return (
+    <div className="mx-auto max-w-xl pb-6">
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-[13px] text-muted-foreground">{sub}</p>
+          <h1 className="text-xl font-bold text-heading">Tugas</h1>
+        </div>
+        <Link href="/akun" aria-label="Akun">
+          <Avatar nama={sesi.nama} ukuran="lg" />
+        </Link>
+      </header>
+      {tab}
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          <Link href="/tim/verifikasi" className="flex flex-col gap-px rounded-xl bg-primary px-3 py-2.5 text-primary-foreground">
+            <span className="text-xl font-bold tabular-nums">{t.perluDiperiksa}</span>
+            <span className="text-xs font-medium">Perlu diperiksa</span>
+          </Link>
+          <a href="#staf" className="flex flex-col gap-px rounded-xl bg-flame-500/10 px-3 py-2.5 text-flame-700 dark:text-flame-100">
+            <span className="text-xl font-bold tabular-nums">{t.terlambat}</span>
+            <span className="text-xs font-medium">Terlambat</span>
+          </a>
+          <a href="#staf" className="flex flex-col gap-px rounded-xl bg-gold-400/25 px-3 py-2.5 text-gold-700 dark:text-gold-100">
+            <span className="text-xl font-bold tabular-nums">{t.belumMulai}</span>
+            <span className="text-xs font-medium">Belum mulai</span>
+          </a>
+        </div>
+
+        {t.usulan > 0 && (
+          <Link href="/tim/usulan" className="flex items-center gap-3 rounded-2xl border border-gold-400/60 bg-gold-400/15 px-3.5 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-heading">{t.usulan} usulan tugas rutin dari staf</span>
+              <span className="block text-[12.5px] text-gold-700 dark:text-gold-100">Setujui lalu pilih set tugas tujuannya</span>
+            </span>
+            <span className="inline-flex h-9 items-center rounded-xl bg-heading px-3 text-[13px] font-semibold text-white dark:bg-primary">Tinjau</span>
+          </Link>
+        )}
+
+        <nav aria-label="Fungsi koordinator" className="grid grid-cols-2 gap-2.5">
+          <Ubin href="/tim/verifikasi" ikon={ClipboardCheck} judul="Verifikasi" sub={t.perluDiperiksa ? `${t.perluDiperiksa} menunggu` : "Tidak ada antrean"} />
+          <Ubin href="/tim/set-tugas" ikon={Folder} judul="Set Tugas" sub={`${t.jumlahSet} set`} />
+          <Ubin href="/tim/atur-tugas" ikon={CalendarDays} judul="Atur Tugas Staf" sub="Set tugas per pekan" />
+          <Ubin href="/tim/tugas" ikon={Send} judul="Delegasi" sub="Beri tugas sekali" />
+        </nav>
+
+        <section id="staf" className="scroll-mt-6 space-y-1.5">
+          <h2 className="text-[12.5px] font-semibold tracking-wide text-muted-foreground uppercase">Staf hari ini · {t.staf.length}</h2>
+          {t.staf.length ? (
+            <ul className="overflow-hidden rounded-2xl border border-border bg-card">
+              {t.staf.map((x) => (
+                <li key={x.penugasanId} className="border-b border-border/60 last:border-0">
+                  <Link href={`/tim/staf/${x.pegawaiId}`} className="flex min-h-14 items-center gap-3 px-3.5 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-heading">{x.nama}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{x.set ? `${x.set} · ${x.selesai}/${x.total}` : "Belum ada set tugas"}</span>
+                    </span>
+                    {x.lewat ? (
+                      <span className="text-xs font-semibold text-flame-600 dark:text-flame-100">{x.lewat} terlambat</span>
+                    ) : x.belumMulai ? (
+                      <span className="text-xs font-semibold text-gold-700 dark:text-gold-100">Belum mulai</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-mint-700 dark:text-mint-100">Lancar</span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">Belum ada staf tugas rutin di unit Anda. Anggota unit diatur Admin sesuai SK.</p>
           )}
         </section>
       </div>

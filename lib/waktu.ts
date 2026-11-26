@@ -38,7 +38,7 @@ export function tambahHari(tgl: string, n: number) {
 }
 
 /** 0 = Minggu … 6 = Sabtu */
-const hariDalamPekan = (tgl: string) => keDateUtc(tgl).getUTCDay();
+export const hariDalamPekan = (tgl: string) => keDateUtc(tgl).getUTCDay();
 
 export function isHariKerja(tgl: string, libur: ReadonlySet<string>) {
   const h = hariDalamPekan(tgl);

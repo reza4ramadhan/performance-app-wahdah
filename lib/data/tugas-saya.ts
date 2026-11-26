@@ -85,7 +85,7 @@ export async function muatTugasSaya(sesi: Sesi) {
       alasanTolak: t.alasanTolak,
       pending: false,
       selesaiPada: t.selesaiPada,
-      href: `/tugas#${t.id}`,
+      href: `/tugas/${t.id}`,
     })),
   ];
   return { baris };

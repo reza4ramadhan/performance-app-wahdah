@@ -31,6 +31,9 @@ export type BarisTugas = {
   pemberiNama: string;
   /** Link bukti wajib saat menandai selesai. */
   linkWajib: boolean;
+  /** Tugas rutin dari Set Tugas: id tugas dalam set dan nama setnya; null = delegasi. */
+  setTugasItemId: string | null;
+  setNama: string | null;
   /** Belum selesai dan tenggat sudah lewat. */
   lewat: boolean;
   /** Sisa waktu menuju tenggat, dihitung di server agar sama saat hidrasi. */
@@ -42,9 +45,11 @@ const pemberi = alias(s.pegawai, "pemberi");
 export async function daftarTugas(where: SQL | undefined, batas = 300): Promise<BarisTugas[]> {
   const db = await getDb();
   const rows = await db
-    .select({ j: s.tugasKhususJadwal, t: s.tugasKhusus, stafId: s.pegawai.id, stafNama: s.pegawai.nama, kantor: s.pegawai.kantor, pemberiNama: pemberi.nama })
+    .select({ j: s.tugasKhususJadwal, t: s.tugasKhusus, stafId: s.pegawai.id, stafNama: s.pegawai.nama, kantor: s.pegawai.kantor, pemberiNama: pemberi.nama, setNama: s.setTugas.nama })
     .from(s.tugasKhususJadwal)
     .innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId))
+    .leftJoin(s.setTugasItem, eq(s.setTugasItem.id, s.tugasKhusus.setTugasItemId))
+    .leftJoin(s.setTugas, eq(s.setTugas.id, s.setTugasItem.setTugasId))
     .innerJoin(s.penugasan, eq(s.penugasan.id, s.tugasKhusus.penugasanId))
     .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
     .innerJoin(pemberi, eq(pemberi.id, s.tugasKhusus.dibuatOleh))
@@ -73,6 +78,8 @@ export async function daftarTugas(where: SQL | undefined, batas = 300): Promise<
     pemberiId: r.t.dibuatOleh,
     pemberiNama: r.pemberiNama,
     linkWajib: r.t.linkWajib,
+    setTugasItemId: r.t.setTugasItemId,
+    setNama: r.setNama,
     lewat: (r.j.status === "belum" || r.j.status === "dikerjakan" || r.j.status === "ditolak") && r.j.tenggat.getTime() < kini,
     sisa: labelSisaTugas(r.j.tenggat, r.kantor as Kantor, kini),
   }));
@@ -83,7 +90,8 @@ export const kondisiTugasPenugasan = (penugasanIds: string[], status?: StatusTug
   and(inArray(s.tugasKhusus.penugasanId, penugasanIds.length ? penugasanIds : ["-"]), status ? inArray(s.tugasKhususJadwal.status, status) : undefined);
 
 /** Jadwal yang menunggu verifikasi pemberi tugas ini. */
-export const kondisiTugasMenunggu = (pemberiId: string) => and(eq(s.tugasKhusus.dibuatOleh, pemberiId), eq(s.tugasKhususJadwal.status, "diajukan"));
+/** `pemberiId`: satu id atau beberapa (pemberi tugas + koordinator yang diwakili; lib/akses.ts idKoordinator). */
+export const kondisiTugasMenunggu = (pemberiId: string | readonly string[]) => and(inArray(s.tugasKhusus.dibuatOleh, [pemberiId].flat()), eq(s.tugasKhususJadwal.status, "diajukan"));
 
 /**
  * Tugas yang belum selesai dengan tenggat setelah `setelah`, berapa pun jauhnya: satu baris per tugas
@@ -144,7 +152,7 @@ export const kondisiUsulanPenugasan = (penugasanIds: string[], status?: ("diajuk
 export const kondisiUsulanMenunggu = (koordinatorId: string | readonly string[]) => and(inArray(s.penugasan.koordinatorId, [koordinatorId].flat()), eq(s.usulanTugas.status, "diajukan"));
 
 /** Jumlah jadwal tugas yang diajukan selesai dan menunggu persetujuan pemberinya; `penugasanIds` membatasi ke staf tertentu. */
-export async function jumlahTugasMenunggu(pemberiId: string, penugasanIds?: string[]) {
+export async function jumlahTugasMenunggu(pemberiId: string | readonly string[], penugasanIds?: string[]) {
   const db = await getDb();
   const [r] = await db
     .select({ n: count() })

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { koordinatorAtauWakil, idKoordinator } from "@/lib/akses";
 import { ClipboardList, Trash2 } from "lucide-react";
 import { TombolAksi } from "@/components/app/tombol-aksi";
@@ -47,8 +47,9 @@ async function Isi() {
   const unitSaya = new Set(sesi.penugasan.filter((p) => p.peranKerja === "KSBK").map((p) => p.unitNama));
   const db = await getDb();
   const [menunggu, usulan, induk] = await Promise.all([
-    daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
-    daftarUsulan(kondisiUsulanMenunggu(idKoordinator(sesi))),
+    daftarTugas(kondisiTugasMenunggu(idKoordinator(sesi))),
+    // Usulan tugas rutin (ke Set Tugas) diputuskan di /tim/usulan.
+    daftarUsulan(and(kondisiUsulanMenunggu(idKoordinator(sesi)), isNull(s.usulanTugas.setTugasId))),
     db
       .select({ t: s.tugasKhusus, staf: s.pegawai.nama })
       .from(s.tugasKhusus)

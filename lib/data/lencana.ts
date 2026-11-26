@@ -43,7 +43,7 @@ export async function jumlahMengantre(sesi: Sesi, hrefs: ReadonlySet<string>, ca
     "/tim/tugas": async () => {
       const tim = cakupTim ? sesi.tim.map((b) => b.id) : undefined;
       if (tim && !tim.length) return 0;
-      const n = await Promise.all([jumlahTugasMenunggu(sesi.pegawaiId, tim), jumlahUsulanMenunggu(idKoordinator(sesi), tim)]);
+      const n = await Promise.all([jumlahTugasMenunggu(idKoordinator(sesi), tim), jumlahUsulanMenunggu(idKoordinator(sesi), tim)]);
       return n[0] + n[1];
     },
   };

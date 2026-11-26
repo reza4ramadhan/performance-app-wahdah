@@ -138,3 +138,14 @@ Migrasi `drizzle/0010_delegasi_link_wajib.sql` (`tugas_khusus.link_wajib`).
 - **Progres koordinator**: daftar K1 tiap staf + rata-rata.
 
 Catatan: rencana SIMAKPRO baru masuk setelah impor tahunan (Fase 5); sampai itu kegiatan tambahan langsung berstatus Jalan. Notifikasi "item menunggu > 1 hari kerja" dan "rencana belum dikonfirmasi" dikerjakan bersama cron di Fase 5.
+
+### Fase 4 — selesai di branch `rombak-ux-v2` (26 Nov 2026)
+
+Migrasi `drizzle/0011_set_tugas.sql` (1.9–1.11): `set_tugas`, `set_tugas_item`, `set_tugas_staf`, `absensi_hari`, `usulan_tugas.set_tugas_id` + `hari`, `tugas_khusus.set_tugas_item_id`.
+
+- **Generator** ([lib/set-tugas.ts](../../lib/set-tugas.ts) murni, [lib/data/set-tugas.ts](../../lib/data/set-tugas.ts)): susunan Atur Tugas Staf → jadwal `tugas_khusus_jadwal` sampai Minggu pekan depan. Setiap perubahan set/susunan hanya menulis ulang tanggal **setelah hari ini**; jadwal yang sudah disentuh staf tidak dihapus. Ubah tugas = versi baru (`asal_id`) sehingga tidak ada jadwal ganda. Diperpanjang otomatis saat halaman Tugas/Tim dibuka dan lewat cron `POST /api/cron/rutin`.
+- **Staf Tugas Rutin**: `/` = Tugas hari ini (kartu set aktif + progres + tugas berikutnya + K1, Perlu diperbaiki, Rutin hari ini urut jam dengan centang cepat bila link tidak wajib, Terlambat, Delegasi, Besok). Detail `/tugas/[id]` (jejak pekan ini, riwayat, Tandai selesai), `/tugas/besok`, usulan ke set tugas. Progres: rincian rutin vs delegasi.
+- **Koordinator N–R**: segmen Tim (Perlu diperiksa · Terlambat · Belum mulai, usulan, staf hari ini dengan set + selesai/total), `/tim/set-tugas` (+ ubah, duplikat), `/tim/atur-tugas` (pekan ini/depan, berlanjut otomatis), `/tim/usulan` (setujui ke set mana pun / tolak). Verifikasi memakai halaman yang sama dengan saring per set tugas dan Setujui semua yang tepat waktu.
+- **Admin**: aturan tugas lewat tengah malam per set (jam ganti hari) di halaman ubah set; unggah izin/sakit/cuti per hari di `/absensi`. Tugas rutin pada hari itu keluar dari target SK-TK.
+
+Perbedaan dari rencana: `set_tugas_staf` memakai `penugasan_id` (bukan `pegawai_id`) agar staf rangkap tetap tepat; aturan tengah malam disimpan sebagai jam ganti hari (`ganti_hari_jam`). "Setiap hari" = setiap hari kerja (mengikuti kalender libur). Fitur "tukar dua set sekaligus" di mockup KR-5 belum dibuat.

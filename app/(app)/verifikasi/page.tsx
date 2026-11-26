@@ -34,7 +34,7 @@ async function Isi() {
   const [items, libur, tugas, usulan] = await Promise.all([
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     liburPerKantor(db),
-    daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
+    daftarTugas(kondisiTugasMenunggu(idKoordinator(sesi))),
     jumlahUsulanMenunggu(idKoordinator(sesi)),
   ]);
   const kartuTugas = (tugas.length > 0 || usulan > 0) && (
