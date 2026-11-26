@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { ArrowLeftRight, BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
+import { BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
 import { PanduanPasang, SakelarNotifikasi } from "@/components/app/pwa";
 import { PilihanTema } from "@/components/app/tema";
-import { Avatar, BarisTautan, Hitungan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
+import { Avatar, BarisTautan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
-import { keluar, pindahAmanah } from "@/app/aksi/akun";
+import { keluar } from "@/app/aksi/akun";
 import { getDb, schema as s } from "@/lib/db";
 import { liburPerKantor } from "@/lib/data/ikp";
-import { jumlahPerAmanah } from "@/lib/data/lencana";
 import { LABEL_PERAN_KERJA, LABEL_PERAN_SISTEM } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
 import { LABEL_ZONA, geserHariKerja, hariIni, hariKerjaPeriode, isHariKerja, periodeDari, rentangPeriode } from "@/lib/waktu";
@@ -33,14 +32,14 @@ async function Isi() {
   const tz = sesi.kantor === "makassar" ? "Asia/Makassar" : "Asia/Jakarta";
   const pnIds = sesi.penugasan.map((p) => p.id).concat("-");
 
-  const [[pg], [nItem], hariItem, hariJurnal, libur, antreanAmanah] = await Promise.all([
+  const koordinatorIds = [...new Set(sesi.penugasan.map((p) => p.koordinatorId).filter((x): x is string => !!x && x !== sesi.pegawaiId))];
+  const [[pg], [nItem], hariItem, hariJurnal, libur, koordinator] = await Promise.all([
     db.select().from(s.pegawai).where(eq(s.pegawai.id, sesi.pegawaiId)),
     db.select({ n: count() }).from(s.item).where(and(inArray(s.item.penugasanId, pnIds), eq(s.item.periodeId, periode))),
     db.selectDistinct({ d: sql<string>`(${s.item.dibuatPada} at time zone ${tz})::date::text` }).from(s.item).where(inArray(s.item.penugasanId, pnIds)),
     db.selectDistinct({ d: s.jurnal.tanggal }).from(s.jurnal).where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, geserHariKerja(today, -60, new Set())), lte(s.jurnal.tanggal, akhir))),
     liburPerKantor(db),
-    // Antrean tiap amanah, agar profil menunjukkan amanah lain yang perlu dibuka.
-    jumlahPerAmanah(sesi),
+    koordinatorIds.length ? db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.pegawai).where(inArray(s.pegawai.id, koordinatorIds)) : Promise.resolve([]),
   ]);
   const terisi = new Set([...hariItem.map((x) => x.d), ...hariJurnal.map((x) => x.d)]);
   const hkBulan = hariKerjaPeriode(periode, libur(sesi.kantor), today);
@@ -54,7 +53,7 @@ async function Isi() {
   }
   const bisaTugas = sesi.amanah?.peranKerja === "SBK" || sesi.amanah?.peranKerja === "SK";
   const peran = [...sesi.peran].filter((p) => p !== "pegawai");
-  const rangkap = sesi.daftarAmanah.length > 1;
+  const namaKoordinator = new Map(koordinator.map((k) => [k.id, k.nama]));
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
@@ -89,37 +88,18 @@ async function Isi() {
         </dl>
       </section>
 
-      <Kartu id="amanah">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{rangkap ? "Pindah amanah" : "Amanah bulan ini"}</p>
-        {rangkap && <p className="mb-2 text-sm text-muted-foreground">Menu, dashboard, item, dan tim mengikuti amanah yang aktif.</p>}
+      <Kartu id="penugasan">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Penugasan bulan ini</p>
         <ul className="divide-y divide-border text-sm">
-          {sesi.daftarAmanah.map((grup) => {
-            const p = grup[0];
-            const aktif = grup.some((x) => x.id === sesi.amanah?.id);
-            const n = antreanAmanah.get(p.id) ?? 0;
+          {sesi.penugasan.map((p) => {
+            const ko = p.koordinatorId && p.koordinatorId !== sesi.pegawaiId ? namaKoordinator.get(p.koordinatorId) : null;
             return (
-              <li key={p.id} className="flex min-h-14 items-center gap-3 py-2">
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate font-medium text-heading">{LABEL_PERAN_KERJA[p.peranKerja]}</span>
-                    <Hitungan n={n} className="h-5 min-w-5 text-[11px]" />
-                    {n > 0 && <span className="sr-only">{n} antrean</span>}
-                  </span>
-                  {grup.map((x) => (
-                    <span key={x.id} className="block truncate text-xs text-muted-foreground">
-                      {x.unitNama}
-                    </span>
-                  ))}
+              <li key={p.id} className="flex min-h-14 flex-col justify-center py-2">
+                <span className="truncate font-medium text-heading">{p.unitNama}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {LABEL_PERAN_KERJA[p.peranKerja]}
+                  {ko ? ` · Koordinator: ${ko}` : ""}
                 </span>
-                {aktif ? (
-                  rangkap && <Lencana nada="brand">Aktif</Lencana>
-                ) : (
-                  <form action={pindahAmanah.bind(null, p.id)}>
-                    <Button type="submit" variant="outline" size="sm" className="rounded-xl">
-                      <ArrowLeftRight className="size-4" /> Pindah
-                    </Button>
-                  </form>
-                )}
               </li>
             );
           })}

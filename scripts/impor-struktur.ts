@@ -1,7 +1,10 @@
 // Impor awal dari sheet STRUKTUR KPWI yang diekspor ke CSV (plan.md 10.2).
 //   npm run impor:struktur -- --folder ./impor            (uji coba: hanya laporan, tidak menulis)
 //   npm run impor:struktur -- --folder ./impor --tulis    (menulis ke basis data)
-// Berkas: unit.csv, pegawai.csv, penugasan.csv — format di docs/templat-impor/.
+// Berkas: unit.csv, pegawai.csv, penugasan.csv — format di docs/templat-impor/ (18 unit SK: docs/templat-impor/sk-2026/).
+// unit.csv: kolom opsional `pola_kerja` (administrasi | rutin; kosong = dari jenis).
+// penugasan.csv: kolom opsional `wakil` (1/ya) untuk Wakil Koordinator (peran KSBK).
+// pegawai.csv: peran `sekretariat` dibaca sebagai `admin` (Sekretariat dilebur ke Admin).
 // Baris yang gagal dicocokkan dilaporkan; password sementara ditulis ke data/kredensial-awal.csv (jangan dibagikan).
 
 import "./env";
@@ -16,6 +19,7 @@ import { eq } from "drizzle-orm";
 import * as s from "../lib/db/schema";
 import { sinkronKatalog } from "../lib/ikp/sinkron";
 import { PERAN_KERJA, PERAN_MANUAL, PERAN_SISTEM, type PeranManual } from "../lib/ikp/tipe";
+import { polaBawaan } from "../lib/unit";
 
 const { values: a } = parseArgs({ options: { folder: { type: "string", default: "./impor" }, tulis: { type: "boolean", default: false } } });
 const baca = (nama: string) => {
@@ -29,6 +33,9 @@ const baca = (nama: string) => {
 const nomor = (x = "") => x.trim().replace(/[\s.-]/g, "").replace(/^\+62/, "0");
 const JENIS = ["kantor", "bidang", "skuo", "unit_pendukung", "staf_khusus"] as const;
 const STATUS = ["Mutafarrigh", "Muta'awin", "Kontrak"] as const;
+const POLA = ["administrasi", "rutin"] as const;
+const ya = (x = "") => /^(1|ya|y|true|wakil)$/i.test(x.trim());
+const peranDari = (x = "") => x.split(/[;|]/).map((p) => p.trim()).filter(Boolean).map((p) => (p === "sekretariat" ? "admin" : p));
 const kata = ["amanah", "ikhlas", "sabar", "tekun", "jujur", "rapi", "sigap", "teliti"];
 const pw = () => `${kata[randomInt(kata.length)]}-${kata[randomInt(kata.length)]}-${randomInt(10, 99)}`;
 
@@ -43,6 +50,7 @@ unitCsv.forEach((r, i) => {
   if (!JENIS.includes(r.jenis as never)) gagal.push(`unit.csv baris ${i + 2}: jenis "${r.jenis}" tidak dikenal`);
   if (!r.nama) gagal.push(`unit.csv baris ${i + 2}: nama kosong`);
   if (namaUnit.has(r.nama)) gagal.push(`unit.csv baris ${i + 2}: nama "${r.nama}" ganda`);
+  if (r.pola_kerja && !POLA.includes(r.pola_kerja as never)) gagal.push(`unit.csv baris ${i + 2}: pola_kerja "${r.pola_kerja}" tidak dikenal (administrasi | rutin)`);
   namaUnit.add(r.nama);
 });
 unitCsv.forEach((r, i) => r.induk && !namaUnit.has(r.induk) && gagal.push(`unit.csv baris ${i + 2}: induk "${r.induk}" tidak ada`));
@@ -55,7 +63,7 @@ pegawaiCsv.forEach((r, i) => {
   if (identitas.has(id)) gagal.push(`pegawai.csv baris ${i + 2}: NIP/No. HP "${id}" ganda`);
   identitas.add(id);
   if (r.status_kepegawaian && !STATUS.includes(r.status_kepegawaian as never)) gagal.push(`pegawai.csv baris ${i + 2}: status "${r.status_kepegawaian}" tidak dikenal`);
-  for (const p of (r.peran_sistem ?? "").split(/[;|]/).map((x) => x.trim()).filter(Boolean))
+  for (const p of peranDari(r.peran_sistem))
     if (!(PERAN_SISTEM as readonly string[]).includes(p)) gagal.push(`pegawai.csv baris ${i + 2}: peran "${p}" tidak dikenal`);
 });
 unitCsv.forEach((r, i) => r.waka_nip && !identitas.has(nomor(r.waka_nip)) && gagal.push(`unit.csv baris ${i + 2}: WaKa ${r.waka_nip} tidak ada di pegawai.csv`));
@@ -65,6 +73,7 @@ penugasanCsv.forEach((r, i) => {
   if (!namaUnit.has(r.unit)) gagal.push(`penugasan.csv baris ${i + 2}: unit "${r.unit}" tidak ada di unit.csv`);
   if (r.koordinator_nip && !identitas.has(nomor(r.koordinator_nip))) gagal.push(`penugasan.csv baris ${i + 2}: koordinator ${r.koordinator_nip} tidak ada`);
   if (!/^\d{4}-\d{2}$/.test(r.periode_mulai)) gagal.push(`penugasan.csv baris ${i + 2}: periode_mulai harus YYYY-MM`);
+  if (ya(r.wakil) && r.peran_kerja !== "KSBK") gagal.push(`penugasan.csv baris ${i + 2}: wakil hanya untuk peran KSBK`);
 });
 
 console.log(`Dibaca: ${unitCsv.length} unit, ${pegawaiCsv.length} pegawai, ${penugasanCsv.length} penugasan.`);
@@ -96,7 +105,7 @@ async function tulis() {
     if (r.nip) pgId.set(nomor(r.nip), p.id);
     if (r.no_hp) pgId.set(nomor(r.no_hp), p.id);
     // Koordinator/WaKa/Kepala Kantor diturunkan dari penugasan; hanya peran fungsi yang disimpan.
-    const peran = (r.peran_sistem ?? "").split(/[;|]/).map((x) => x.trim()).filter((x): x is PeranManual => (PERAN_MANUAL as readonly string[]).includes(x));
+    const peran = peranDari(r.peran_sistem).filter((x): x is PeranManual => (PERAN_MANUAL as readonly string[]).includes(x));
     if (peran.length) await db.insert(s.peranSistem).values(peran.map((x) => ({ pegawaiId: p.id, peran: x })));
     const kata = pw();
     await buatAkun(auth, { pegawaiId: p.id, nama: p.nama, username: login, password: kata });
@@ -104,7 +113,9 @@ async function tulis() {
   }
   const unitId = new Map<string, string>();
   for (const r of unitCsv) {
-    const [u] = await db.insert(s.unit).values({ jenis: r.jenis as (typeof JENIS)[number], nama: r.nama, wakaId: r.waka_nip ? pgId.get(nomor(r.waka_nip)) ?? null : null }).returning();
+    const jenis = r.jenis as (typeof JENIS)[number];
+    const polaKerja = (r.pola_kerja as (typeof POLA)[number]) || polaBawaan(jenis);
+    const [u] = await db.insert(s.unit).values({ jenis, nama: r.nama, polaKerja, wakaId: r.waka_nip ? pgId.get(nomor(r.waka_nip)) ?? null : null }).returning();
     unitId.set(r.nama, u.id);
   }
   for (const r of unitCsv) if (r.induk) await db.update(s.unit).set({ indukId: unitId.get(r.induk)! }).where(eq(s.unit.id, unitId.get(r.nama)!));
@@ -116,6 +127,7 @@ async function tulis() {
       koordinatorId: r.koordinator_nip ? pgId.get(nomor(r.koordinator_nip))! : null,
       periodeMulai: r.periode_mulai,
       bobotAlokasi: r.bobot_alokasi ? Number(r.bobot_alokasi) : null,
+      wakil: r.peran_kerja === "KSBK" && ya(r.wakil),
     });
   mkdirSync("data", { recursive: true });
   writeFileSync("data/kredensial-awal.csv", kredensial.join("\n"));

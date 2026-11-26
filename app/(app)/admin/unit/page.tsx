@@ -10,7 +10,13 @@ import { getDb, schema as s } from "@/lib/db";
 import { kondisiPenugasanBerlaku } from "@/lib/data/ikp";
 import { wajibPeran } from "@/lib/sesi";
 import { hariIni, periodeDari } from "@/lib/waktu";
+import { polaBawaan } from "@/lib/unit";
 import { JenisInduk } from "./jenis-induk";
+
+const POLA = [
+  { id: "administrasi", nama: "Administrasi" },
+  { id: "rutin", nama: "Tugas rutin" },
+];
 
 export const metadata: Metadata = { title: "Unit" };
 
@@ -59,6 +65,11 @@ async function Isi() {
         <span className="mb-1.5 block text-sm font-medium text-heading">WaKa yang membawahi</span>
         <PilihCari name="wakaId" opsi={waka} nilaiAwal={u?.wakaId} kosong="Belum ditetapkan" />
       </label>
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-heading">Pola kerja</span>
+        <PilihCari name="polaKerja" opsi={POLA} nilaiAwal={u?.polaKerja ?? polaBawaan(u?.jenis)} kosong="—" />
+        <span className="mt-1 block text-xs text-muted-foreground">Administrasi: checklist kegiatan SKUO (unit A–M). Tugas rutin: Set Tugas (unit N–R).</span>
+      </label>
     </>
   );
 
@@ -73,6 +84,7 @@ async function Isi() {
                 <span className="block truncate text-xs text-muted-foreground">
                   {JENIS[u.jenis]}
                   {u.indukId && ` · di bawah ${nama.get(u.indukId)}`}
+                  {(u.polaKerja ?? polaBawaan(u.jenis)) && ` · ${POLA.find((x) => x.id === (u.polaKerja ?? polaBawaan(u.jenis)))?.nama}`}
                 </span>
               </span>
               {u.wakaId ? <Lencana nada="brand">{namaWaka.get(u.wakaId) ?? "WaKa"}</Lencana> : u.jenis !== "skuo" && u.jenis !== "kantor" ? <Lencana nada="gold">WaKa belum</Lencana> : null}

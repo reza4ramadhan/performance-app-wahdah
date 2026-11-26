@@ -28,7 +28,7 @@ export default function HalamanRekap(props: PageProps<"/kantor/rekap">) {
 }
 
 async function Isi({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const sesi = await wajibPeran("waka", "kepala", "sekretariat", "admin");
+  const sesi = await wajibPeran("waka", "kepala", "admin");
   const sp = await searchParams;
   const kini = periodeDari(hariIni(sesi.kantor));
   const pilihan = [-3, -2, -1, 0].map((n) => periodeBerikut(kini, n));
@@ -45,7 +45,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const lengkap = hasil.filter((h) => h.ikp !== null).length;
   const idx = STATUS_PERIODE.indexOf(status);
 
-  const sekr = punya(sesi, "sekretariat");
+  const sekr = punya(sesi, "admin");
   const kepala = punya(sesi, "kepala");
   const tombol = [
     status === "berjalan" && sekr && { langkah: "verifikasi", label: "Mulai masa verifikasi", Ikon: Lock },

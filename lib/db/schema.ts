@@ -41,7 +41,7 @@ export const peranSistem = pgTable(
   {
     pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
     /** Hanya peran fungsi; koordinator/WaKa/Kepala Kantor diturunkan dari penugasan. */
-    peran: text("peran", { enum: ["sekretariat", "personalia", "keuangan", "admin"] }).notNull(),
+    peran: text("peran", { enum: ["personalia", "keuangan", "admin"] }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.pegawaiId, t.peran] })],
 );
@@ -113,6 +113,8 @@ export const unit = pgTable("unit", {
   indukId: text("induk_id"),
   /** WaKa yang membawahi unit ini (Bagian 13.7: ditetapkan manual oleh Admin). */
   wakaId: text("waka_id").references(() => pegawai.id),
+  /** Pola kerja unit SK: administrasi (A–M, checklist kegiatan) atau rutin (N–R, Set Tugas). Kosong = turunan dari jenis. */
+  polaKerja: text("pola_kerja", { enum: ["administrasi", "rutin"] }),
 });
 
 export const penugasan = pgTable(
@@ -127,6 +129,8 @@ export const penugasan = pgTable(
     periodeMulai: text("periode_mulai").notNull(),
     periodeSelesai: text("periode_selesai"),
     bobotAlokasi: angka("bobot_alokasi"),
+    /** Wakil Koordinator (unit B, F, K): akses sama dengan koordinator, kecuali mengisi K3. */
+    wakil: boolean("wakil").notNull().default(false),
   },
   (t) => [index("penugasan_pegawai_idx").on(t.pegawaiId), index("penugasan_koordinator_idx").on(t.koordinatorId)],
 );
@@ -148,7 +152,7 @@ export const indikator = pgTable("indikator", {
   tipe: text("tipe", { enum: ["item", "turunan", "tugas", "tambahan"] }).notNull(),
   standarCapaian: angka("standar_capaian").notNull(),
   tenggat: integer("tenggat"),
-  verifikatorPeran: text("verifikator_peran", { enum: ["koordinator", "keuangan", "sekretariat"] }).notNull(),
+  verifikatorPeran: text("verifikator_peran", { enum: ["koordinator", "keuangan", "admin"] }).notNull(),
   fase: integer("fase").notNull().default(1),
   aktif: boolean("aktif").notNull().default(true),
 });
@@ -180,7 +184,15 @@ export const kegiatan = pgTable(
     penanggungJawabId: text("penanggung_jawab_id").references(() => pegawai.id),
     dibuatOleh: text("dibuat_oleh").notNull().references(() => pegawai.id),
     dibuatPada: dibuat(),
-    sumber: text("sumber", { enum: ["manual", "impor", "salin"] }).notNull().default("manual"),
+    sumber: text("sumber", { enum: ["manual", "impor", "salin", "rencana"] }).notNull().default("manual"),
+    /**
+     * rencana = hasil impor tahunan, belum dikonfirmasi koordinator; jalan/geser = checklist staf terbit;
+     * tunda/batal = item terbuka dikeluarkan dari target.
+     */
+    status: text("status", { enum: ["rencana", "jalan", "geser", "tunda", "batal"] }).notNull().default("jalan"),
+    /** Tanggal semula dari rencana (sebelum digeser). */
+    tanggalRencana: date("tanggal_rencana"),
+    alasanBatal: text("alasan_batal"),
   },
   (t) => [index("kegiatan_unit_tanggal_idx").on(t.unitId, t.tanggal)],
 );
@@ -207,6 +219,11 @@ export const item = pgTable(
     dibuatPada: dibuat(),
     /** ID dari perangkat untuk mencegah item ganda saat draf luring dikirim ulang. */
     idKlien: text("id_klien").unique(),
+    /** SPB: staf menandai dana belum cair. Selama pending, tenggat berhenti dan item tidak dihitung terlambat. */
+    pendingDanaSejak: tz("pending_dana_sejak"),
+    /** Tanggal dana cair, dikonfirmasi koordinator unit (sementara menggantikan Bendahara). Tenggat SPB dihitung dari sini. */
+    danaCairPada: date("dana_cair_pada"),
+    danaCairOleh: text("dana_cair_oleh").references(() => pegawai.id),
   },
   (t) => [index("item_penugasan_periode_idx").on(t.penugasanId, t.periodeId), index("item_status_idx").on(t.status)],
 );
@@ -221,6 +238,8 @@ export const jurnal = pgTable(
     /** "HH:MM" waktu kantor; kosong untuk jurnal lama sebelum isian jam ada. */
     jamMulai: text("jam_mulai"),
     jamSelesai: text("jam_selesai"),
+    /** Durasi pekerjaan: 15/30/60/120 atau isian lain (menit). */
+    durasiMenit: integer("durasi_menit"),
     unitId: text("unit_id").references(() => unit.id),
     pemberiTugas: text("pemberi_tugas"),
     link: text("link"),
@@ -308,6 +327,27 @@ export const usulanTugas = pgTable(
     dibuatPada: dibuat(),
   },
   (t) => [index("usulan_tugas_penugasan_idx").on(t.penugasanId, t.status)],
+);
+
+/**
+ * Plot staf ke departemen (SKUO) yang ia layani, diatur koordinator lewat Manage tim (unit A–M).
+ * Baris terbaru per (unit, skuo, pegawai) yang `berlaku_mulai` ≤ tanggal kegiatan berlaku; `aktif = false` mencabut plot.
+ * `utama`: PJ utama bila satu departemen dilayani lebih dari satu staf; PJ kegiatan diambil dari sini.
+ */
+export const plotSkuo = pgTable(
+  "plot_skuo",
+  {
+    id: id(),
+    unitId: text("unit_id").notNull().references(() => unit.id),
+    skuoId: text("skuo_id").notNull().references(() => unit.id),
+    pegawaiId: text("pegawai_id").notNull().references(() => pegawai.id, { onDelete: "cascade" }),
+    utama: boolean("utama").notNull().default(false),
+    aktif: boolean("aktif").notNull().default(true),
+    berlakuMulai: date("berlaku_mulai").notNull(),
+    dibuatOleh: text("dibuat_oleh").references(() => pegawai.id),
+    dibuatPada: dibuat(),
+  },
+  (t) => [index("plot_skuo_unit_idx").on(t.unitId, t.skuoId)],
 );
 
 // ── Penilaian ─────────────────────────────────────────────────────────────────

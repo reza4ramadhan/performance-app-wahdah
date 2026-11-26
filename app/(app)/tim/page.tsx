@@ -16,6 +16,7 @@ import { ringkasanTugasTim } from "@/lib/format";
 import { hrefMenu, menuUntuk } from "@/lib/menu";
 import { wajibSesi } from "@/lib/sesi";
 import { labelTanggalPanjang, hariIni } from "@/lib/waktu";
+import { idKoordinator } from "@/lib/akses";
 
 export const metadata: Metadata = { title: "Tim" };
 
@@ -36,7 +37,7 @@ async function Isi() {
     anggotaTim(sesi),
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
-    jumlahUsulanMenunggu(sesi.pegawaiId),
+    jumlahUsulanMenunggu(idKoordinator(sesi)),
     jumlahMengantre(sesi, hrefMenu(grup.slice(1), [])),
   ]);
   const pnTim = tim.flatMap((t) => t.penugasan.map((p) => p.id));

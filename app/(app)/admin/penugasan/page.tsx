@@ -91,7 +91,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold text-heading">{nama}</span>
                           <span className="block truncate text-xs text-muted-foreground">
-                            {LABEL_PERAN_KERJA[pn.peranKerja]} · koordinator {koordinator ?? "—"}
+                            {pn.wakil ? "Wakil Koordinator" : LABEL_PERAN_KERJA[pn.peranKerja]} · koordinator {koordinator ?? "—"}
                           </span>
                         </span>
                         {pn.bobotAlokasi && <Lencana nada="brand">{pn.bobotAlokasi}%</Lencana>}
@@ -105,12 +105,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                       <div className="space-y-3 border-t border-border px-4 pb-4">
                         {/* key: muat ulang isian setelah tersimpan (nilai awal ikut berubah). */}
                         <FormAksi
-                          key={[pn.peranKerja, pn.unitId, pn.koordinatorId, pn.periodeMulai, pn.periodeSelesai, pn.bobotAlokasi].join("|")}
+                          key={[pn.peranKerja, pn.unitId, pn.koordinatorId, pn.periodeMulai, pn.periodeSelesai, pn.bobotAlokasi, pn.wakil].join("|")}
                           aksi={ubahPenugasan.bind(null, pn.id)}
                           tombol="Simpan perubahan"
                           className="mt-3 space-y-3"
                         >
-                          <PeranUnit peran={opsiPeran} unit={unit} peranAwal={pn.peranKerja} unitAwal={pn.unitId} />
+                          <PeranUnit peran={opsiPeran} unit={unit} peranAwal={pn.peranKerja} unitAwal={pn.unitId} wakilAwal={pn.wakil} />
                           <label className="block">
                             <span className="mb-1.5 block text-sm font-medium text-heading">Koordinator</span>
                             {pilihPegawai("koordinatorId", pn.koordinatorId, "Otomatis")}

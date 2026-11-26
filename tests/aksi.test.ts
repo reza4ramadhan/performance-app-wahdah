@@ -5,7 +5,6 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { kelompokAmanah, kunciAmanah } from "@/lib/amanah";
 import type { PeranSistem } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
 import { geserHariKerja, hariIni, periodeBerikut, periodeDari, tambahHari } from "@/lib/waktu";
@@ -62,9 +61,8 @@ function sebagai(pegawai: string, peran: PeranSistem[] = [], penugasan: { id: st
     peran: new Set<PeranSistem>(["pegawai", ...peran]),
     penugasan: milik,
     binaan: [],
-    daftarAmanah: kelompokAmanah(milik),
     amanah: milik[0] ?? null,
-    amanahPn: milik[0] ? milik.filter((p) => kunciAmanah(p) === kunciAmanah(milik[0])) : [],
+    amanahPn: milik,
     tim: [],
   };
 }
@@ -227,7 +225,9 @@ describe("kegiatan SKUO & item otomatis", () => {
 
     sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
     const isi = { unitId: id.unit, nama: "Daurah Uji", tanggal: today, perluSppSpb: "on" };
-    expect(await tim.simpanKegiatan(null, fd(isi))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String), penanggungJawabId: expect.any(String) } });
+    expect(await tim.simpanKegiatan(null, fd(isi))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String) } });
+    // PJ kosong dan departemen belum punya plot di Manage tim: koordinator diminta memilih.
+    expect(await tim.simpanKegiatan(null, fd({ ...isi, skuoId: skuo.id }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
     expect(await tim.simpanKegiatan(null, fd({ ...isi, skuoId: skuo.id, penanggungJawabId: id.kepala }))).toMatchObject({ ok: false, galat: { penanggungJawabId: expect.any(String) } });
     const [skuoLain] = await db.insert(s.unit).values({ jenis: "skuo", nama: "Departemen Lain", indukId: null }).returning();
     expect(await tim.simpanKegiatan(null, fd({ ...isi, penanggungJawabId: pg.id, skuoId: skuoLain.id }))).toMatchObject({ ok: false, galat: { skuoId: expect.any(String) } });
@@ -273,6 +273,26 @@ describe("kegiatan SKUO & item otomatis", () => {
     expect(itemRapat.every((i) => i.penugasanId === pn.staf)).toBe(true);
     expect(await tim.hapusKegiatan(rapat.id)).toMatchObject({ ok: true });
     expect(await db.select().from(s.item).where(eq(s.item.kegiatanId, rapat.id))).toHaveLength(0);
+  });
+
+  it("PJ kosong diambil dari plot Manage tim; kegiatan berstatus rencana tidak menerbitkan checklist", async () => {
+    const db = await getDb();
+    const { buatItemOtomatis } = await import("@/lib/data/kegiatan");
+    await db.insert(s.plotSkuo).values({ unitId: id.unit, skuoId: id.skuo, pegawaiId: id.staf, utama: true, berlakuMulai: `${P}-01` });
+    sebagai("koord", ["koordinator"], [{ id: pn.koord, peranKerja: "KSBK", unitId: id.unit, koordinatorId: id.kepala }]);
+    expect(await tim.simpanKegiatan(null, fd({ unitId: id.unit, nama: "Kajian Plot", tanggal: today, skuoId: id.skuo }))).toMatchObject({ ok: true });
+    const [kajian] = await db.select().from(s.kegiatan).where(eq(s.kegiatan.nama, "Kajian Plot"));
+    expect(kajian).toMatchObject({ penanggungJawabId: id.staf, status: "jalan" });
+    expect(await db.select().from(s.item).where(eq(s.item.kegiatanId, kajian.id))).toHaveLength(2);
+
+    const [rencana] = await db
+      .insert(s.kegiatan)
+      .values({ unitId: id.unit, nama: "Rencana SIMAKPRO", tanggal: today, skuoId: id.skuo, penanggungJawabId: id.staf, dibuatOleh: id.koord, sumber: "rencana", status: "rencana" })
+      .returning();
+    expect(await buatItemOtomatis(db, [rencana], id.koord)).toBe(0);
+    await db.delete(s.item).where(eq(s.item.kegiatanId, kajian.id));
+    await db.delete(s.kegiatan).where(inArray(s.kegiatan.id, [kajian.id, rencana.id]));
+    await db.delete(s.plotSkuo);
   });
 
   it("kegiatan lama tanpa item otomatis: diisi dari kartu dashboard, item dilengkapi tanpa ganda", async () => {
@@ -573,13 +593,14 @@ describe("admin penugasan", () => {
 });
 
 describe("status periode", () => {
-  it("hanya Sekretariat mengunci, hanya Kepala Kantor mengesahkan; setelah sah input ditolak", async () => {
+  it("Admin mengunci, Admin lain (atau Kepala Kantor) mengesahkan; setelah sah input ditolak", async () => {
     sebagai("staf", [], [pnStaf()]);
     expect((await periode.ubahStatusPeriode(P, "verifikasi")).ok).toBe(false);
-    sebagai("sekr", ["sekretariat"]);
+    sebagai("sekr", ["admin"]);
     for (const l of ["verifikasi", "kalibrasi", "sementara"]) expect(await periode.ubahStatusPeriode(P, l)).toMatchObject({ ok: true });
+    // Saling periksa: pengunci tidak mengesahkan sendiri.
     expect((await periode.ubahStatusPeriode(P, "disahkan")).ok).toBe(false);
-    sebagai("kepala", ["kepala"]);
+    sebagai("kepala", ["admin"]);
     expect(await periode.ubahStatusPeriode(P, "disahkan")).toMatchObject({ ok: true });
 
     const db = await getDb();

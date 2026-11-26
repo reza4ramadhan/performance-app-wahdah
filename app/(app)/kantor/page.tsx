@@ -19,7 +19,7 @@ export default function HalamanKantor() {
 }
 
 async function Isi() {
-  const sesi = await wajibPeran("waka", "kepala", "sekretariat", "admin");
+  const sesi = await wajibPeran("waka", "kepala", "admin");
   const r = await ringkasanKantor(sesi.kantor);
 
   return (
@@ -114,7 +114,7 @@ async function Isi() {
                 )}
                 {r.antreanSekretariat > 0 && (
                   <li className="flex justify-between py-2">
-                    <span>Sekretariat (laporan bidang)</span>
+                    <span>Admin (laporan bidang)</span>
                     <strong className="tabular-nums">{r.antreanSekretariat}</strong>
                   </li>
                 )}

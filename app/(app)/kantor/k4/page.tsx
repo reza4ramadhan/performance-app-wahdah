@@ -23,7 +23,7 @@ export default function HalamanPenetapanK4() {
 }
 
 async function Isi() {
-  const sesi = await wajibPeran("waka", "kepala");
+  const sesi = await wajibPeran("waka", "kepala", "admin");
   const db = await getDb();
   const rows = await db
     .select({ k: s.k4Pengajuan, nama: s.pegawai.nama })
@@ -37,7 +37,7 @@ async function Isi() {
     : [];
   const antre = rows.filter((r) => r.k.status === "diperiksa");
   const sudah = rows.filter((r) => r.k.status === "ditetapkan");
-  const waka = punya(sesi, "waka");
+  const waka = punya(sesi, "waka", "admin");
 
   return (
     <div className="space-y-5">

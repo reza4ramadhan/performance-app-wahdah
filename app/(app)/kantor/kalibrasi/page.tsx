@@ -29,7 +29,7 @@ export default function HalamanKalibrasi(props: PageProps<"/kantor/kalibrasi">) 
 }
 
 async function Isi({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const sesi = await wajibPeran("waka", "kepala", "sekretariat");
+  const sesi = await wajibPeran("waka", "kepala");
   const sp = await searchParams;
   const kini = periodeDari(hariIni(sesi.kantor));
   const pilihan = [periodeBerikut(kini, -2), periodeBerikut(kini, -1), kini];

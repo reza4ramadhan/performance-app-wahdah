@@ -76,9 +76,12 @@ export async function periksaK4(id: string, lanjut: boolean, catatan?: string): 
   return berhasil(lanjut ? "Diteruskan ke WaKa untuk penetapan tingkat." : "Pengajuan ditolak.");
 }
 
-/** WaKa menetapkan tingkat & poin. Poin bersih = poin tingkat − poin tertinggi yang pernah diterima inovasi yang sama. */
+/**
+ * WaKa (sementara: Admin, selama akun WaKa ditunda) menetapkan tingkat & poin. Admin tidak menetapkan K4 miliknya
+ * sendiri (saling periksa). Poin bersih = poin tingkat − poin tertinggi yang pernah diterima inovasi yang sama.
+ */
 export async function tetapkanK4(id: string, tingkat: TingkatK4, poinTingkat: number, catatan?: string): Promise<HasilAksi> {
-  const sesi = await wajibPeran("waka");
+  const sesi = await wajibPeran("waka", "admin");
   const db = await getDb();
   const [k4] = await db.select().from(s.k4Pengajuan).where(eq(s.k4Pengajuan.id, id));
   if (!k4 || (k4.status !== "diperiksa" && k4.status !== "ditetapkan")) return gagal("Pengajuan belum diperiksa atasan.");
@@ -98,9 +101,14 @@ export async function tetapkanK4(id: string, tingkat: TingkatK4, poinTingkat: nu
 }
 
 export async function tolakK4Waka(id: string, catatan: string): Promise<HasilAksi> {
-  const sesi = await wajibPeran("waka");
+  const sesi = await wajibPeran("waka", "admin");
   if (!catatan.trim()) return gagal("Tulis alasan penolakan.");
   const db = await getDb();
+  const pengusul = await db.select({ id: s.k4Pengusul.pegawaiId }).from(s.k4Pengusul).where(eq(s.k4Pengusul.k4Id, id));
+  for (const p of pengusul) {
+    const b = bolehProsesIkpPegawai(sesi, p.id);
+    if (!b.boleh) return gagal(b.alasan);
+  }
   await db.update(s.k4Pengajuan).set({ status: "ditolak", catatan: catatan.trim() }).where(and(eq(s.k4Pengajuan.id, id), ne(s.k4Pengajuan.status, "disahkan")));
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "tolak", entitas: "k4", entitasId: id, alasan: catatan });
   refresh();

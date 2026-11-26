@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { bolehKelolaPeriode, bolehProsesIkpPegawai, punya } from "@/lib/akses";
 import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
@@ -14,7 +14,8 @@ import { wajibSesi } from "@/lib/sesi";
 
 /**
  * Alur status (plan.md 5.3): berjalan → verifikasi → kalibrasi → sementara → disahkan.
- * Sekretariat menjalankan langkah sampai "sementara" (hitung & kunci); Kepala Kantor mengesahkan.
+ * Admin menjalankan langkah sampai "sementara" (hitung & kunci). Selama akun Kepala Kantor ditunda, Admin lain
+ * mengesahkannya (saling periksa: pengunci tidak mengesahkan sendiri).
  * "sementara → kalibrasi" dipakai bila perlu membuka kembali sebelum disahkan.
  */
 const LANGKAH: Record<string, { dari: StatusPeriode; ke: StatusPeriode; aksi: "kunci" | "sahkan" }> = {
@@ -29,10 +30,10 @@ export async function ubahStatusPeriode(periodeId: string, langkah: keyof typeof
   const sesi = await wajibSesi();
   const l = LANGKAH[langkah];
   if (!l) return gagal("Langkah tidak dikenal.");
-  const izin = bolehKelolaPeriode(sesi, l.aksi);
+  const db = await getDb();
+  const izin = bolehKelolaPeriode(sesi, l.aksi, { pengunci: l.aksi === "sahkan" ? await pengunciSementara(db, periodeId) : null });
   if (!izin.boleh) return gagal(izin.alasan);
 
-  const db = await getDb();
   const p = await periodeAtauBaru(db, periodeId);
   if (p.status !== l.dari) return gagal(`Periode berstatus ${LABEL_STATUS_PERIODE[p.status]}, bukan ${LABEL_STATUS_PERIODE[l.dari]}.`);
 
@@ -58,6 +59,17 @@ export async function ubahStatusPeriode(periodeId: string, langkah: keyof typeof
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: `status-${l.ke}`, entitas: "periode", entitasId: periodeId, sebelum: { status: p.status }, sesudah: { status: l.ke } });
   refresh();
   return berhasil(`Periode sekarang: ${LABEL_STATUS_PERIODE[l.ke]}.`);
+}
+
+/** Pegawai yang terakhir mengunci IKP sementara periode ini (dari audit log). */
+async function pengunciSementara(db: Awaited<ReturnType<typeof getDb>>, periodeId: string) {
+  const [r] = await db
+    .select({ aktorId: s.auditLog.aktorId })
+    .from(s.auditLog)
+    .where(and(eq(s.auditLog.entitas, "periode"), eq(s.auditLog.entitasId, periodeId), eq(s.auditLog.aksi, "kunci-sementara")))
+    .orderBy(desc(s.auditLog.waktu))
+    .limit(1);
+  return r?.aktorId ?? null;
 }
 
 /** Kalibrasi K3: WaKa/Kepala Kantor mengembalikan penilaian ke penilai dengan catatan. */

@@ -178,9 +178,12 @@ class Evaluasi {
     return this.seamanah.get(pn.id) ?? new Set([pn.id]);
   }
 
-  /** SBK di bidang KSBK ini (termasuk yang ditugaskan di SKUO bawahannya), tanpa dirinya. */
+  /**
+   * Staf di unit koordinator ini, tanpa dirinya: SBK (unit A–M, termasuk yang ditugaskan di SKUO bawahannya) dan
+   * Staf Tugas Rutin/SK (unit N–R). K1 koordinator (dan wakilnya) = rata-rata K1 staf ini.
+   */
   private stafBidang(ksbk: PenugasanK1) {
-    return this.ctx.penugasan.filter((p) => p.peran === "SBK" && bidangPn(p) === bidangPn(ksbk) && p.pegawaiId !== ksbk.pegawaiId);
+    return this.ctx.penugasan.filter((p) => (p.peran === "SBK" || p.peran === "SK") && bidangPn(p) === bidangPn(ksbk) && p.pegawaiId !== ksbk.pegawaiId);
   }
 
   /** Satu kegiatan dipikul satu penugasan per staf, agar tidak terhitung ganda saat staf memegang beberapa SKUO di bidang yang sama. */

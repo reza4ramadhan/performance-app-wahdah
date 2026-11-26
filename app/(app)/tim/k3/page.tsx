@@ -32,7 +32,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const lalu = periodeBerikut(kini, -1);
   const periode = sp.periode === kini ? kini : lalu;
   const db = await getDb();
-  // Hanya binaan amanah aktif; amanah lain dinilai setelah Pindah Amanah.
+  // Hanya penugasan yang K3-nya saya nilai (Wakil Koordinator tidak mengisi K3).
   const tim = new Set(sesi.tim.map((b) => b.id));
   const pn = (await penugasanDinilai(db, periode)).filter((p) => p.penilaiId === sesi.pegawaiId && p.pegawaiId !== sesi.pegawaiId && tim.has(p.id));
   const nilai = pn.length ? await db.select().from(s.penilaianK3).where(and(eq(s.penilaianK3.periodeId, periode), eq(s.penilaianK3.penilaiId, sesi.pegawaiId))) : [];

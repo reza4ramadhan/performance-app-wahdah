@@ -12,7 +12,7 @@ export const LABEL_PERAN_KERJA: Record<PeranKerja, string> = {
   WAKA: "Wakil Kepala Kantor",
 };
 
-export const PERAN_SISTEM = ["pegawai", "koordinator", "waka", "kepala", "sekretariat", "personalia", "keuangan", "admin"] as const;
+export const PERAN_SISTEM = ["pegawai", "koordinator", "waka", "kepala", "personalia", "keuangan", "admin"] as const;
 export type PeranSistem = (typeof PERAN_SISTEM)[number];
 
 export const LABEL_PERAN_SISTEM: Record<PeranSistem, string> = {
@@ -20,7 +20,6 @@ export const LABEL_PERAN_SISTEM: Record<PeranSistem, string> = {
   koordinator: "Koordinator",
   waka: "Wakil Kepala Kantor",
   kepala: "Kepala Kantor",
-  sekretariat: "Sekretariat",
   personalia: "Personalia",
   keuangan: "Keuangan",
   admin: "Admin",
@@ -35,12 +34,15 @@ export const OPSI_KANTOR = [
   { id: "jakarta", nama: "Jakarta (WIB)" },
 ];
 
-/** Peran fungsi yang dicentang Admin. Koordinator, WaKa, dan Kepala Kantor diturunkan dari penugasan (lib/sesi.ts). */
-export const PERAN_MANUAL = ["sekretariat", "personalia", "keuangan", "admin"] as const satisfies readonly PeranSistem[];
+/**
+ * Peran fungsi yang dicentang Admin. Koordinator, WaKa, dan Kepala Kantor diturunkan dari penugasan (lib/sesi.ts).
+ * Sekretariat dilebur ke Admin (rombak v2); Personalia & Keuangan ditunda, tugasnya sementara dipegang Admin/koordinator.
+ */
+export const PERAN_MANUAL = ["personalia", "keuangan", "admin"] as const satisfies readonly PeranSistem[];
 export type PeranManual = (typeof PERAN_MANUAL)[number];
 
 /** Peran yang melihat data seluruh kantor. */
-export const PERAN_PIMPINAN: PeranSistem[] = ["waka", "kepala", "sekretariat", "admin"];
+export const PERAN_PIMPINAN: PeranSistem[] = ["waka", "kepala", "admin"];
 
 export const STATUS_ITEM = ["terbuka", "diajukan", "disetujui", "ditolak"] as const;
 export type StatusItem = (typeof STATUS_ITEM)[number];

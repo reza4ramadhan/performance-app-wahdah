@@ -14,6 +14,7 @@ import { kondisiPenugasanBerlaku, liburPerKantor } from "@/lib/data/ikp";
 import { getDb, schema as s, type Db } from "@/lib/db";
 import { FREKUENSI_TUGAS, type FrekuensiTugas } from "@/lib/ikp/tipe";
 import { MAKS_JADWAL, MAKS_SEKALIGUS, pecahDaftarJudul, tanggalJadwal } from "@/lib/ikp/tugas";
+import { koordinatorAtauWakil } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, periodeDari, tambahHari, type Kantor } from "@/lib/waktu";
 
@@ -103,7 +104,7 @@ export async function simpanTugasKhusus(_: HasilAksi | null, fd: FormData): Prom
     .from(s.penugasan)
     .innerJoin(s.pegawai, eq(s.pegawai.id, s.penugasan.pegawaiId))
     .where(and(eq(s.penugasan.id, x.penugasanId), kondisiPenugasanBerlaku(periodeDari(hariIni(sesi.kantor)))));
-  if (!pn || pn.pn.koordinatorId !== sesi.pegawaiId || pn.pn.pegawaiId === sesi.pegawaiId || !["SBK", "SK"].includes(pn.pn.peranKerja))
+  if (!pn || !koordinatorAtauWakil(sesi, pn.pn.koordinatorId) || pn.pn.pegawaiId === sesi.pegawaiId || !["SBK", "SK"].includes(pn.pn.peranKerja))
     return gagal("Periksa staf.", { penugasanId: "Tugas khusus hanya bisa diberikan kepada SBK atau Staf Khusus yang Anda koordinasikan." });
 
   const j = daftarJudulDari(x);
@@ -160,7 +161,7 @@ export async function verifikasiTugas(ids: string[], keputusan: "setuju" | "tola
       dilewati.push("Tidak bisa memverifikasi tugas sendiri.");
       continue;
     }
-    if (r.pemberiId !== sesi.pegawaiId && r.koordinatorId !== sesi.pegawaiId) {
+    if (r.pemberiId !== sesi.pegawaiId && !koordinatorAtauWakil(sesi, r.koordinatorId)) {
       dilewati.push("Hanya pemberi tugas yang bisa memverifikasi.");
       continue;
     }
@@ -298,7 +299,7 @@ export async function putuskanUsulan(ids: string[], keputusan: "setuju" | "tolak
       dilewati.push("Tidak bisa memutuskan usulan sendiri.");
       continue;
     }
-    if (pn.koordinatorId !== sesi.pegawaiId) {
+    if (!koordinatorAtauWakil(sesi, pn.koordinatorId)) {
       dilewati.push("Hanya atasan Staf Khusus ini yang bisa memutuskan usulannya.");
       continue;
     }

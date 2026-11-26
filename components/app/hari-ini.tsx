@@ -1,17 +1,16 @@
 // Bagian layar Hari Ini yang dipakai bersama dashboard SBK/umum dan dashboard Staf Khusus.
 
 import Link from "next/link";
-import { ArrowLeftRight, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { FormJurnalCepat, FormPdCepat } from "@/components/app/form-harian";
 import { Avatar, JudulBagian, Kartu, PetakIkon, TautanKecil } from "@/components/app/ui";
-import { labelAmanah } from "@/lib/amanah";
 import { angka, rentangJam } from "@/lib/format";
 import { PARAMETER } from "@/lib/ikp/tipe";
 import type { Sesi } from "@/lib/sesi";
 import { labelTanggalPanjang } from "@/lib/waktu";
 
 /**
- * Sapaan, tanggal, pindah amanah, avatar, dan pesan dari redirect.
+ * Sapaan, tanggal, avatar, dan pesan dari redirect.
  * `ringkas`: tanggal di atas nama, tanpa salam (Beranda KSBK).
  */
 export function SapaanHariIni({ sesi, hariIni, sp, ringkas = false }: { sesi: Sesi; hariIni: string; sp: Record<string, string | string[] | undefined>; ringkas?: boolean }) {
@@ -31,11 +30,6 @@ export function SapaanHariIni({ sesi, hariIni, sp, ringkas = false }: { sesi: Se
               <h1 className="text-2xl font-bold tracking-tight text-heading">{namaPanggil}</h1>
               <p className="mt-0.5 text-xs text-muted-foreground">{labelTanggalPanjang(hariIni)}</p>
             </>
-          )}
-          {sesi.daftarAmanah.length > 1 && sesi.amanahPn.length > 0 && (
-            <Link href="/akun#amanah" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
-              <ArrowLeftRight className="size-3.5" /> {labelAmanah(sesi.amanahPn)}
-            </Link>
           )}
         </div>
         <Link href="/akun" aria-label="Akun">

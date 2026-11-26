@@ -22,7 +22,7 @@ export default function HalamanAbsensi(props: PageProps<"/absensi">) {
 }
 
 async function Isi({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const sesi = await wajibPeran("personalia");
+  const sesi = await wajibPeran("personalia", "admin");
   const sp = await searchParams;
   const kini = periodeDari(hariIni(sesi.kantor));
   const pilihan = [periodeBerikut(kini, -1), kini];

@@ -5,7 +5,7 @@ import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { ExternalLink } from "lucide-react";
 import { PutusanItem, UbahItem } from "@/components/app/aksi-item";
 import { Kartu, Kepala, Kerangka, Lencana, LencanaStatus } from "@/components/app/ui";
-import { bolehVerifikasiItem, pimpinan } from "@/lib/akses";
+import { bolehVerifikasiItem, koordinatorAtauWakil, pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
@@ -38,7 +38,7 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
   const verifikator = param.get(item.indikatorKode)?.verifikator ?? "koordinator";
   const pemilik = item.pemilikId === sesi.pegawaiId;
   const bisaVerifikasi = bolehVerifikasiItem(sesi, { pemilikId: item.pemilikId, koordinatorId: pn.koordinatorId, verifikator }).boleh;
-  if (!pemilik && !bisaVerifikasi && pn.koordinatorId !== sesi.pegawaiId && !pimpinan(sesi)) notFound();
+  if (!pemilik && !bisaVerifikasi && !koordinatorAtauWakil(sesi, pn.koordinatorId) && !pimpinan(sesi)) notFound();
 
   const kantor = (await db.select({ k: s.pegawai.kantor }).from(s.pegawai).where(eq(s.pegawai.id, item.pemilikId)))[0].k as Kantor;
   const pakaiJam = def.item?.selesai.jenis === "waktu";

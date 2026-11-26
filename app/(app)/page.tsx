@@ -14,7 +14,7 @@ import { tanggalPalingAwal } from "@/lib/data/batas";
 import { daftarItem, kondisiItemPenugasan } from "@/lib/data/item";
 import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu, kondisiTugasPenugasan } from "@/lib/data/tugas";
 import { pemikulKegiatan } from "@/lib/ikp/k1";
-import { pimpinan } from "@/lib/akses";
+import { idKoordinator, pimpinan } from "@/lib/akses";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
 import { HariIniKsbk } from "./hari-ini-ksbk";
@@ -83,12 +83,12 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
           .select({ n: count() })
           .from(s.item)
           .innerJoin(s.penugasan, eq(s.penugasan.id, s.item.penugasanId))
-          .where(and(eq(s.penugasan.koordinatorId, sesi.pegawaiId), inArray(s.penugasan.id, timIds), eq(s.item.status, "diajukan"), ne(s.item.indikatorKode, "KSBK-3")))
+          .where(and(inArray(s.penugasan.koordinatorId, idKoordinator(sesi)), inArray(s.penugasan.id, timIds), eq(s.item.status, "diajukan"), ne(s.item.indikatorKode, "KSBK-3")))
       : Promise.resolve(null),
     timIds.length
       ? db.select({ n: count() }).from(s.tugasKhususJadwal).innerJoin(s.tugasKhusus, eq(s.tugasKhusus.id, s.tugasKhususJadwal.tugasId)).where(kondisiTugasMenunggu(sesi.pegawaiId))
       : Promise.resolve(null),
-    timIds.length ? jumlahUsulanMenunggu(sesi.pegawaiId) : Promise.resolve(0),
+    timIds.length ? jumlahUsulanMenunggu(idKoordinator(sesi)) : Promise.resolve(0),
   ]);
 
   // Kartu kegiatan: yang akan datang, atau yang sudah lewat tetapi masih punya pekerjaan terbuka (SPB, arsip).

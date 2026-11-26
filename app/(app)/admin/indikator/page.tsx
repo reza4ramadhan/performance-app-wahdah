@@ -84,7 +84,7 @@ async function Isi() {
                               opsi={[
                                 { id: "koordinator", nama: "Koordinator" },
                                 { id: "keuangan", nama: "Keuangan" },
-                                { id: "sekretariat", nama: "Sekretariat" },
+                                { id: "admin", nama: "Admin" },
                               ]}
                               nilaiAwal={r.verifikatorPeran}
                               kosong={null}

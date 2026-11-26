@@ -58,7 +58,8 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
 
   const [item, kegiatan, tugas, jurnal, uji, absensi, k3, pd, k4] = await Promise.all([
     pnIds.length ? db.select().from(s.item).where(and(eq(s.item.periodeId, periode), inArray(s.item.penugasanId, pnIds))) : [],
-    db.select().from(s.kegiatan).where(and(gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir))),
+    // Hanya kegiatan yang pasti berjalan (jalan/geser) menjadi target K1; rencana, tunda, dan batal tidak.
+    db.select().from(s.kegiatan).where(and(gte(s.kegiatan.tanggal, awal), lte(s.kegiatan.tanggal, akhir), inArray(s.kegiatan.status, ["jalan", "geser"]))),
     db
       .select({ jadwal: s.tugasKhususJadwal, penugasanId: s.tugasKhusus.penugasanId })
       .from(s.tugasKhususJadwal)

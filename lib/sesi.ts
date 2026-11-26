@@ -3,15 +3,15 @@
 
 import "server-only";
 import { and, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { Aktor } from "./akses";
 import { getAuth } from "./auth";
 import { getDb, schema as s } from "./db";
-import { amanahPengampu, COOKIE_AMANAH, kelompokAmanah, kunciAmanah, pilihAmanah } from "./amanah";
+import { peranTertinggi } from "./amanah";
 import type { PeranKerja, PeranSistem } from "./ikp/tipe";
-import { bidangDari, leluhurDari, wakaDari } from "./unit";
+import { bidangDari, wakaDari } from "./unit";
 import { hariIni, periodeBerikut, periodeDari, type Kantor } from "./waktu";
 
 export type Sesi = Aktor & {
@@ -22,22 +22,22 @@ export type Sesi = Aktor & {
   /** Penugasan yang berlaku bulan ini. `bidangId`: bidang unit itu (SKUO → bidang induknya), null bila di luar bidang. */
   penugasan: { id: string; peranKerja: PeranKerja; unitId: string; unitNama: string; bidangId: string | null; koordinatorId: string | null }[];
   /**
-   * Penugasan orang lain (atau milik sendiri bila rangkap) yang saya koordinasikan atau K3-nya saya nilai,
-   * berlaku bulan ini atau bulan lalu (verifikasi bulan lalu masih berjalan sampai hari kerja ke-5).
+   * Penugasan orang lain (atau milik sendiri bila rangkap) yang saya koordinasikan, wakili (Wakil Koordinator),
+   * atau K3-nya saya nilai, berlaku bulan ini atau bulan lalu (verifikasi bulan lalu masih berjalan sampai hari kerja ke-5).
    */
   binaan: Binaan[];
-  /** Penugasan dikelompokkan per amanah (lib/amanah.ts kunciAmanah); "Pindah Amanah" hanya bila lebih dari satu. */
-  daftarAmanah: Sesi["penugasan"][];
-  /** Penugasan wakil amanah aktif yang dipilih lewat "Pindah Amanah"; null bila belum punya penugasan. */
+  /**
+   * Penugasan dengan peran tertinggi (rombak v2: Pindah Amanah dihapus). Set menu mengikuti peran ini;
+   * tugas dari peran lebih rendah tetap tampil di daftar gabungan. Null bila belum punya penugasan.
+   */
   amanah: Sesi["penugasan"][number] | null;
-  /** Semua penugasan dalam amanah aktif (mis. SBK di dua SKUO satu bidang). Item, tugas, dan dashboard memakai ini. */
+  /** Semua penugasan (daftar gabungan berlabel unit). Item, tugas, dan dashboard memakai ini. */
   amanahPn: Sesi["penugasan"];
-  /** Binaan yang dibawahi amanah aktif. Menu dan halaman tim memakai ini, bukan seluruh binaan. */
+  /** Semua binaan. Menu dan halaman tim memakai ini. */
   tim: Binaan[];
 };
 
-/** `amanahId`: amanah saya yang membawahi penugasan ini (lib/amanah.ts amanahPengampu). */
-type Binaan = { id: string; pegawaiId: string; peranKerja: PeranKerja; unitId: string; koordinatorId: string | null; amanahId: string | null };
+type Binaan = { id: string; pegawaiId: string; peranKerja: PeranKerja; unitId: string; koordinatorId: string | null };
 
 /** Peran sistem dari penugasan: koordinator bila punya binaan, WaKa/Kepala Kantor dari peran kerja. */
 export function peranTurunan(penugasan: readonly { peranKerja: PeranKerja }[], binaan: readonly unknown[]): PeranSistem[] {
@@ -62,7 +62,11 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
 
   const kantor = pg.kantor as Kantor;
   const periode = periodeDari(hariIni(kantor));
-  const [unit, jar] = await Promise.all([db.select({ id: s.unit.id, jenis: s.unit.jenis, indukId: s.unit.indukId, wakaId: s.unit.wakaId }).from(s.unit), cookies()]);
+  const aktifDi = (p: string) => and(lte(s.penugasan.periodeMulai, p), or(isNull(s.penugasan.periodeSelesai), gte(s.penugasan.periodeSelesai, p)));
+  const [unit, wakilDari] = await Promise.all([
+    db.select({ id: s.unit.id, jenis: s.unit.jenis, indukId: s.unit.indukId, wakaId: s.unit.wakaId }).from(s.unit),
+    koordinatorYangDiwakili(pg.id, periode),
+  ]);
   const bidang = bidangDari(unit);
   const unitWakaSaya = [...wakaDari(unit)].filter(([, w]) => w === pg.id).map(([u]) => u);
   const [peran, pn, semuaBinaan] = await Promise.all([
@@ -89,6 +93,8 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
           or(isNull(s.penugasan.periodeSelesai), gte(s.penugasan.periodeSelesai, periodeBerikut(periode, -1))),
           or(
             eq(s.penugasan.koordinatorId, pg.id),
+            // Wakil Koordinator: penugasan yang dikoordinasikan koordinator yang saya wakili (bukan milik saya).
+            wakilDari.length ? and(inArray(s.penugasan.koordinatorId, wakilDari), ne(s.penugasan.pegawaiId, pg.id)) : undefined,
             // Rangkap jabatan: koordinator = dirinya sendiri, K3-nya dinilai WaKa unit tersebut.
             unitWakaSaya.length ? and(eq(s.penugasan.koordinatorId, s.penugasan.pegawaiId), ne(s.penugasan.pegawaiId, pg.id), inArray(s.penugasan.unitId, unitWakaSaya)) : undefined,
           ),
@@ -97,11 +103,6 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
   ]);
 
   const penugasan = pn.map((p) => ({ ...p, bidangId: bidang.get(p.unitId) ?? null }));
-  const amanah = pilihAmanah(penugasan, jar.get(COOKIE_AMANAH)?.value);
-  const pengampu = amanahPengampu(penugasan, semuaBinaan, leluhurDari(unit));
-  const binaan = semuaBinaan.map((b) => ({ ...b, amanahId: pengampu.get(b.id) ?? null }));
-  const amanahPn = amanah ? penugasan.filter((p) => kunciAmanah(p) === kunciAmanah(amanah)) : [];
-  const idAmanah = new Set(amanahPn.map((p) => p.id));
 
   return {
     userId: data.user.id,
@@ -109,14 +110,30 @@ export const bacaSesi = cache(async (): Promise<Sesi | null> => {
     nama: pg.nama,
     kantor,
     harusGantiPassword: Boolean((data.user as { harusGantiPassword?: boolean }).harusGantiPassword),
-    peran: new Set<PeranSistem>(["pegawai", ...peran.map((p) => p.peran), ...peranTurunan(pn, binaan)]),
+    peran: new Set<PeranSistem>(["pegawai", ...peran.map((p) => p.peran), ...peranTurunan(pn, semuaBinaan)]),
+    wakilDari: new Set(wakilDari),
     penugasan,
-    binaan,
-    daftarAmanah: kelompokAmanah(penugasan),
-    amanah,
-    amanahPn,
-    tim: binaan.filter((b) => b.amanahId !== null && idAmanah.has(b.amanahId)),
+    binaan: semuaBinaan,
+    amanah: peranTertinggi(penugasan),
+    amanahPn: penugasan,
+    tim: semuaBinaan,
   };
+
+  /**
+   * Wakil Koordinator: koordinator (penugasan KSBK bukan wakil) di unit tempat saya menjadi wakil, bulan ini.
+   */
+  async function koordinatorYangDiwakili(pegawaiId: string, p: string): Promise<string[]> {
+    const unitWakil = await db
+      .select({ unitId: s.penugasan.unitId })
+      .from(s.penugasan)
+      .where(and(eq(s.penugasan.pegawaiId, pegawaiId), eq(s.penugasan.wakil, true), aktifDi(p)));
+    if (!unitWakil.length) return [];
+    const ko = await db
+      .selectDistinct({ id: s.penugasan.pegawaiId })
+      .from(s.penugasan)
+      .where(and(inArray(s.penugasan.unitId, unitWakil.map((u) => u.unitId)), eq(s.penugasan.peranKerja, "KSBK"), eq(s.penugasan.wakil, false), ne(s.penugasan.pegawaiId, pegawaiId), aktifDi(p)));
+    return ko.map((k) => k.id);
+  }
 });
 
 /** Wajib login (dan sudah mengganti password awal). */

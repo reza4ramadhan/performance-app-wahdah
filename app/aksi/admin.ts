@@ -154,6 +154,7 @@ const skemaUnit = z.object({
   nama: z.string().trim().min(2, "Isi nama unit."),
   indukId: opsional,
   wakaId: opsional,
+  polaKerja: z.union([z.enum(["administrasi", "rutin"]), z.literal("")]).optional(),
 });
 
 export async function simpanUnit(id: string | null, _: HasilAksi | null, fd: FormData): Promise<HasilAksi> {
@@ -165,7 +166,7 @@ export async function simpanUnit(id: string | null, _: HasilAksi | null, fd: For
     const [induk] = p.data.indukId ? await db.select({ jenis: s.unit.jenis }).from(s.unit).where(eq(s.unit.id, p.data.indukId)) : [];
     if (induk?.jenis !== "bidang") return gagal("Periksa isian.", { indukId: "SKUO harus berada di bawah sebuah bidang." });
   }
-  const nilai = { ...p.data, indukId: p.data.indukId ?? null, wakaId: p.data.wakaId ?? null };
+  const nilai = { ...p.data, indukId: p.data.indukId ?? null, wakaId: p.data.wakaId ?? null, polaKerja: p.data.polaKerja || null };
   const [u] = id ? await db.update(s.unit).set(nilai).where(eq(s.unit.id, id)).returning() : await db.insert(s.unit).values(nilai).returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: id ? "ubah" : "buat", entitas: "unit", entitasId: u.id, sesudah: u });
   refresh();
@@ -183,6 +184,8 @@ const skemaPenugasan = z.object({
   periodeMulai: periode,
   periodeSelesai: z.union([periode, z.literal("")]).optional(),
   bobotAlokasi: z.union([z.literal(""), z.coerce.number().min(1).max(100)]).optional(),
+  /** Centang "Wakil Koordinator" (hanya untuk KSBK). */
+  wakil: z.literal("on").optional(),
 });
 
 /** Unit berjenis Kantor (puncak struktur); dibuat bila belum ada. */
@@ -194,20 +197,22 @@ async function unitKantor(db: Db, aktorId: string) {
   return u.id;
 }
 
-/** KSBK yang berlaku di bidang induk unit ini pada periode itu. */
+/**
+ * Koordinator (bukan wakil) yang berlaku di unit ini pada periode itu: KSBK di bidang induknya (unit A–M), atau
+ * KSBK di unit itu sendiri bila di luar bidang (unit tugas rutin N–R).
+ */
 async function ksbkBidang(db: Db, unitId: string, periode: string) {
-  const bidangId = (await petaBidang(db)).get(unitId);
-  if (!bidangId) return [];
+  const bidangId = (await petaBidang(db)).get(unitId) ?? unitId;
   const rows = await db
     .select({ pegawaiId: s.penugasan.pegawaiId })
     .from(s.penugasan)
-    .where(and(eq(s.penugasan.unitId, bidangId), eq(s.penugasan.peranKerja, "KSBK"), kondisiPenugasanBerlaku(periode)));
+    .where(and(eq(s.penugasan.unitId, bidangId), eq(s.penugasan.peranKerja, "KSBK"), eq(s.penugasan.wakil, false), kondisiPenugasanBerlaku(periode)));
   return rows.map((r) => r.pegawaiId);
 }
 
-/** Koordinator bawaan bila Admin tidak memilih: SBK → KSBK bidang induknya; KSBK/KU → WaKa unitnya. */
+/** Koordinator bawaan bila Admin tidak memilih: SBK/SK → koordinator unitnya; KSBK/KU → WaKa unitnya. */
 async function koordinatorBawaan(db: Db, pn: { peranKerja: string; unitId: string; periode: string }) {
-  if (pn.peranKerja === "SBK") return (await ksbkBidang(db, pn.unitId, pn.periode))[0] ?? null;
+  if (pn.peranKerja === "SBK" || pn.peranKerja === "SK") return (await ksbkBidang(db, pn.unitId, pn.periode))[0] ?? null;
   if (pn.peranKerja === "KSBK" || pn.peranKerja === "KU") return (await petaWaka(db)).get(pn.unitId) ?? null;
   return null;
 }
@@ -242,6 +247,7 @@ export async function tambahPenugasan(_: HasilAksi | null, fd: FormData): Promis
       periodeMulai: p.data.periodeMulai,
       periodeSelesai: p.data.periodeSelesai || null,
       bobotAlokasi: typeof p.data.bobotAlokasi === "number" ? p.data.bobotAlokasi : null,
+      wakil: p.data.peranKerja === "KSBK" && p.data.wakil === "on",
     })
     .returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "penugasan", entitasId: pn.id, sesudah: pn });
@@ -287,6 +293,7 @@ export async function ubahPenugasan(id: string, _: HasilAksi | null, fd: FormDat
     periodeMulai: p.data.periodeMulai,
     periodeSelesai: p.data.periodeSelesai || null,
     bobotAlokasi: typeof p.data.bobotAlokasi === "number" ? p.data.bobotAlokasi : null,
+    wakil: p.data.peranKerja === "KSBK" && p.data.wakil === "on",
   };
   await db.update(s.penugasan).set(baru).where(eq(s.penugasan.id, id));
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "ubah", entitas: "penugasan", entitasId: id, sebelum: lama, sesudah: baru });
@@ -317,7 +324,7 @@ export async function hapusPenugasan(id: string): Promise<HasilAksi> {
 const skemaIndikator = z.object({
   standar: z.coerce.number().min(1, "1–100").max(100, "1–100"),
   tenggat: z.union([z.literal(""), z.coerce.number().int().min(0).max(500)]).optional(),
-  verifikator: z.enum(["koordinator", "keuangan", "sekretariat"]),
+  verifikator: z.enum(["koordinator", "keuangan", "admin"]),
 });
 
 export async function ubahIndikator(kode: string, _: HasilAksi | null, fd: FormData): Promise<HasilAksi> {

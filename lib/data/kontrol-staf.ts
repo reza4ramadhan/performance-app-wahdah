@@ -13,6 +13,7 @@ import { hasilPeriode, liburPerKantor, paramIndikator } from "./ikp";
 import { daftarItem, kondisiItemPenugasan, type BarisItem } from "./item";
 import { anggotaTim } from "./tim";
 import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu, kondisiTugasPenugasan, type BarisTugas } from "./tugas";
+import { idKoordinator } from "../akses";
 
 export type StafKontrol = {
   pegawaiId: string;
@@ -48,7 +49,7 @@ export async function kontrolStaf(sesi: Sesi) {
     liburPerKantor(db),
     kondisiAntrean(sesi).then((k) => daftarItem(k, { kantor: sesi.kantor, batas: 300 })),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
-    jumlahUsulanMenunggu(sesi.pegawaiId),
+    jumlahUsulanMenunggu(idKoordinator(sesi)),
   ]);
 
   // SBK binaan amanah ini; staf yang rangkap SKUO di bidang yang sama tampil sekali (K1-nya gabungan).

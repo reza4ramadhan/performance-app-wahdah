@@ -4,7 +4,17 @@
 import type { Verifikator } from "./ikp/katalog";
 import { PERAN_PIMPINAN, type PeranSistem } from "./ikp/tipe";
 
-export type Aktor = { pegawaiId: string; peran: ReadonlySet<PeranSistem> };
+/**
+ * `wakilDari`: koordinator yang saya wakili (Wakil Koordinator unit B, F, K). Wakil berhak memverifikasi seperti
+ * koordinatornya, tetapi tidak mengisi K3 (penilai K3 tetap `koordinatorId` penugasan).
+ */
+export type Aktor = { pegawaiId: string; peran: ReadonlySet<PeranSistem>; wakilDari?: ReadonlySet<string> };
+
+/** Saya koordinator (atau wakil koordinator) penugasan berkoordinator `koordinatorId`. */
+export const koordinatorAtauWakil = (a: Aktor, koordinatorId: string | null) => !!koordinatorId && (koordinatorId === a.pegawaiId || !!a.wakilDari?.has(koordinatorId));
+
+/** Id koordinator yang hak verifikasinya saya pegang: diri sendiri + koordinator yang saya wakili (untuk kueri SQL). */
+export const idKoordinator = (a: Aktor) => [a.pegawaiId, ...(a.wakilDari ?? [])];
 
 export type Keputusan = { boleh: true } | { boleh: false; alasan: string };
 const ya: Keputusan = { boleh: true };
@@ -22,11 +32,11 @@ export function bolehVerifikasiItem(a: Aktor, item: { pemilikId: string; koordin
   if (item.pemilikId === a.pegawaiId && !rangkap) return tidak("Tidak bisa memverifikasi item milik sendiri.");
   switch (item.verifikator) {
     case "koordinator":
-      return item.koordinatorId === a.pegawaiId ? ya : tidak("Hanya koordinator penugasan ini yang bisa memverifikasi.");
+      return koordinatorAtauWakil(a, item.koordinatorId) ? ya : tidak("Hanya koordinator (atau wakilnya) penugasan ini yang bisa memverifikasi.");
     case "keuangan":
       return punya(a, "keuangan") ? ya : tidak("Item ini diverifikasi oleh Keuangan.");
-    case "sekretariat":
-      return punya(a, "sekretariat") ? ya : tidak("Item ini diverifikasi oleh Sekretariat.");
+    case "admin":
+      return punya(a, "admin") ? ya : tidak("Item ini diverifikasi oleh Admin.");
   }
 }
 
@@ -45,23 +55,31 @@ export function bolehNilaiK3(a: Aktor, pegawaiId: string, penilai: readonly (str
   return penilai.includes(a.pegawaiId) ? ya : tidak("Hanya koordinator penugasan pegawai ini yang bisa menilai K3.");
 }
 
-/** Melihat data pegawai lain: diri sendiri, anggota tim, atau pimpinan/Sekretariat/Admin. */
+/** Melihat data pegawai lain: diri sendiri, anggota tim, atau pimpinan/Admin. */
 export function bolehLihatPegawai(a: Aktor, targetId: string, timIds: ReadonlySet<string>): Keputusan {
   if (targetId === a.pegawaiId || pimpinan(a) || timIds.has(targetId)) return ya;
   return tidak("Anda tidak berhak melihat data pegawai ini.");
 }
 
 /**
- * Petugas Sekretariat / Admin tidak boleh memproses IKP dirinya sendiri (Bagian 4).
- * Dipakai untuk aksi per pegawai (mis. kalibrasi, koreksi absensi, penetapan K4).
+ * Aturan saling periksa: Admin tidak memproses IKP dirinya sendiri (unggah absensi, penetapan K4, kalibrasi);
+ * datanya diproses salah satu Admin lain.
  */
 export function bolehProsesIkpPegawai(a: Aktor, targetId: string): Keputusan {
   if (targetId === a.pegawaiId) return tidak("Data IKP Anda sendiri harus diproses petugas lain.");
   return ya;
 }
 
-/** Mengunci / mengesahkan periode. */
-export function bolehKelolaPeriode(a: Aktor, aksi: "kunci" | "sahkan"): Keputusan {
-  if (aksi === "sahkan") return punya(a, "kepala") ? ya : tidak("Hanya Kepala Kantor yang bisa mengesahkan IKP.");
-  return punya(a, "sekretariat") ? ya : tidak("Hanya Sekretariat yang bisa menghitung dan mengunci IKP.");
+/**
+ * Mengunci / mengesahkan periode. Selama akun Kepala Kantor ditunda, Admin juga mengesahkan (IKP yang dikunci
+ * Admin menjadi final). Saling periksa: Admin yang mengunci IKP sementara tidak boleh mengesahkannya sendiri,
+ * agar IKP (termasuk datanya sendiri) selalu diperiksa Admin kedua. `pengunci`: pegawai yang mengunci sementara.
+ */
+export function bolehKelolaPeriode(a: Aktor, aksi: "kunci" | "sahkan", ctx: { pengunci?: string | null } = {}): Keputusan {
+  if (aksi === "sahkan") {
+    if (punya(a, "kepala")) return ya;
+    if (!punya(a, "admin")) return tidak("Hanya Admin yang bisa mengesahkan IKP.");
+    return ctx.pengunci && ctx.pengunci === a.pegawaiId ? tidak("Anda yang mengunci IKP ini. Pengesahan dilakukan Admin lain (saling periksa).") : ya;
+  }
+  return punya(a, "admin") ? ya : tidak("Hanya Admin yang bisa menghitung dan mengunci IKP.");
 }

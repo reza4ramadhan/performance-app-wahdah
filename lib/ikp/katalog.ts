@@ -6,7 +6,7 @@ import type { PeranKerja } from "./tipe";
 
 /** item = dicatat per item; turunan = dari data lain; tugas = dari tugas khusus; tambahan = poin di atas rata-rata K1. */
 export type TipeIndikator = "item" | "turunan" | "tugas" | "tambahan";
-export type Verifikator = "koordinator" | "keuangan" | "sekretariat";
+export type Verifikator = "koordinator" | "keuangan" | "admin";
 export type SatuanTenggat = "hari_kerja" | "hari" | "jam";
 
 export type FieldItem =
@@ -242,10 +242,10 @@ export const KATALOG: DefinisiIndikator[] = [
     standar: 1,
     tenggat: 5,
     satuanTenggat: "hari_kerja",
-    verifikator: "sekretariat",
+    verifikator: "admin",
     // Nonaktif bersama KSBK-1: K1 KSBK = rata-rata K1 staf.
     aktif: false,
-    aturan: "Satu laporan per bulan, diserahkan ≤ 5 hari kerja setelah bulan berakhir dan diverifikasi Sekretariat.",
+    aturan: "Satu laporan per bulan, diserahkan ≤ 5 hari kerja setelah bulan berakhir dan diverifikasi Admin.",
     item: {
       kegiatan: "tidak",
       masuk: null,

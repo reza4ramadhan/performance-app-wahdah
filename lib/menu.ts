@@ -37,8 +37,8 @@ export const KONTROL_KSBK: ItemMenu[] = [
 ];
 
 /**
- * Menu kerja mengikuti amanah aktif ("Pindah Amanah"); menu fungsi (Sekretariat, Personalia, Keuangan, Admin)
- * selalu tampil.
+ * Menu kerja mengikuti peran tertinggi (Pindah Amanah dihapus); menu fungsi (Personalia, Keuangan, Admin) selalu tampil.
+ * Admin juga memegang tugas Sekretariat lama dan kuasa sementara selama akun pimpinan, Personalia, dan Bendahara ditunda.
  */
 export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   const p = sesi.peran;
@@ -85,24 +85,25 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
         { href: "/tim/k4", label: "Periksa K4", ikon: "k4" },
       ],
     });
-  } else if (!ksbk && ada("keuangan", "sekretariat")) {
+  } else if (!ksbk && ada("keuangan")) {
     grup.push({ judul: "Verifikasi", item: [{ href: "/verifikasi", label: "Verifikasi", ikon: "verifikasi" }] });
   }
 
-  if (pimpin || ada("sekretariat", "admin")) {
+  // Menu Kantor hanya untuk pimpinan (akun WaKa/Kepala Kantor ditunda); rekap kantor untuk Admin ada di grup Admin.
+  if (pimpin) {
     grup.push({
       judul: "Kantor",
       item: [
         { href: "/kantor", label: "Dashboard kantor", ikon: "kantor" },
-        ...(pimpin || ada("sekretariat") ? [{ href: "/kantor/kalibrasi", label: "Kalibrasi K3", ikon: "kalibrasi" as const }] : []),
-        ...(pimpin ? [{ href: "/kantor/k4", label: "Penetapan K4", ikon: "k4" as const }] : []),
+        { href: "/kantor/kalibrasi", label: "Kalibrasi K3", ikon: "kalibrasi" },
+        { href: "/kantor/k4", label: "Penetapan K4", ikon: "k4" },
         { href: "/kantor/rekap", label: "Rekap IKP", ikon: "rekap" },
         ...(!adaTim ? [{ href: "/tim/jurnal", label: "Jurnal pegawai", ikon: "jurnal" as const }] : []),
       ],
     });
   }
 
-  if (ada("personalia")) grup.push({ judul: "Personalia", item: [{ href: "/absensi", label: "Unggah absensi", ikon: "absensi" }] });
+  if (ada("personalia") && !ada("admin")) grup.push({ judul: "Personalia", item: [{ href: "/absensi", label: "Unggah absensi", ikon: "absensi" }] });
 
   if (ada("admin")) {
     grup.push({
@@ -115,6 +116,11 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
         { href: "/admin/indikator", label: "Indikator", ikon: "indikator" },
         { href: "/admin/libur", label: "Hari libur", ikon: "libur" },
         { href: "/admin/periode", label: "Periode", ikon: "periode" },
+        // Kuasa sementara (Sekretariat dilebur; Personalia & pimpinan ditunda).
+        { href: "/kantor/rekap", label: "Rekap IKP", ikon: "rekap" },
+        { href: "/absensi", label: "Unggah absensi", ikon: "absensi" },
+        { href: "/kantor/k4", label: "Penetapan K4", ikon: "k4" },
+        { href: "/kantor", label: "Dashboard kantor", ikon: "kantor" },
       ],
     });
   }

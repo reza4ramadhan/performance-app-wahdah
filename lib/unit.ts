@@ -2,6 +2,15 @@
 
 export type UnitInduk = { id: string; jenis: string; indukId: string | null };
 
+export type PolaKerja = "administrasi" | "rutin";
+
+/** Pola kerja bawaan dari jenis unit (rombak v2): bidang & SKUO = administrasi (A–M); unit pendukung & staf khusus = rutin (N–R). */
+export function polaBawaan(jenis: string | undefined): PolaKerja | null {
+  if (jenis === "bidang" || jenis === "skuo") return "administrasi";
+  if (jenis === "unit_pendukung" || jenis === "staf_khusus") return "rutin";
+  return null;
+}
+
 /** unitId → id bidang (unit itu sendiri bila bidang, selain itu leluhur bidang terdekat). */
 export function bidangDari(unit: UnitInduk[]): Map<string, string> {
   const per = new Map(unit.map((u) => [u.id, u]));

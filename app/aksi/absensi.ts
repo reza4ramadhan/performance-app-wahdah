@@ -34,7 +34,7 @@ export type HasilPratinjau = { ok: boolean; pesan: string; baris: BarisAbsensi[]
 
 /** Langkah 1: unggah → pratinjau dan validasi (belum disimpan). */
 export async function pratinjauAbsensi(_: HasilPratinjau, fd: FormData): Promise<HasilPratinjau> {
-  await wajibPeran("personalia");
+  await wajibPeran("personalia", "admin");
   const berkas = fd.get("berkas");
   if (!(berkas instanceof File) || !berkas.size) return { ok: false, pesan: "Pilih berkas CSV atau Excel.", baris: [], galatUmum: [] };
   if (berkas.size > 2_000_000) return { ok: false, pesan: "Berkas terlalu besar (maks. 2 MB).", baris: [], galatUmum: [] };
@@ -51,7 +51,7 @@ export async function pratinjauAbsensi(_: HasilPratinjau, fd: FormData): Promise
 
 /** Langkah 2: simpan baris yang sah (divalidasi ulang di server). */
 export async function simpanAbsensi(periodeId: string, baris: BarisAbsensi[]): Promise<HasilAksi> {
-  const sesi = await wajibPeran("personalia");
+  const sesi = await wajibPeran("personalia", "admin");
   if (!/^\d{4}-\d{2}$/.test(periodeId)) return gagal("Pilih periode.");
   const db = await getDb();
   const [p] = await db.select({ status: s.periode.status }).from(s.periode).where(eq(s.periode.id, periodeId));
@@ -80,5 +80,5 @@ export async function simpanAbsensi(periodeId: string, baris: BarisAbsensi[]): P
   }
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "unggah", entitas: "absensi", entitasId: periodeId, sesudah: { jumlah: n, dilewati } });
   refresh();
-  return berhasil(dilewati.length ? `${n} baris tersimpan. Baris Anda sendiri dilewati; minta petugas lain mengunggahnya.` : `${n} baris absensi tersimpan.`);
+  return berhasil(dilewati.length ? `${n} baris tersimpan. Baris Anda sendiri dilewati; minta Admin lain mengunggahnya (saling periksa).` : `${n} baris absensi tersimpan.`);
 }

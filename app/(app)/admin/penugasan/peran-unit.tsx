@@ -1,6 +1,7 @@
 "use client";
 
 // Peran kerja + Unit: Kepala Kantor dan WaKa membawahi seluruh kantor, jadi unit tidak perlu dipilih.
+// KSBK bisa ditandai Wakil Koordinator (unit B, F, K): akses sama dengan koordinator, kecuali mengisi K3.
 
 import { useState } from "react";
 import { Galat } from "@/components/app/form-aksi";
@@ -13,11 +14,13 @@ export function PeranUnit({
   unit,
   peranAwal = "SBK",
   unitAwal,
+  wakilAwal = false,
 }: {
   peran: { nilai: string; label: string }[];
   unit: { id: string; nama: string }[];
   peranAwal?: string;
   unitAwal?: string;
+  wakilAwal?: boolean;
 }) {
   const [peranKerja, setPeranKerja] = useState(peranAwal);
   const pimpinan = PIMPINAN.includes(peranKerja);
@@ -38,6 +41,12 @@ export function PeranUnit({
           <span className="mb-1.5 block text-sm font-medium text-heading">Unit</span>
           <PilihCari name="unitId" opsi={unit} nilaiAwal={unitAwal} kosong="Pilih…" />
           <Galat nama="unitId" />
+        </label>
+      )}
+      {peranKerja === "KSBK" && (
+        <label className="flex min-h-11 items-center gap-2 text-sm text-heading">
+          <input type="checkbox" name="wakil" defaultChecked={wakilAwal} className="size-4 accent-primary" />
+          Wakil Koordinator (tidak mengisi K3)
         </label>
       )}
     </div>

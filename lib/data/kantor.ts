@@ -86,7 +86,7 @@ export async function ringkasanKantor(kantorPengguna: Kantor) {
     ? await db.select({ id: s.pegawai.id, nama: s.pegawai.nama }).from(s.pegawai).where(inArray(s.pegawai.id, [...perKoordinator.keys()]))
     : [];
   const antreanKeuangan = antrean.filter((a) => param.get(a.kode)?.verifikator === "keuangan").reduce((x, a) => x + a.n, 0);
-  const antreanSekretariat = antrean.filter((a) => param.get(a.kode)?.verifikator === "sekretariat").reduce((x, a) => x + a.n, 0);
+  const antreanSekretariat = antrean.filter((a) => param.get(a.kode)?.verifikator === "admin").reduce((x, a) => x + a.n, 0);
 
   // Perbandingan beban rangkap: rata-rata K1 untuk pegawai dengan 1/2/3+ penugasan ber-K1.
   const rangkap = [1, 2, 3].map((n) => {

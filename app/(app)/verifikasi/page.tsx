@@ -10,6 +10,7 @@ import { daftarTugas, jumlahUsulanMenunggu, kondisiTugasMenunggu } from "@/lib/d
 import { ringkasanTugasTim } from "@/lib/format";
 import { getDb } from "@/lib/db";
 import { wajibPeran } from "@/lib/sesi";
+import { idKoordinator } from "@/lib/akses";
 
 export const metadata: Metadata = { title: "Verifikasi" };
 
@@ -25,13 +26,13 @@ export default function HalamanVerifikasi() {
 }
 
 async function Isi() {
-  const sesi = await wajibPeran("koordinator", "keuangan", "sekretariat", "waka", "kepala");
+  const sesi = await wajibPeran("koordinator", "keuangan", "admin", "waka", "kepala");
   const db = await getDb();
   const [items, libur, tugas, usulan] = await Promise.all([
     daftarItem(await kondisiAntrean(sesi), { kantor: sesi.kantor, batas: 300 }),
     liburPerKantor(db),
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
-    jumlahUsulanMenunggu(sesi.pegawaiId),
+    jumlahUsulanMenunggu(idKoordinator(sesi)),
   ]);
   const kartuTugas = (tugas.length > 0 || usulan > 0) && (
     <Kartu className="mb-4 p-2">

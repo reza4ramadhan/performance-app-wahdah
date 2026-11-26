@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { koordinatorAtauWakil, idKoordinator } from "@/lib/akses";
 import { ClipboardList, Trash2 } from "lucide-react";
 import { TombolAksi } from "@/components/app/tombol-aksi";
 import { FormTugasBaru, KartuTugas, KartuUsulan, PutusanTugas } from "@/components/app/tugas";
@@ -33,13 +34,13 @@ async function Isi() {
   // Tugas khusus hanya untuk penugasan yang saya koordinasikan (bukan yang sekadar saya nilai K3-nya).
   // Satu pilihan per amanah: staf yang rangkap SKUO di bidang yang sama cukup tampil sekali (K1-nya pun gabungan).
   const staf = (await anggotaTim(sesi)).flatMap((t) => {
-    const amanah = kelompokAmanah(t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && p.koordinatorId === sesi.pegawaiId));
+    const amanah = kelompokAmanah(t.penugasan.filter((p) => (p.peranKerja === "SBK" || p.peranKerja === "SK") && koordinatorAtauWakil(sesi, p.koordinatorId)));
     return amanah.map((g) => ({ id: g[0].id, label: amanah.length > 1 ? `${t.nama} · ${LABEL_PERAN_KERJA[g[0].peranKerja]} ${g.map((p) => p.unitNama).join(", ")}` : t.nama }));
   });
   const db = await getDb();
   const [menunggu, usulan, induk] = await Promise.all([
     daftarTugas(kondisiTugasMenunggu(sesi.pegawaiId)),
-    daftarUsulan(kondisiUsulanMenunggu(sesi.pegawaiId)),
+    daftarUsulan(kondisiUsulanMenunggu(idKoordinator(sesi))),
     db
       .select({ t: s.tugasKhusus, staf: s.pegawai.nama })
       .from(s.tugasKhusus)

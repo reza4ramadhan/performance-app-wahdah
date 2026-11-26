@@ -6,7 +6,7 @@ type Sesi = Parameters<typeof menuUntuk>[0];
 const sesi = (peranKerja: PeranKerja | null, peran: PeranSistem[] = [], timKerja: PeranKerja[] = []): Sesi => ({
   peran: new Set<PeranSistem>(["pegawai", ...peran]),
   amanah: peranKerja ? ({ peranKerja } as Sesi["amanah"]) : null,
-  tim: timKerja.map((p, i) => ({ id: `b${i}`, pegawaiId: `p${i}`, peranKerja: p, unitId: "u", koordinatorId: "k", amanahId: "a" })),
+  tim: timKerja.map((p, i) => ({ id: `b${i}`, pegawaiId: `p${i}`, peranKerja: p, unitId: "u", koordinatorId: "k" })),
 });
 /** Lencana tab untuk sesi, dengan semua menu yang ada di sesi itu dianggap punya `n` antrean. */
 const tab = (s: Sesi, jumlah: Record<string, number>) => {
@@ -55,7 +55,9 @@ describe("menu KSBK", () => {
     expect(semua).toContain("/tim/uji-petik");
   });
 
-  it("fungsi lain tetap tampil (Admin)", () => {
-    expect(menuUntuk(sesi("KSBK", ["koordinator", "admin"], ["SBK"])).grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf", "Kantor", "Admin"]);
+  it("fungsi lain tetap tampil (Admin), termasuk kuasa sementara; menu Kantor hanya untuk pimpinan", () => {
+    const m = menuUntuk(sesi("KSBK", ["koordinator", "admin"], ["SBK"]));
+    expect(m.grup.map((g) => g.judul)).toEqual(["Utama", "Kontrol staf", "Admin"]);
+    expect(m.grup.at(-1)!.item.map((i) => i.href)).toEqual(expect.arrayContaining(["/kantor/rekap", "/absensi", "/kantor/k4"]));
   });
 });

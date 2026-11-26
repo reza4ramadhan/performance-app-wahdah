@@ -34,7 +34,7 @@ async function Navigasi() {
     tanggalPalingAwal(db, sesi.pegawaiId, sesi.kantor),
     jumlahMengantre(sesi, hrefMenu(grup, tabBawah)),
   ]);
-  // Catat item hanya untuk amanah aktif; pindah amanah lewat profil.
+  // + Catat untuk semua penugasan yang punya indikator item (daftar gabungan, berlabel unit).
   const penugasan = sesi.amanahPn.map((p) => ({
     id: p.id,
     label: `${p.peranKerja} · ${p.unitNama}`,
@@ -42,7 +42,8 @@ async function Navigasi() {
       .filter((d) => d.tipe === "item" && d.item && !d.otomatis)
       .map((d) => ({ kode: d.kode, pendek: d.pendek, nama: d.nama })),
   }));
-  const amanah = sesi.amanahPn.length ? labelAmanah(sesi.amanahPn) : null;
+  const utama = sesi.amanah;
+  const amanah = utama ? labelAmanah(sesi.amanahPn.filter((p) => p.peranKerja === utama.peranKerja)) : null;
   const peranFungsi = PERAN_MANUAL.filter((x) => sesi.peran.has(x)).map((x) => LABEL_PERAN_SISTEM[x]);
   return (
     <Cangkang

@@ -1,0 +1,6 @@
+nip,peran_kerja,unit,koordinator_nip,periode_mulai,bobot_alokasi,wakil
+NIP_KOORD_B,KSBK,B · Khidmah Al-Quran,,2026-12,,
+NIP_WAKIL_B,KSBK,B · Khidmah Al-Quran,,2026-12,,1
+NIP_STAF_B,SBK,B · Khidmah Al-Quran,NIP_KOORD_B,2026-12,,
+NIP_KOORD_P,KSBK,P · Pelayanan Keamanan,,2026-12,,
+NIP_STAF_P,SK,P · Pelayanan Keamanan,NIP_KOORD_P,2026-12,,

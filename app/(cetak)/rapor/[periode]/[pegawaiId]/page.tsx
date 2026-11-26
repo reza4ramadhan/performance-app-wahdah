@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { TombolCetak } from "@/components/app/tombol-cetak";
-import { bolehLihatPegawai } from "@/lib/akses";
+import { bolehLihatPegawai, idKoordinator } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode } from "@/lib/data/ikp";
 import { idPenugasan, unitPenugasan, type HasilPenugasan } from "@/lib/ikp/hitung";
@@ -32,7 +32,7 @@ async function Isi({ params }: { params: Promise<{ periode: string; pegawaiId: s
   if (!/^\d{4}-\d{2}$/.test(periode)) notFound();
   const sesi = await wajibSesi();
   const db = await getDb();
-  const tim = await db.selectDistinct({ id: s.penugasan.pegawaiId }).from(s.penugasan).where(eq(s.penugasan.koordinatorId, sesi.pegawaiId));
+  const tim = await db.selectDistinct({ id: s.penugasan.pegawaiId }).from(s.penugasan).where(inArray(s.penugasan.koordinatorId, idKoordinator(sesi)));
   if (!bolehLihatPegawai(sesi, pegawaiId, new Set(tim.map((t) => t.id))).boleh) notFound();
 
   const { hasil, status } = await hasilPeriode(periode);

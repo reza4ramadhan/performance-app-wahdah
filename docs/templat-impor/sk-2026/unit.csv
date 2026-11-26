@@ -1,0 +1,20 @@
+jenis,nama,induk,waka_nip,pola_kerja
+kantor,Kantor Pusat,,,
+bidang,"A · Dakwah, Kaderisasi & PSDM",Kantor Pusat,,administrasi
+bidang,B · Khidmah Al-Quran,Kantor Pusat,,administrasi
+bidang,C · Ketahanan Keluarga,Kantor Pusat,,administrasi
+bidang,D · Pendidikan,Kantor Pusat,,administrasi
+bidang,E · Keorganisasian,Kantor Pusat,,administrasi
+bidang,F · Pelayanan Umat,Kantor Pusat,,administrasi
+bidang,G · Ekonomi,Kantor Pusat,,administrasi
+bidang,H · Pembinaan Generasi Muda,Kantor Pusat,,administrasi
+bidang,I · Transformasi Digital,Kantor Pusat,,administrasi
+bidang,J · Pusat-Pusat,Kantor Pusat,,administrasi
+bidang,K · Kesekretariatan Jenderal,Kantor Pusat,,administrasi
+bidang,L · Perbendaharaan,Kantor Pusat,,administrasi
+bidang,"M · Dewan Syura, Dewan Syariah & DPK",Kantor Pusat,,administrasi
+unit_pendukung,N · Pelayanan Umum,Kantor Pusat,,rutin
+unit_pendukung,O · Pelayanan Media,Kantor Pusat,,rutin
+unit_pendukung,P · Pelayanan Keamanan,Kantor Pusat,,rutin
+unit_pendukung,Q · Sekolah Dai,Kantor Pusat,,rutin
+staf_khusus,R · Staf Khusus,Kantor Pusat,,rutin

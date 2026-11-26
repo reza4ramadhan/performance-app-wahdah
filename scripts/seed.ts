@@ -70,7 +70,7 @@ async function main() {
 
   const kk = await orang({ nama: "Ust. Contoh Kepala Kantor", nip: "1001", hp: "081100001001", status: "Mutafarrigh", peran: [] });
   const waka = await orang({ nama: "Contoh Wakil Kepala I", nip: "1002", hp: "081100001002", status: "Mutafarrigh", peran: [] });
-  const sekr = await orang({ nama: "Fatimah Sekretariat", nip: "1003", hp: "081100001003", status: "Mutafarrigh", peran: ["sekretariat"] });
+  const sekr = await orang({ nama: "Fatimah Sekretariat", nip: "1003", hp: "081100001003", status: "Mutafarrigh", peran: ["admin"] });
   const pers = await orang({ nama: "Rahmat Personalia", nip: "1004", hp: "081100001004", status: "Kontrak", peran: ["personalia"] });
   const keu = await orang({ nama: "Nurul Keuangan", nip: "1005", hp: "081100001005", status: "Kontrak", peran: ["keuangan"] });
   const adm = await orang({ nama: "Yusuf Data & Monev", nip: "1006", hp: "081100001006", status: "Mutafarrigh", peran: ["admin"] });
@@ -255,7 +255,7 @@ async function main() {
 
   console.log(`Seed selesai (${jenis}). Periode ${periode} berjalan, ${lalu} contoh rekap.`);
   console.log(`${items.length} item, ${kegiatan.length} kegiatan, ${jurnal.length} jurnal. Login: NIP 1001–1006 / 2001–2007, password "${PASSWORD}".`);
-  console.log(`Contoh: 2002 (staf), 2001 (koordinator), 1003 (sekretariat), 1006 (admin). Rentang: ${rentangPeriode(periode).awal}–${today}.`);
+  console.log(`Contoh: 2002 (staf), 2001 (koordinator), 1003 (admin/sekretaris), 1006 (admin). Rentang: ${rentangPeriode(periode).awal}–${today}.`);
   await tutup();
 }
 

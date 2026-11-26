@@ -8,7 +8,7 @@ import { berhasil, gagal, type HasilAksi } from "@/lib/aksi";
 import { catatAudit } from "@/lib/audit";
 import { getDb, schema as s } from "@/lib/db";
 import { penugasanDinilai } from "@/lib/data/k3";
-import { buatItemOtomatis, itemBelumDisentuh } from "@/lib/data/kegiatan";
+import { buatItemOtomatis, itemBelumDisentuh, pjKegiatan } from "@/lib/data/kegiatan";
 import { stafBidang } from "@/lib/data/tim";
 import { unitDalamBidang } from "@/lib/data/unit";
 import { NILAI_K3, type SkorK3 } from "@/lib/ikp/tipe";
@@ -34,7 +34,8 @@ const skemaKegiatan = z.object({
   nama: z.string().trim().min(3, "Isi nama kegiatan.").max(200),
   tanggal,
   skuoId: z.string().min(1, "Pilih SKUO."),
-  penanggungJawabId: z.string().min(1, "Pilih penanggung jawab."),
+  /** Kosong = diambil dari plot Manage tim (PJ utama departemen). */
+  penanggungJawabId: z.string().optional(),
   // SPP dan SPB satu paket: satu centang mengisi keduanya.
   perluSppSpb: z.literal("on").optional(),
 });
@@ -51,8 +52,11 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
   if (p.data.skuoId === p.data.unitId || !(await unitDalamBidang(db, p.data.unitId)).includes(p.data.skuoId))
     return gagal("Periksa SKUO.", { skuoId: "SKUO ini tidak berada di bawah bidang tersebut." });
   // Penanggung jawab boleh staf SKUO lain di bidang yang sama (saling backup); ia yang dinilai.
+  // Bila tidak dipilih, diambil dari plot Manage tim (PJ utama departemen pada tanggal kegiatan).
+  const pj = p.data.penanggungJawabId || (await pjKegiatan(db, p.data.unitId, p.data.skuoId, p.data.tanggal));
+  if (!pj) return gagal("Pilih penanggung jawab.", { penanggungJawabId: "Departemen ini belum punya PJ utama di Manage tim. Pilih penanggung jawab." });
   const staf = await stafBidang(db, p.data.unitId, periode);
-  if (!staf.some((x) => x.id === p.data.penanggungJawabId))
+  if (!staf.some((x) => x.id === pj))
     return gagal("Periksa penanggung jawab.", { penanggungJawabId: "Penanggung jawab bukan staf bidang ini pada periode kegiatan." });
 
   const [k] = await db
@@ -62,7 +66,7 @@ export async function simpanKegiatan(_: HasilAksi | null, fd: FormData): Promise
       nama: p.data.nama,
       tanggal: p.data.tanggal,
       skuoId: p.data.skuoId,
-      penanggungJawabId: p.data.penanggungJawabId,
+      penanggungJawabId: pj,
       perluSpp: !!p.data.perluSppSpb,
       perluSpb: !!p.data.perluSppSpb,
       dibuatOleh: sesi.pegawaiId,

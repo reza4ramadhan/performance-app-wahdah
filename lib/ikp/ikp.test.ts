@@ -187,6 +187,19 @@ describe("K1 koordinator & Staf Khusus", () => {
     expect(h2.get("pK")!.k1).toBeCloseTo((k1.skor! + ind(h2, "pK", "KSBK-2").skor!) / 2);
   });
 
+  it("koordinator & wakil unit tugas rutin (N–R): K1 = rata-rata K1 Staf Tugas Rutin di unitnya", () => {
+    const ctx = konteks();
+    ctx.penugasan.push(
+      { id: "pKS", pegawaiId: "KS", peran: "KSBK", unitId: "sk", kantor: "makassar" },
+      { id: "pWS", pegawaiId: "WS", peran: "KSBK", unitId: "sk", kantor: "makassar" },
+    );
+    const h2 = hitungK1(ctx);
+    expect(ind(h2, "pKS", "KSBK-2")).toMatchObject({ target: 1 });
+    expect(h2.get("pKS")!.k1).toBeCloseTo(h2.get("pS")!.k1!);
+    expect(h2.get("pWS")!.k1).toBeCloseTo(h2.get("pS")!.k1!);
+    expect(ind(h2, "pK", "KSBK-2").target).toBe(2); // unit b1 tidak ikut staf unit sk
+  });
+
   it("SK-TK: tugas jatuh tempo (lewat tenggat atau sudah diselesaikan) jadi target; realisasi tepat waktu & disetujui", () => {
     expect(ind(h, "pS", "SK-TK")).toMatchObject({ target: 6, realisasi: 3 });
     expect(ind(h, "pS", "SK-JR").skor).toBeCloseTo(1.5);

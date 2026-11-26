@@ -5,10 +5,10 @@ import type { PeranSistem } from "./ikp/tipe";
 const aktor = (pegawaiId: string, ...peran: PeranSistem[]): Aktor => ({ pegawaiId, peran: new Set<PeranSistem>(["pegawai", ...peran]) });
 
 describe("konflik kepentingan", () => {
-  it("item milik sendiri tidak bisa diverifikasi, termasuk oleh Keuangan dan Sekretariat", () => {
+  it("item milik sendiri tidak bisa diverifikasi, termasuk oleh Keuangan dan Admin", () => {
     expect(bolehVerifikasiItem(aktor("k", "koordinator"), { pemilikId: "k", koordinatorId: "x", verifikator: "koordinator" }).boleh).toBe(false);
     expect(bolehVerifikasiItem(aktor("f", "keuangan"), { pemilikId: "f", koordinatorId: "x", verifikator: "keuangan" }).boleh).toBe(false);
-    expect(bolehVerifikasiItem(aktor("s", "sekretariat"), { pemilikId: "s", koordinatorId: "s", verifikator: "sekretariat" }).boleh).toBe(false);
+    expect(bolehVerifikasiItem(aktor("s", "admin"), { pemilikId: "s", koordinatorId: "s", verifikator: "admin" }).boleh).toBe(false);
   });
 
   it("rangkap jabatan: koordinator penugasan miliknya sendiri boleh memverifikasi item itu", () => {
@@ -39,9 +39,17 @@ describe("konflik kepentingan", () => {
     expect(penilaiK3({ pegawaiId: "w", koordinatorId: "w" }, "w")).toBeNull();
   });
 
-  it("Sekretariat tidak memproses IKP dirinya sendiri", () => {
-    expect(bolehProsesIkpPegawai(aktor("s", "sekretariat"), "s").boleh).toBe(false);
-    expect(bolehProsesIkpPegawai(aktor("s", "sekretariat"), "a").boleh).toBe(true);
+  it("Admin tidak memproses IKP dirinya sendiri", () => {
+    expect(bolehProsesIkpPegawai(aktor("s", "admin"), "s").boleh).toBe(false);
+    expect(bolehProsesIkpPegawai(aktor("s", "admin"), "a").boleh).toBe(true);
+  });
+
+  it("Wakil Koordinator memverifikasi seperti koordinatornya, tetapi tidak menilai K3", () => {
+    const wakil: Aktor = { ...aktor("w", "koordinator"), wakilDari: new Set(["k"]) };
+    expect(bolehVerifikasiItem(wakil, { pemilikId: "a", koordinatorId: "k", verifikator: "koordinator" }).boleh).toBe(true);
+    expect(bolehVerifikasiItem(wakil, { pemilikId: "a", koordinatorId: "k9", verifikator: "koordinator" }).boleh).toBe(false);
+    expect(bolehVerifikasiItem(wakil, { pemilikId: "w", koordinatorId: "k", verifikator: "koordinator" }).boleh).toBe(false);
+    expect(bolehNilaiK3(wakil, "a", ["k"]).boleh).toBe(false);
   });
 });
 
@@ -53,9 +61,12 @@ describe("hak lihat dan periode", () => {
     expect(bolehLihatPegawai(aktor("w", "waka"), "b", new Set()).boleh).toBe(true);
   });
 
-  it("hanya Sekretariat mengunci, hanya Kepala Kantor mengesahkan", () => {
-    expect(bolehKelolaPeriode(aktor("s", "sekretariat"), "kunci").boleh).toBe(true);
-    expect(bolehKelolaPeriode(aktor("s", "sekretariat"), "sahkan").boleh).toBe(false);
-    expect(bolehKelolaPeriode(aktor("kk", "kepala"), "sahkan").boleh).toBe(true);
+  it("Admin mengunci; pengesahan oleh Admin lain (saling periksa) atau Kepala Kantor", () => {
+    expect(bolehKelolaPeriode(aktor("s", "admin"), "kunci").boleh).toBe(true);
+    expect(bolehKelolaPeriode(aktor("a"), "kunci").boleh).toBe(false);
+    expect(bolehKelolaPeriode(aktor("s", "admin"), "sahkan", { pengunci: "s" }).boleh).toBe(false);
+    expect(bolehKelolaPeriode(aktor("s2", "admin"), "sahkan", { pengunci: "s" }).boleh).toBe(true);
+    expect(bolehKelolaPeriode(aktor("kk", "kepala"), "sahkan", { pengunci: "kk" }).boleh).toBe(true);
+    expect(bolehKelolaPeriode(aktor("a", "koordinator"), "sahkan").boleh).toBe(false);
   });
 });

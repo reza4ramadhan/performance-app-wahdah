@@ -137,7 +137,8 @@ export const kondisiUsulanPenugasan = (penugasanIds: string[], status?: ("diajuk
   and(inArray(s.usulanTugas.penugasanId, penugasanIds.length ? penugasanIds : ["-"]), status ? inArray(s.usulanTugas.status, status) : undefined);
 
 /** Usulan staf yang menunggu keputusan atasan ini (butuh join penugasan, sudah ada di daftarUsulan). */
-export const kondisiUsulanMenunggu = (koordinatorId: string) => and(eq(s.penugasan.koordinatorId, koordinatorId), eq(s.usulanTugas.status, "diajukan"));
+/** `koordinatorId`: satu id atau beberapa (koordinator + yang diwakili Wakil Koordinator; lib/akses.ts idKoordinator). */
+export const kondisiUsulanMenunggu = (koordinatorId: string | readonly string[]) => and(inArray(s.penugasan.koordinatorId, [koordinatorId].flat()), eq(s.usulanTugas.status, "diajukan"));
 
 /** Jumlah jadwal tugas yang diajukan selesai dan menunggu persetujuan pemberinya; `penugasanIds` membatasi ke staf tertentu. */
 export async function jumlahTugasMenunggu(pemberiId: string, penugasanIds?: string[]) {
@@ -151,7 +152,7 @@ export async function jumlahTugasMenunggu(pemberiId: string, penugasanIds?: stri
 }
 
 /** Jumlah usulan yang menunggu keputusan atasan ini; `penugasanIds` membatasi ke staf tertentu. */
-export async function jumlahUsulanMenunggu(koordinatorId: string, penugasanIds?: string[]) {
+export async function jumlahUsulanMenunggu(koordinatorId: string | readonly string[], penugasanIds?: string[]) {
   const db = await getDb();
   const [r] = await db
     .select({ n: count() })

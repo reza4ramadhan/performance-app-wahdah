@@ -9,10 +9,23 @@ import { indikatorDari } from "../ikp/katalog";
 import { PARAMETER } from "../ikp/tipe";
 import { bulanWajibKegiatan, kegiatanBelumDiinput, type KegiatanBelumDiinput } from "../kegiatan-wajib";
 import { periodeDari, rentangPeriode } from "../waktu";
+import { pjDariPlot } from "../plot";
 import { kondisiPenugasanBerlaku, paramIndikator } from "./ikp";
 import { unitDalamBidang } from "./unit";
 
 type Kegiatan = typeof s.kegiatan.$inferSelect;
+
+/** Status kegiatan yang menerbitkan checklist staf. */
+export const KEGIATAN_BERJALAN: readonly Kegiatan["status"][] = ["jalan", "geser"];
+
+/** PJ kegiatan dari plot Manage tim (lib/plot.ts); null bila belum bisa ditentukan. */
+export async function pjKegiatan(db: Db, unitId: string, skuoId: string, tanggal: string) {
+  const plot = await db
+    .select({ skuoId: s.plotSkuo.skuoId, pegawaiId: s.plotSkuo.pegawaiId, utama: s.plotSkuo.utama, aktif: s.plotSkuo.aktif, berlakuMulai: s.plotSkuo.berlakuMulai, dibuatPada: s.plotSkuo.dibuatPada })
+    .from(s.plotSkuo)
+    .where(and(eq(s.plotSkuo.unitId, unitId), eq(s.plotSkuo.skuoId, skuoId)));
+  return pjDariPlot(plot, skuoId, tanggal);
+}
 
 /** Isian item otomatis untuk satu kegiatan (tanpa penugasan). */
 export function rancanganItemOtomatis(k: Pick<Kegiatan, "perluSpp" | "perluSpb">) {
@@ -36,7 +49,8 @@ export async function buatItemOtomatis(db: Db, kegiatan: Kegiatan[], aktorId: st
   const ada = kegiatan.length ? await db.select().from(s.item).where(inArray(s.item.kegiatanId, kegiatan.map((k) => k.id))) : [];
   const nilai: (typeof s.item.$inferInsert)[] = [];
   for (const k of kegiatan) {
-    if (!k.penanggungJawabId) continue;
+    // Checklist staf hanya untuk kegiatan yang pasti berjalan (rombak v2: rencana/tunda/batal bukan target).
+    if (!k.penanggungJawabId || !KEGIATAN_BERJALAN.includes(k.status)) continue;
     const unitIds = await unitDalamBidang(db, k.unitId);
     const calon = await db
       .select({ id: s.penugasan.id, unitId: s.penugasan.unitId })
