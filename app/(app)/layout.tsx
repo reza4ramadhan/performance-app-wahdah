@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Cangkang } from "@/components/app/cangkang";
 import { labelAmanah } from "@/lib/amanah";
+import { unitPendek } from "@/lib/tugas-saya";
 import { getDb } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
@@ -37,7 +38,7 @@ async function Navigasi() {
   // + Catat untuk semua penugasan yang punya indikator item (daftar gabungan, berlabel unit).
   const penugasan = sesi.amanahPn.map((p) => ({
     id: p.id,
-    label: `${p.peranKerja} · ${p.unitNama}`,
+    label: unitPendek(p.unitNama),
     indikator: indikatorAktif(p.peranKerja, param)
       .filter((d) => d.tipe === "item" && d.item && !d.otomatis)
       .map((d) => ({ kode: d.kode, pendek: d.pendek, nama: d.nama })),

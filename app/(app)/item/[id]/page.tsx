@@ -4,31 +4,41 @@ import { Suspense } from "react";
 import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { ExternalLink } from "lucide-react";
 import { PutusanItem, UbahItem } from "@/components/app/aksi-item";
+import { KonfirmasiDanaCair, PendingSpb } from "@/components/app/pending-spb";
 import { Kartu, Kepala, Kerangka, Lencana, LencanaStatus } from "@/components/app/ui";
 import { bolehVerifikasiItem, koordinatorAtauWakil, pimpinan } from "@/lib/akses";
 import { getDb, schema as s } from "@/lib/db";
 import { tanggalPalingAwal } from "@/lib/data/batas";
 import { paramIndikator } from "@/lib/data/ikp";
 import { daftarItem } from "@/lib/data/item";
+import { aksiItem } from "@/lib/data/tugas-saya";
 import { indikatorDari } from "@/lib/ikp/katalog";
 import { wajibSesi } from "@/lib/sesi";
 import { hariIni, jamLokal, labelTanggal, tambahHari, tanggalLokal, type Kantor } from "@/lib/waktu";
 
-export const metadata: Metadata = { title: "Rincian item" };
+export const metadata: Metadata = { title: "Detail tugas" };
 
 export default function HalamanRincian(props: PageProps<"/item/[id]">) {
   return (
     <Suspense fallback={<Kerangka />}>
-      <Isi params={props.params} />
+      <Isi params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
+/** Label riwayat untuk aksi audit log item. */
+const LABEL_AUDIT: Record<string, string> = {
+  "pending-dana": "Ditandai pending: dana belum cair",
+  "batal-pending-dana": "Tanda pending dicabut",
+  "dana-cair": "Tanggal dana cair dikonfirmasi",
+};
+
 const waktuTeks = (d: Date | null, kantor: Kantor, denganJam = false) =>
   d ? `${labelTanggal(tanggalLokal(d, kantor), true)}${denganJam ? `, ${jamLokal(d, kantor)}` : ""}` : "—";
 
-async function Isi({ params }: { params: Promise<{ id: string }> }) {
+async function Isi({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  const sp = await searchParams;
   const sesi = await wajibSesi();
   const db = await getDb();
   const [item] = await daftarItem(eq(s.item.id, id), { kantor: sesi.kantor, batas: 1 });
@@ -42,18 +52,21 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
 
   const kantor = (await db.select({ k: s.pegawai.kantor }).from(s.pegawai).where(eq(s.pegawai.id, item.pemilikId)))[0].k as Kantor;
   const pakaiJam = def.item?.selesai.jenis === "waktu";
-  const [verifNama, riwayat] = await Promise.all([
+  const [verifNama, riwayat, saudara] = await Promise.all([
     db
       .select({ nama: s.pegawai.nama, waktu: s.item.diverifikasiPada })
       .from(s.item)
       .innerJoin(s.pegawai, eq(s.pegawai.id, s.item.verifikatorId))
       .where(eq(s.item.id, id)),
     db.select().from(s.auditLog).where(and(eq(s.auditLog.entitas, "item"), eq(s.auditLog.entitasId, id))).orderBy(desc(s.auditLog.waktu)).limit(10),
+    // Checklist kegiatan ini: item lain dari kegiatan yang sama milik penugasan yang sama.
+    item.kegiatanId ? daftarItem(and(eq(s.item.kegiatanId, item.kegiatanId), eq(s.item.penugasanId, item.penugasanId)), { kantor: sesi.kantor, batas: 20 }) : Promise.resolve([]),
   ]);
+  const today = hariIni(sesi.kantor);
+  const spbBuka = item.indikatorKode === "SBK-2b" && (item.status === "terbuka" || item.status === "ditolak") && !item.danaCairPada;
 
   let form = null;
-  if (pemilik && item.status !== "disetujui") {
-    const today = hariIni(sesi.kantor);
+  if (pemilik && item.status !== "disetujui" && !item.pendingDana) {
     const [kegiatan, skuo, minTanggal] = await Promise.all([
       db
         .select({ id: s.kegiatan.id, nama: s.kegiatan.nama, tanggal: s.kegiatan.tanggal })
@@ -72,7 +85,7 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
         pilihan={{ kegiatan, skuo }}
         bisaHapus={!def.otomatis}
         kunciKegiatan={def.otomatis}
-        bukaAwal={item.status === "ditolak"}
+        bukaAwal={item.status === "ditolak" || sp.selesai === "1"}
         awal={{
           kegiatanId: item.kegiatanId ?? "",
           masuk: fmt(item.tglMasuk, def.item?.masuk?.jenis),
@@ -96,7 +109,7 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <Kepala judul={item.judul} kembali={pemilik ? "/item" : "/verifikasi"} sub={<span className="inline-flex flex-wrap items-center gap-2"><LencanaStatus status={item.status} />{item.verifikatorId === item.pemilikId && <Lencana nada="gold">Diverifikasi sendiri</Lencana>}{item.sisa && <Lencana nada={item.sisa.nada}>{item.sisa.teks}</Lencana>}</span>} />
+      <Kepala judul={pemilik ? aksiItem(item) : item.judul} kembali={pemilik ? "/" : "/verifikasi"} sub={<span className="inline-flex flex-wrap items-center gap-2"><LencanaStatus status={item.status} />{item.verifikatorId === item.pemilikId && <Lencana nada="gold">Diverifikasi sendiri</Lencana>}{item.sisa && <Lencana nada={item.sisa.nada}>{item.sisa.teks}</Lencana>}</span>} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="space-y-4">
@@ -128,7 +141,37 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
             </dl>
           </Kartu>
 
+          {pemilik && spbBuka && (
+            <Kartu>
+              <PendingSpb id={id} pending={item.pendingDana} />
+            </Kartu>
+          )}
+          {!pemilik && item.pendingDana && koordinatorAtauWakil(sesi, pn.koordinatorId) && (
+            <Kartu>
+              <KonfirmasiDanaCair id={id} hariIni={today} />
+            </Kartu>
+          )}
           {form && <Kartu>{form}</Kartu>}
+          {saudara.length > 1 && (
+            <Kartu>
+              <h2 className="mb-2 text-[12.5px] font-semibold tracking-wide text-muted-foreground uppercase">Checklist kegiatan ini</h2>
+              <ul className="divide-y divide-border text-sm">
+                {saudara
+                  .sort((a, b) => (a.tenggat ?? "").localeCompare(b.tenggat ?? ""))
+                  .map((x) => (
+                    <li key={x.id} className={x.id === id ? "-mx-2 rounded-lg bg-primary/8 px-2" : ""}>
+                      <a href={`/item/${x.id}`} className="flex min-h-11 items-center justify-between gap-3">
+                        <span className={x.id === id ? "font-semibold text-heading" : "text-muted-foreground"}>
+                          {aksiItem(x)}
+                          {x.tenggat && ` · s.d. ${labelTanggal(x.tenggat)}`}
+                        </span>
+                        {x.id === id ? <span className="text-xs font-semibold text-primary">Sedang dibuka</span> : x.pendingDana ? <Lencana nada="gold">Pending dana</Lencana> : <LencanaStatus status={x.status} />}
+                      </a>
+                    </li>
+                  ))}
+              </ul>
+            </Kartu>
+          )}
           {bisaVerifikasi && item.status === "diajukan" && (
             <Kartu>
               <p className="mb-3 text-sm text-muted-foreground">
@@ -153,6 +196,18 @@ async function Isi({ params }: { params: Promise<{ id: string }> }) {
                 <p className="text-xs text-muted-foreground">{waktuTeks(item.diajukanPada, kantor, true)}</p>
               </li>
             )}
+            {[...riwayat]
+              .reverse()
+              .filter((r) => LABEL_AUDIT[r.aksi])
+              .map((r) => (
+                <li key={r.id}>
+                  <p className="font-medium text-heading">{LABEL_AUDIT[r.aksi]}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {waktuTeks(r.waktu, kantor, true)}
+                    {r.alasan && ` · ${r.alasan}`}
+                  </p>
+                </li>
+              ))}
             {verifNama[0] && (
               <li>
                 <p className="font-medium text-heading">{item.status === "ditolak" ? "Ditolak" : "Disetujui"} oleh {verifNama[0].nama}</p>

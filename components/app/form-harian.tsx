@@ -9,58 +9,81 @@ import { Input } from "@/components/ui/input";
 import { hapusJurnal, hapusPengembanganDiri, simpanJurnal, simpanJurnalSekaligus, simpanPengembanganDiri, ubahJurnal } from "@/app/aksi/harian";
 import { FormAksi, Galat } from "./form-aksi";
 import { kelasTeks } from "./kolom";
-import { PilihCari } from "./pilih-cari";
+import { cn } from "@/lib/utils";
 import { Kartu } from "./ui";
 
 const Label = ({ children }: { children: React.ReactNode }) => <span className="mb-1.5 block text-sm font-medium text-heading">{children}</span>;
 
 type Unit = { id: string; nama: string };
-type IsiJurnal = { uraian: string; jamMulai: string | null; jamSelesai: string | null; unitId: string | null; pemberiTugas: string | null; link: string | null };
+type IsiJurnal = { uraian: string; durasiMenit: number | null; link: string | null };
 
-/** Field satu poin jurnal. `ke`: urutan baris di isian sekaligus (galat bernama `uraian.0`, dst.). */
-function IsianPoinJurnal({ unit, ke, awal, jamMulaiAwal }: { unit: Unit[]; ke?: number; awal?: IsiJurnal; jamMulaiAwal?: string }) {
+/** Pilihan durasi (rombak v2): 15 mnt, 30 mnt, 1 jam, 2 jam, atau isian lain (menit). Nilai dikirim lewat `name`. */
+export function PilihDurasi({ name = "durasiMenit", awal, pilihan = [15, 30, 60, 120], label }: { name?: string; awal?: number | null; pilihan?: number[]; label: string }) {
+  const [menit, setMenit] = useState<number | null>(awal ?? null);
+  const [lain, setLain] = useState(awal != null && !pilihan.includes(awal));
+  const teks = (m: number) => (m < 60 ? `${m} mnt` : `${m / 60} jam`);
+  const kelas = (on: boolean) =>
+    cn("h-10 rounded-xl border text-[13px] transition", on ? "border-2 border-primary bg-primary/10 font-semibold text-brand-700 dark:text-brand-200" : "border-input bg-card text-foreground");
+  return (
+    <div className="space-y-2">
+      <div role="group" aria-label={label} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${pilihan.length + 1}, minmax(0, 1fr))` }}>
+        {pilihan.map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={!lain && menit === m}
+            className={kelas(!lain && menit === m)}
+            onClick={() => {
+              setLain(false);
+              setMenit(m);
+            }}
+          >
+            {teks(m)}
+          </button>
+        ))}
+        <button type="button" aria-pressed={lain} className={kelas(lain)} onClick={() => setLain(true)}>
+          Lain
+        </button>
+      </div>
+      {lain ? (
+        <Input
+          name={name}
+          type="number"
+          inputMode="numeric"
+          min={5}
+          max={720}
+          step={5}
+          required
+          aria-label={`${label}, dalam menit`}
+          placeholder="Menit, mis. 45"
+          defaultValue={menit ?? undefined}
+          onChange={(e) => setMenit(Number(e.target.value) || null)}
+        />
+      ) : (
+        <input type="hidden" name={name} value={menit ?? ""} />
+      )}
+    </div>
+  );
+}
+
+/** Field satu entri jurnal: uraian, durasi, link opsional. `ke`: urutan baris di isian sekaligus (galat bernama `uraian.0`, dst.). */
+function IsianPoinJurnal({ ke, awal }: { ke?: number; awal?: IsiJurnal }) {
   const g = (nama: string) => (ke === undefined ? nama : `${nama}.${ke}`);
-  const mulai = useRef<HTMLInputElement>(null);
-  const akhir = useRef<HTMLInputElement>(null);
-  // Dicek di peramban juga: React mengosongkan form setelah aksi, jadi galat server berarti mengetik ulang.
-  const cekJam = () => {
-    const [a, b] = [mulai.current, akhir.current];
-    b?.setCustomValidity(a?.value && b.value && b.value <= a.value ? "Jam selesai harus setelah jam mulai." : "");
-  };
+  const n = ke === undefined ? "" : ` ${ke + 1}`;
   return (
     <>
       <label className="block">
-        <Label>Uraian pekerjaan</Label>
-        <textarea name="uraian" required minLength={3} maxLength={500} rows={2} className={kelasTeks} defaultValue={awal?.uraian} placeholder="mis. Membantu persiapan rapat pimpinan" />
+        <span className="sr-only">Uraian pekerjaan{n}</span>
+        <textarea name="uraian" required minLength={3} maxLength={500} rows={2} className={kelasTeks} defaultValue={awal?.uraian} placeholder="Pekerjaan di luar indikator, mis. membantu persiapan rapat pimpinan" />
         <Galat nama={g("uraian")} />
       </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block">
-          <Label>Jam mulai</Label>
-          <Input ref={mulai} type="time" name="jamMulai" required defaultValue={awal?.jamMulai ?? jamMulaiAwal} onChange={cekJam} />
-          <Galat nama={g("jamMulai")} />
-        </label>
-        <label className="block">
-          <Label>Jam selesai</Label>
-          <Input ref={akhir} type="time" name="jamSelesai" required defaultValue={awal?.jamSelesai ?? undefined} onChange={cekJam} />
-          <Galat nama={g("jamSelesai")} />
-        </label>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        {unit.length > 0 && (
-          <label className="block">
-            <Label>Bidang/SKUO</Label>
-            <PilihCari name="unitId" opsi={unit} nilaiAwal={awal?.unitId} />
-          </label>
-        )}
-        <label className={unit.length ? "block" : "col-span-2 block"}>
-          <Label>Pemberi tugas</Label>
-          <Input name="pemberiTugas" defaultValue={awal?.pemberiTugas ?? undefined} placeholder="mis. Ketua Bidang" />
-        </label>
+      <div>
+        <PilihDurasi label={`Durasi pekerjaan${n}`} awal={awal?.durasiMenit ?? 30} />
+        <Galat nama={g("durasiMenit")} />
       </div>
       <label className="block">
-        <Label>Link (opsional)</Label>
-        <Input name="link" type="url" inputMode="url" defaultValue={awal?.link ?? undefined} placeholder="https://…" />
+        <span className="sr-only">Link pekerjaan{n} (opsional)</span>
+        <Input name="link" type="url" inputMode="url" defaultValue={awal?.link ?? undefined} placeholder="Link (opsional)" />
         <Galat nama={g("link")} />
       </label>
     </>
@@ -79,42 +102,42 @@ function IsianTanggal({ tanggal, minTanggal, maksTanggal }: { tanggal: string; m
   );
 }
 
-export function FormJurnalCepat({ tanggal, unit = [], minTanggal }: { tanggal: string; unit?: Unit[]; minTanggal?: string }) {
+export function FormJurnalCepat({ tanggal, minTanggal }: { tanggal: string; unit?: Unit[]; minTanggal?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   return (
     <div ref={ref}>
       <FormAksi aksi={simpanJurnal} tombol="Simpan jurnal" tombolPenuh className="mt-3 space-y-3" setelahBerhasil={() => ref.current?.querySelector("form")?.reset()}>
         <IsianTanggal tanggal={tanggal} minTanggal={minTanggal} maksTanggal={tanggal} />
-        <IsianPoinJurnal unit={unit} />
+        <IsianPoinJurnal />
       </FormAksi>
     </div>
   );
 }
 
-/** Banyak poin jurnal untuk satu tanggal; poin baru mulai dari jam selesai poin sebelumnya. */
-export function FormJurnalSekaligus({ tanggal, unit, minTanggal }: { tanggal: string; unit: Unit[]; minTanggal: string }) {
-  const ref = useRef<HTMLDivElement>(null);
+/**
+ * Jurnal kerja format isi sekaligus (rombak v2, mockup Adm-6): beberapa entri dalam satu form, tiap entri uraian +
+ * durasi + link opsional. Setelah tersimpan form dikosongkan kembali ke satu baris.
+ */
+export function FormJurnalSekaligus({ tanggal, minTanggal }: { tanggal: string; unit?: Unit[]; minTanggal?: string }) {
   const urut = useRef(1);
-  const [baris, setBaris] = useState([{ k: 0, mulai: "" }]);
+  const [baris, setBaris] = useState([{ k: 0 }]);
+  // Form dipasang ulang setelah berhasil agar isian dan jumlah baris kembali bersih.
+  const [putaran, setPutaran] = useState(0);
   const router = useRouter();
   const selesai = useCallback(() => {
-    const tgl = ref.current?.querySelector<HTMLInputElement>("input[name=tanggal]")?.value ?? tanggal;
-    router.push(`/jurnal?periode=${tgl.slice(0, 7)}`);
-  }, [router, tanggal]);
-  const tambah = () => {
-    const akhir = [...(ref.current?.querySelectorAll<HTMLInputElement>("input[name=jamSelesai]") ?? [])].at(-1)?.value ?? "";
-    setBaris((b) => [...b, { k: urut.current++, mulai: akhir }]);
-  };
+    setBaris([{ k: urut.current++ }]);
+    setPutaran((x) => x + 1);
+    router.refresh();
+  }, [router]);
+  const tambah = () => setBaris((b) => [...b, { k: urut.current++ }]);
   return (
-    <div ref={ref}>
-      <FormAksi aksi={simpanJurnalSekaligus} tombol={`Simpan ${baris.length} poin jurnal`} tombolPenuh className="space-y-4" setelahBerhasil={selesai}>
-        <Kartu>
-          <IsianTanggal tanggal={tanggal} minTanggal={minTanggal} maksTanggal={tanggal} />
-        </Kartu>
+    <div key={putaran}>
+      <FormAksi aksi={simpanJurnalSekaligus} tombol={baris.length > 1 ? `Simpan ${baris.length} entri` : "Simpan"} tombolPenuh className="space-y-3" setelahBerhasil={selesai}>
+        <IsianTanggal tanggal={tanggal} minTanggal={minTanggal} maksTanggal={tanggal} />
         {baris.map((b, i) => (
-          <Kartu key={b.k} className="space-y-3">
+          <Kartu key={b.k} className="space-y-2 p-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[15px] font-semibold text-heading">Poin {i + 1}</h2>
+              <h2 className="text-[12.5px] font-semibold text-muted-foreground">Pekerjaan {i + 1}</h2>
               {baris.length > 1 && (
                 <button
                   type="button"
@@ -126,11 +149,11 @@ export function FormJurnalSekaligus({ tanggal, unit, minTanggal }: { tanggal: st
                 </button>
               )}
             </div>
-            <IsianPoinJurnal unit={unit} ke={i} jamMulaiAwal={b.mulai} />
+            <IsianPoinJurnal ke={i} />
           </Kartu>
         ))}
-        <Button type="button" variant="outline" size="lg" className="w-full" onClick={tambah} disabled={baris.length >= 30}>
-          <Plus className="size-4" /> Tambah poin
+        <Button type="button" variant="outline" className="w-full border-dashed text-primary" onClick={tambah} disabled={baris.length >= 30}>
+          <Plus className="size-4" /> Tambah baris
         </Button>
       </FormAksi>
     </div>
@@ -138,7 +161,7 @@ export function FormJurnalSekaligus({ tanggal, unit, minTanggal }: { tanggal: st
 }
 
 /** Baris jurnal milik sendiri: tombol ubah dan hapus selama masih dalam jendela edit. */
-export function BarisJurnalSaya({ jurnal, tanggal, unit, minTanggal, maksTanggal, children }: { jurnal: IsiJurnal & { id: string }; tanggal: string; unit: Unit[]; minTanggal: string; maksTanggal: string; children: React.ReactNode }) {
+export function BarisJurnalSaya({ jurnal, tanggal, minTanggal, maksTanggal, children }: { jurnal: IsiJurnal & { id: string }; tanggal: string; unit?: Unit[]; minTanggal: string; maksTanggal: string; children: React.ReactNode }) {
   const [ubah, setUbah] = useState(false);
   const tutup = useCallback(() => setUbah(false), []);
   if (!ubah)
@@ -167,7 +190,7 @@ export function BarisJurnalSaya({ jurnal, tanggal, unit, minTanggal, maksTanggal
       <FormAksi aksi={ubahJurnal} tombol="Simpan perubahan" tombolPenuh className="space-y-3" setelahBerhasil={tutup}>
         <input type="hidden" name="id" value={jurnal.id} />
         <IsianTanggal tanggal={tanggal} minTanggal={minTanggal} maksTanggal={maksTanggal} />
-        <IsianPoinJurnal unit={unit} awal={jurnal} />
+        <IsianPoinJurnal awal={jurnal} />
       </FormAksi>
     </div>
   );
@@ -192,11 +215,11 @@ export function FormPdCepat({ tanggal, minTanggal }: { tanggal: string; minTangg
           <Input name="judul" required placeholder="mis. Kajian Riyadhus Shalihin" />
           <Galat nama="judul" />
         </label>
-        <label className="block">
-          <Label>Durasi (menit)</Label>
-          <Input name="durasiMenit" type="number" inputMode="numeric" min={5} max={600} step={5} required defaultValue={30} />
+        <div>
+          <Label>Durasi</Label>
+          <PilihDurasi label="Durasi belajar" awal={30} pilihan={[15, 30, 60]} />
           <Galat nama="durasiMenit" />
-        </label>
+        </div>
         <label className="block">
           <Label>Ringkasan satu kalimat</Label>
           <Input name="ringkasan" required placeholder="Apa yang dipelajari?" />

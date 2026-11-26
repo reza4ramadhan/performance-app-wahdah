@@ -100,6 +100,8 @@ export async function muatMasukanIkp(db: Db, periode: string, sekarang = new Dat
         diverifikasiPada: i.diverifikasiPada,
         dibuatPada: i.dibuatPada,
         data: i.data,
+        pendingDanaSejak: i.pendingDanaSejak,
+        danaCairPada: i.danaCairPada,
       })),
       kegiatan: kegiatan.map((k) => ({ id: k.id, unitId: k.unitId, tanggal: k.tanggal, perluSpp: k.perluSpp, perluSpb: k.perluSpb, dibuatPada: k.dibuatPada, penanggungJawabId: k.penanggungJawabId, skuoId: k.skuoId })),
       tugas: tugas.map(({ jadwal: j, penugasanId }) => ({ penugasanId, tenggat: j.tenggat, status: j.status, selesaiPada: j.selesaiPada, diverifikasiPada: j.diverifikasiPada })),

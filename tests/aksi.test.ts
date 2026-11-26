@@ -127,32 +127,31 @@ describe("item harian", () => {
 });
 
 describe("jurnal", () => {
-  const poin = (o: Record<string, string> = {}) => ({ tanggal: today, uraian: "Mendampingi tamu", jamMulai: "08:00", jamSelesai: "09:30", ...o });
+  const poin = (o: Record<string, string> = {}) => ({ tanggal: today, uraian: "Mendampingi tamu", durasiMenit: "90", ...o });
 
-  it("wajib jam mulai dan selesai; jam selesai harus setelah jam mulai", async () => {
+  it("wajib durasi (menit); tersimpan bersama uraian dan link", async () => {
     sebagai("staf", [], [pnStaf()]);
-    expect(await harian.simpanJurnal(null, fd(poin({ jamMulai: "" })))).toMatchObject({ ok: false, galat: { jamMulai: expect.any(String) } });
-    expect(await harian.simpanJurnal(null, fd(poin({ jamSelesai: "08:00" })))).toMatchObject({ ok: false, galat: { jamSelesai: "Jam selesai harus setelah jam mulai." } });
+    expect(await harian.simpanJurnal(null, fd(poin({ durasiMenit: "" })))).toMatchObject({ ok: false, galat: { durasiMenit: expect.any(String) } });
+    expect(await harian.simpanJurnal(null, fd(poin({ durasiMenit: "2" })))).toMatchObject({ ok: false, galat: { durasiMenit: "Minimal 5 menit." } });
     expect(await harian.simpanJurnal(null, fd(poin()))).toMatchObject({ ok: true });
     const db = await getDb();
     const [row] = await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf));
-    expect(row).toMatchObject({ jamMulai: "08:00", jamSelesai: "09:30" });
+    expect(row).toMatchObject({ durasiMenit: 90, jamMulai: null });
   });
 
   it("isi sekaligus: baris kosong dilewati, satu baris salah membatalkan semuanya", async () => {
     sebagai("staf2", [], [{ ...pnStaf(), id: pn.staf2 }]);
-    const banyak = (jamSelesai2: string) =>
-      fd({ tanggal: today, uraian: ["Rapat panitia", "Menyusun notulen", ""], jamMulai: ["08:00", "10:00", ""], jamSelesai: ["10:00", jamSelesai2, ""], unitId: ["", "", ""], pemberiTugas: ["", "Ketua", ""], link: ["", "", ""] });
-    expect(await harian.simpanJurnalSekaligus(null, banyak("09:00"))).toMatchObject({ ok: false, galat: { "jamSelesai.1": expect.any(String) } });
+    const banyak = (durasi2: string) => fd({ tanggal: today, uraian: ["Rapat panitia", "Menyusun notulen", ""], durasiMenit: ["120", durasi2, "30"], link: ["", "", ""] });
+    expect(await harian.simpanJurnalSekaligus(null, banyak("abc"))).toMatchObject({ ok: false, galat: { "durasiMenit.1": expect.any(String) } });
     const db = await getDb();
     expect(await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf2))).toHaveLength(0);
-    expect(await harian.simpanJurnalSekaligus(null, banyak("11:15"))).toMatchObject({ ok: true, pesan: "2 poin jurnal tersimpan." });
+    expect(await harian.simpanJurnalSekaligus(null, banyak("45"))).toMatchObject({ ok: true, pesan: "2 entri jurnal tersimpan." });
     const rows = await db.select().from(s.jurnal).where(eq(s.jurnal.pegawaiId, id.staf2));
-    expect(rows.map((r) => [r.uraian, r.jamMulai, r.jamSelesai, r.pemberiTugas]).sort()).toEqual([
-      ["Menyusun notulen", "10:00", "11:15", "Ketua"],
-      ["Rapat panitia", "08:00", "10:00", null],
+    expect(rows.map((r) => [r.uraian, r.durasiMenit]).sort()).toEqual([
+      ["Menyusun notulen", 45],
+      ["Rapat panitia", 120],
     ]);
-    expect((await harian.simpanJurnalSekaligus(null, fd({ tanggal: today, uraian: [""], jamMulai: [""], jamSelesai: [""] }))).ok).toBe(false);
+    expect((await harian.simpanJurnalSekaligus(null, fd({ tanggal: today, uraian: [""], durasiMenit: ["30"], link: [""] }))).ok).toBe(false);
   });
 
   it("hanya pemilik yang mengubah, dan hanya dalam jendela 2 hari kerja", async () => {
@@ -162,14 +161,42 @@ describe("jurnal", () => {
     expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, uraian: "Diubah orang lain" })))).toMatchObject({ ok: false, pesan: "Jurnal tidak ditemukan." });
 
     sebagai("staf", [], [pnStaf()]);
-    expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, uraian: "Mendampingi tamu pimpinan", jamSelesai: "10:00" })))).toMatchObject({ ok: true });
+    expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, uraian: "Mendampingi tamu pimpinan", durasiMenit: "60" })))).toMatchObject({ ok: true });
     const [baru] = await db.select().from(s.jurnal).where(eq(s.jurnal.id, j.id));
-    expect(baru).toMatchObject({ uraian: "Mendampingi tamu pimpinan", jamSelesai: "10:00" });
+    expect(baru).toMatchObject({ uraian: "Mendampingi tamu pimpinan", durasiMenit: 60 });
     const lama = geserHariKerja(today, -3, new Set());
     expect(await harian.ubahJurnal(null, fd(poin({ id: j.id, tanggal: lama })))).toMatchObject({ ok: false, galat: { tanggal: expect.any(String) } });
 
     const [terkunci] = await db.insert(s.jurnal).values({ pegawaiId: id.staf, tanggal: lama, uraian: "Jurnal lama" }).returning();
     expect(await harian.ubahJurnal(null, fd(poin({ id: terkunci.id })))).toMatchObject({ ok: false, pesan: "Jurnal lebih dari 2 hari kerja ke belakang sudah terkunci." });
+  });
+});
+
+describe("Pending SPB", () => {
+  it("staf menandai SPB pending; koordinator mengonfirmasi tanggal cair; tenggat berjalan lagi dari tanggal cair", async () => {
+    const db = await getDb();
+    const [spb] = await db.insert(s.item).values({ penugasanId: pn.staf, indikatorKode: "SBK-2b", periodeId: P, tglMasuk: new Date(), status: "terbuka", dibuatOleh: id.koord }).returning();
+    const [surat] = await db.insert(s.item).values({ penugasanId: pn.staf, indikatorKode: "SBK-1", periodeId: P, tglMasuk: new Date(), status: "terbuka", dibuatOleh: id.staf }).returning();
+
+    sebagai("staf", [], [pnStaf()]);
+    expect(await item.tandaiPendingSpb(surat.id, "")).toMatchObject({ ok: false, pesan: "Pending dana hanya untuk SPB." });
+    expect(await item.tandaiPendingSpb(spb.id, "Dana DPP belum tersedia")).toMatchObject({ ok: true });
+    expect((await db.select().from(s.item).where(eq(s.item.id, spb.id)))[0].pendingDanaSejak).not.toBeNull();
+    // Staf tidak bisa mengonfirmasi dana cair untuk SPB-nya sendiri.
+    expect((await item.konfirmasiDanaCair(spb.id, today)).ok).toBe(false);
+
+    sebagai("koord2", ["koordinator"]);
+    expect((await item.konfirmasiDanaCair(spb.id, today)).ok).toBe(false);
+    sebagai("koord", ["koordinator"]);
+    expect(await item.konfirmasiDanaCair(spb.id, tambahHari(today, 1))).toMatchObject({ ok: false, pesan: "Tanggal cair tidak boleh di masa depan." });
+    expect(await item.konfirmasiDanaCair(spb.id, today)).toMatchObject({ ok: true });
+    const [sesudah] = await db.select().from(s.item).where(eq(s.item.id, spb.id));
+    expect(sesudah).toMatchObject({ danaCairPada: today, danaCairOleh: id.koord });
+
+    // Setelah cair, tanda pending tidak bisa diubah lagi.
+    sebagai("staf", [], [pnStaf()]);
+    expect((await item.tandaiPendingSpb(spb.id, "", true)).ok).toBe(false);
+    await db.delete(s.item).where(inArray(s.item.id, [spb.id, surat.id]));
   });
 });
 
@@ -565,10 +592,15 @@ describe("rangkap jabatan", () => {
 
   it("K4 untuk amanah yang ia koordinasikan sendiri diperiksa WaKa, bukan koordinator lain", async () => {
     sebagai("koord2", ["koordinator"], [pnSbkR()]);
+    // Rombak v2: pengajuan hanya untuk bulan lalu dalam jendela akhir bulan; bulan berjalan selalu ditolak.
     const r = await k4.ajukanK4(null, fd({ periodeId: P, penugasanId: pn.sbkR, judul: "Arsip digital SKUO", tingkatUsulan: "I", linkBukti: "https://drive.google.com/k4" }));
-    expect(r).toMatchObject({ ok: true });
+    expect(r).toMatchObject({ ok: false, pesan: "Batas pengajuan K4 untuk periode itu sudah lewat." });
     const db = await getDb();
-    const [row] = await db.select().from(s.k4Pengajuan).where(eq(s.k4Pengajuan.judul, "Arsip digital SKUO"));
+    const [row] = await db
+      .insert(s.k4Pengajuan)
+      .values({ periodeId: P, judul: "Arsip digital SKUO", tingkatUsulan: "I", linkBukti: "https://drive.google.com/k4", penugasanId: pn.sbkR, diajukanOleh: id.koord2 })
+      .returning();
+    await db.insert(s.k4Pengusul).values({ k4Id: row.id, pegawaiId: id.koord2 });
     expect(row.penugasanId).toBe(pn.sbkR);
     sebagai("koord", ["koordinator"]);
     expect((await k4.periksaK4(row.id, true)).ok).toBe(false);

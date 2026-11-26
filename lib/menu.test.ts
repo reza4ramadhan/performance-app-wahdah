@@ -16,12 +16,14 @@ const tab = (s: Sesi, jumlah: Record<string, number>) => {
 };
 
 describe("lencana navigasi bawah", () => {
-  it("SBK: item di tab Item, tugas khusus (tanpa tab) di Hari Ini", () => {
-    expect(tab(sesi("SBK"), { "/item": 3, "/tugas": 2 })).toEqual({ "/item": 3, "/": 2 });
-  });
-
-  it("Staf Khusus: tugas khusus di tab Tugas", () => {
-    expect(tab(sesi("SK"), { "/item": 9, "/tugas": 2 })).toEqual({ "/tugas": 2 });
+  it("staf (SBK & SK): 4 tab Tugas · Jurnal · Progres · Akun, + Catat bukan di navigasi", () => {
+    for (const p of ["SBK", "SK"] as const) {
+      const m = menuUntuk(sesi(p));
+      expect(m.tabBawah.map((t) => t.label)).toEqual(["Tugas", "Jurnal", "Progres", "Akun"]);
+      expect(m).toMatchObject({ catat: false, mengambang: false });
+    }
+    expect(menuUntuk(sesi("SK")).grup[0].item.map((i) => i.href)).toContain("/tugas/usulan");
+    expect(menuUntuk(sesi("SBK")).grup[0].item.map((i) => i.href)).not.toContain("/tugas/usulan");
   });
 
   it("KSBK: verifikasi dan item sendiri di Beranda, tugas staf dan kegiatan di tabnya sendiri", () => {
@@ -33,7 +35,7 @@ describe("lencana navigasi bawah", () => {
   });
 
   it("Keuangan tanpa tim: verifikasi di tab Kelola", () => {
-    const s = sesi("SBK", ["keuangan"]);
+    const s = sesi("KU", ["keuangan"]);
     expect(menuUntuk(s).tabBawah.find((t) => t.href === "/tim")?.label).toBe("Kelola");
     expect(tab(s, { "/verifikasi": 5 })).toEqual({ "/tim": 5 });
   });
@@ -43,7 +45,7 @@ describe("menu KSBK", () => {
   const m = menuUntuk(sesi("KSBK", ["koordinator"], ["SBK"]));
 
   it("lima tab mengambang tanpa + Catat dan tanpa Akun", () => {
-    expect(m.tabBawah.map((t) => t.href)).toEqual(["/", "/tim/kegiatan", "/tim/tugas", "/jurnal", "/pengembangan-diri"]);
+    expect(m.tabBawah.map((t) => t.href)).toEqual(["/", "/tim/kegiatan", "/tim/tugas", "/jurnal", "/jurnal?tab=belajar"]);
     expect(m).toMatchObject({ catat: false, mengambang: true });
   });
 

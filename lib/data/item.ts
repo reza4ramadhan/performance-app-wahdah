@@ -18,9 +18,14 @@ export type BarisItem = {
   pemilikId: string;
   pemilikNama: string;
   penugasanId: string;
+  unitId: string;
   unitNama: string;
   kegiatanId: string | null;
   kegiatanNama: string | null;
+  kegiatanTanggal: string | null;
+  /** SPB: ditandai pending (dana belum cair) dan belum dikonfirmasi cair. */
+  pendingDana: boolean;
+  danaCairPada: string | null;
   tglMasuk: Date;
   tglSelesai: Date | null;
   linkBukti: string | null;
@@ -52,6 +57,7 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
         pemilikId: s.pegawai.id,
         pemilikNama: s.pegawai.nama,
         kantor: s.pegawai.kantor,
+        unitId: s.unit.id,
         unitNama: s.unit.nama,
         kegiatanNama: s.kegiatan.nama,
         kegiatanTanggal: s.kegiatan.tanggal,
@@ -82,9 +88,13 @@ export async function daftarItem(where: SQL | undefined, opsi: { kantor: Kantor;
       pemilikId: r.pemilikId,
       pemilikNama: r.pemilikNama,
       penugasanId: r.item.penugasanId,
+      unitId: r.unitId,
       unitNama: r.unitNama,
       kegiatanId: r.item.kegiatanId,
       kegiatanNama: r.kegiatanNama,
+      kegiatanTanggal: r.kegiatanTanggal,
+      pendingDana: !!r.item.pendingDanaSejak && !r.item.danaCairPada,
+      danaCairPada: r.item.danaCairPada,
       tglMasuk: r.item.tglMasuk,
       tglSelesai: r.item.tglSelesai,
       linkBukti: r.item.linkBukti,

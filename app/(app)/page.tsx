@@ -19,6 +19,7 @@ import { wajibSesi } from "@/lib/sesi";
 import { hariIni, keUtc, labelPeriode, periodeDari, rentangPeriode, tambahHari } from "@/lib/waktu";
 import { HariIniKsbk } from "./hari-ini-ksbk";
 import { HariIniSk } from "./hari-ini-sk";
+import { TugasSaya } from "./tugas-saya";
 
 export const metadata: Metadata = { title: "Hari Ini" };
 
@@ -38,6 +39,8 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   if (sesi.amanah?.peranKerja === "SK") return <HariIniSk sesi={sesi} hariIni={today} sp={sp} />;
   // KSBK: dashboard pemantauan K1 staf, kegiatan SKUO, tugas khusus, dan verifikasi.
   if (sesi.amanah?.peranKerja === "KSBK") return <HariIniKsbk sesi={sesi} hariIni={today} sp={sp} />;
+  // Rombak v2: Staf Administrasi membuka tab Tugas · Saya (daftar gabungan).
+  if (sesi.amanah?.peranKerja === "SBK") return <TugasSaya sesi={sesi} hariIni={today} sp={sp} />;
   const db = await getDb();
   const periode = periodeDari(today);
   const { awal } = rentangPeriode(periode);
@@ -164,7 +167,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
               {[
                 { href: "/item", label: "Item", ikon: ListChecks, nada: "brand" as const },
                 { href: "/jurnal", label: "Jurnal", ikon: NotebookPen, nada: "gold" as const },
-                { href: "/pengembangan-diri", label: "Belajar", ikon: BookOpen, nada: "mint" as const },
+                { href: "/jurnal?tab=belajar", label: "Belajar", ikon: BookOpen, nada: "mint" as const },
                 pnTugas.length ? { href: "/tugas", label: "Tugas", ikon: ClipboardCheck, nada: "ink" as const } : { href: "/progres", label: "Progres", ikon: Gauge, nada: "ink" as const },
               ].map((a) => (
                 <Link key={a.href} href={a.href} className="flex flex-col items-center gap-1.5 rounded-2xl py-2 text-xs font-medium text-foreground transition active:scale-95">

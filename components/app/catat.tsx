@@ -1,9 +1,11 @@
 "use client";
 
-// + Catat (plan.md Bagian 8 butir 2): bottom sheet. Pilih penugasan (dilewati bila hanya satu) → indikator → field.
+// + Catat (rombak v2, mockup Adm-4/Adm-5): bottom sheet. Pilih jenis pekerjaan (surat, layanan, arsip) → unit
+// (dilewati bila hanya satu) → field. Pengingat, SPP, dan SPB tidak dicatat di sini: muncul otomatis dari kegiatan.
 // Optimistic: sheet langsung tertutup; bila jaringan gagal, draf disimpan di perangkat dan dikirim ulang saat online.
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Archive, ChevronLeft, ChevronRight, Mail, Users, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -15,6 +17,13 @@ import { FieldItem, keIsian, nilaiAwal, type NilaiForm, type Pilihan } from "./f
 export type PenugasanCatat = { id: string; label: string; indikator: { kode: string; pendek: string; nama: string }[] };
 /** Pilihan awal saat sheet dibuka dari kartu kegiatan. */
 export type PresetCatat = { penugasanId: string; kode: string; kegiatanId?: string };
+
+/** Tampilan pilihan jenis pekerjaan di langkah pertama. */
+const JENIS: Record<string, { judul: string; sub: string; Ikon: LucideIcon; nada: string }> = {
+  "SBK-1": { judul: "Pembuatan surat", sub: "Kegiatan SKUO · selesai ≤ 1 hari kerja", Ikon: Mail, nada: "bg-primary/10 text-brand-700 dark:text-brand-200" },
+  "SBK-4": { judul: "Koordinasi layanan", sub: "Media, Zoom, sertifikat, konsumsi, akomodasi", Ikon: Users, nada: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-200" },
+  "SBK-5": { judul: "Dokumen arsip", sub: "Notulensi, dokumen kegiatan · ≤ 3 hari kerja", Ikon: Archive, nada: "bg-gold-400/25 text-gold-700 dark:text-gold-100" },
+};
 
 const KUNCI_DRAF = "ikp-draf-item";
 const KUNCI_TERAKHIR = "ikp-catat-terakhir";
@@ -91,6 +100,8 @@ export function SheetCatat({
 }) {
   // Sheet dipasang ulang setiap dibuka (lihat Cangkang), jadi keadaan awal cukup dihitung sekali di sini.
   const [awal] = useState(() => terakhirDipakai(penugasan, preset));
+  // Tanpa preset, mulai dari pilihan jenis pekerjaan.
+  const [langkah, setLangkah] = useState<"jenis" | "isi">(preset ? "isi" : "jenis");
   const [pnId, setPnId] = useState(awal.pnId);
   const [kode, setKode] = useState(awal.kode);
   const [nilai, setNilai] = useState<NilaiForm | null>(() => nilaiUntuk(awal.kode, hariIni, awal.kode === preset?.kode ? preset?.kegiatanId : undefined));
@@ -114,8 +125,19 @@ export function SheetCatat({
   };
   const pilihPenugasan = (id: string) => {
     setPnId(id);
-    pilihKode(penugasan.find((p) => p.id === id)?.indikator[0]?.kode ?? "");
+    const ind = penugasan.find((p) => p.id === id)?.indikator ?? [];
+    if (!ind.some((i) => i.kode === kode)) pilihKode(ind[0]?.kode ?? "");
   };
+  // Jenis pekerjaan gabungan dari semua penugasan, urut katalog.
+  const jenis = [...new Map(penugasan.flatMap((p) => p.indikator).map((i) => [i.kode, i])).values()];
+  const pilihJenis = (k: string) => {
+    const p = pn?.indikator.some((i) => i.kode === k) ? pn : penugasan.find((x) => x.indikator.some((i) => i.kode === k));
+    if (p) setPnId(p.id);
+    pilihKode(k);
+    setLangkah("isi");
+  };
+  // Unit yang bisa dipilih untuk jenis ini (staf rangkap).
+  const pnJenis = penugasan.filter((p) => p.indikator.some((i) => i.kode === kode));
 
   const simpan = () => {
     if (!bentuk || !nilai || !pn) return;
@@ -148,11 +170,38 @@ export function SheetCatat({
       <SheetContent side="bottom" className="mx-auto max-h-[92dvh] max-w-lg gap-0 rounded-t-3xl p-0 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:rounded-3xl">
         <div aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-muted-foreground/25 lg:hidden" />
         <SheetHeader className="px-5 pt-3 pb-2">
-          <SheetTitle className="text-lg font-bold text-heading">Catat item</SheetTitle>
-          <SheetDescription>{pn ? pn.label : "Anda belum punya penugasan aktif."}</SheetDescription>
+          <SheetTitle className="flex items-center gap-1 text-lg font-bold text-heading">
+            {langkah === "isi" && !preset && (
+              <button type="button" onClick={() => setLangkah("jenis")} aria-label="Kembali ke pilihan jenis" className="-ml-2 grid size-10 place-items-center rounded-xl">
+                <ChevronLeft className="size-5" />
+              </button>
+            )}
+            {langkah === "jenis" ? "Catat pekerjaan" : (JENIS[kode]?.judul ?? "Catat item")}
+          </SheetTitle>
+          <SheetDescription>{!pn ? "Anda belum punya penugasan aktif." : langkah === "jenis" ? "Pilih jenis pekerjaan yang baru masuk." : pn.label}</SheetDescription>
         </SheetHeader>
 
-        {pn ? (
+        {pn && langkah === "jenis" ? (
+          <div className="space-y-3 overflow-y-auto px-5" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
+            {jenis.map((i) => {
+              const j = JENIS[i.kode];
+              const Ikon = j?.Ikon ?? Mail;
+              return (
+                <button key={i.kode} type="button" onClick={() => pilihJenis(i.kode)} className="flex w-full items-center gap-3.5 rounded-2xl border border-border p-3.5 text-left transition hover:border-primary/40 active:scale-[0.99]">
+                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${j?.nada ?? "bg-muted"}`}>
+                    <Ikon className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-heading">{j?.judul ?? i.nama}</span>
+                    <span className="block text-[12.5px] text-muted-foreground">{j?.sub ?? i.pendek}</span>
+                  </span>
+                  <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+                </button>
+              );
+            })}
+            <p className="rounded-xl bg-muted px-3 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">Pengingat, SPP, dan SPB tidak dicatat di sini. Ketiganya muncul otomatis di Tugas dari jadwal kegiatan koordinator.</p>
+          </div>
+        ) : pn ? (
           <form
             className="flex min-h-0 flex-1 flex-col"
             onSubmit={(e) => {
@@ -161,11 +210,11 @@ export function SheetCatat({
             }}
           >
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-4">
-              {penugasan.length > 1 && (
+              {pnJenis.length > 1 && (
                 <div>
-                  <p className="mb-2 text-sm font-medium text-heading">Penugasan</p>
+                  <p className="mb-2 text-sm font-medium text-heading">Unit</p>
                   <div className="flex flex-wrap gap-2">
-                    {penugasan.map((p) => (
+                    {pnJenis.map((p) => (
                       <Chip key={p.id} aktif={p.id === pnId} onClick={() => pilihPenugasan(p.id)}>
                         {p.label}
                       </Chip>
@@ -173,21 +222,8 @@ export function SheetCatat({
                   </div>
                 </div>
               )}
-              <div>
-                <p className="mb-2 text-sm font-medium text-heading">Indikator</p>
-                {pn.indikator.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {pn.indikator.map((i) => (
-                      <Chip key={i.kode} aktif={i.kode === kode} onClick={() => pilihKode(i.kode)} title={i.nama}>
-                        {i.pendek}
-                      </Chip>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Penugasan ini tidak punya indikator yang dicatat per item.</p>
-                )}
-                {kode && <p className="mt-2 text-xs text-muted-foreground">{indikatorDari(kode)?.nama}</p>}
-              </div>
+              {!pn.indikator.length && <p className="text-sm text-muted-foreground">Penugasan ini tidak punya indikator yang dicatat per item.</p>}
+              {kode && !JENIS[kode] && <p className="text-xs text-muted-foreground">{indikatorDari(kode)?.nama}</p>}
               {bentuk && nilai && (
                 <FieldItem bentuk={bentuk} nilai={nilai} ubah={setNilai} galat={galat} pilihan={pilihan[pnId] ?? null} hariIni={hariIni} minTanggal={minTanggal} />
               )}

@@ -21,7 +21,7 @@ const UTAMA_KSBK: ItemMenu[] = [
   { href: "/tim/kegiatan", label: "Kegiatan SKUO", ikon: "kegiatan" },
   { href: "/tim/tugas", label: "Tugas staf", ikon: "tugas" },
   { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
-  { href: "/pengembangan-diri", label: "Belajar", ikon: "belajar" },
+  { href: "/jurnal?tab=belajar", label: "Belajar", ikon: "belajar" },
 ];
 
 /** Menu pendukung KSBK; di ponsel tampil di bagian bawah Beranda. */
@@ -51,19 +51,30 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
   const pimpin = kerja === "WAKA" || kerja === "KAKAN";
   const adaTim = sesi.tim.length > 0;
 
-  const saya: GrupMenu = {
-    judul: "Saya",
-    item: [
-      { href: "/", label: "Hari Ini", ikon: "hari-ini" },
-      ...(sk ? [] : [{ href: "/item", label: "Item", ikon: "item" as const }]),
-      ...(tugas ? [{ href: "/tugas", label: "Tugas khusus", ikon: "tugas" as const }] : []),
-      ...(sk ? [{ href: "/tugas/usulan", label: "Usulan tugas", ikon: "usulan" as const }] : []),
-      { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
-      { href: "/pengembangan-diri", label: "Pengembangan diri", ikon: "belajar" },
-      { href: "/progres", label: "Progres", ikon: "progres" },
-      { href: "/k4", label: "Inovasi K4", ikon: "k4" },
-    ],
-  };
+  // Rombak v2: staf (Administrasi & Tugas Rutin) memakai 4 tab yang sama: Tugas · Jurnal · Progres · Akun.
+  const staf = tugas && !ksbk;
+  const saya: GrupMenu = staf
+    ? {
+        judul: "Saya",
+        item: [
+          { href: "/", label: "Tugas", ikon: "tugas" },
+          ...(sk ? [{ href: "/tugas/usulan", label: "Usulan tugas", ikon: "usulan" as const }] : []),
+          { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
+          { href: "/progres", label: "Progres", ikon: "progres" },
+          { href: "/akun", label: "Akun", ikon: "akun" },
+        ],
+      }
+    : {
+        judul: "Saya",
+        item: [
+          { href: "/", label: "Hari Ini", ikon: "hari-ini" },
+          { href: "/item", label: "Item", ikon: "item" },
+          { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
+          { href: "/jurnal?tab=belajar", label: "Pengembangan diri", ikon: "belajar" },
+          { href: "/progres", label: "Progres", ikon: "progres" },
+          { href: "/k4", label: "Inovasi K4", ikon: "k4" },
+        ],
+      };
   // KSBK: menu tim sudah tercakup di Utama & Kontrol staf.
   const grup: GrupMenu[] = ksbk
     ? [
@@ -135,14 +146,22 @@ export function menuUntuk(sesi: Pick<Sesi, "peran" | "amanah" | "tim">) {
    */
   const tabBawah: TabBawah[] = ksbk
     ? UTAMA_KSBK.map((m) => ({ ...m, label: m.href === "/tim/kegiatan" ? "Kegiatan" : m.href === "/tim/tugas" ? "Tugas" : m.label }))
-    : [
+    : staf
+      ? [
+          { href: "/", label: "Tugas", ikon: "tugas" },
+          { href: "/jurnal", label: "Jurnal", ikon: "jurnal" },
+          { href: "/progres", label: "Progres", ikon: "progres" },
+          { href: "/akun", label: "Akun", ikon: "akun" },
+        ]
+      : [
         { href: "/", label: "Hari Ini", ikon: "hari-ini" },
         sk ? { href: "/tugas", label: "Tugas", ikon: "tugas" } : { href: "/item", label: "Item", ikon: "item" },
         { href: "/progres", label: "Progres", ikon: "progres" },
         ...(kelola ? [{ href: "/tim", label: labelKelola, ikon: "tim" as const }] : []),
         { href: "/akun", label: "Akun", ikon: "akun" },
       ];
-  return { grup, kelola, labelKelola, tabBawah, catat: !ksbk, mengambang: ksbk };
+  // Staf: + Catat berupa tombol melayang di tab Tugas (bukan di tengah navigasi).
+  return { grup, kelola, labelKelola, tabBawah, catat: !ksbk && !staf, mengambang: ksbk };
 }
 
 /** Semua href menu dan tab (termasuk kunci `lencana`): dasar untuk menghitung lencana antrean. */

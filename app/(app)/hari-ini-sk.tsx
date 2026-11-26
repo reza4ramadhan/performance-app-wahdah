@@ -125,7 +125,7 @@ export async function HariIniSk({ sesi, hariIni: today, sp }: { sesi: Sesi; hari
                 { href: "/tugas", label: "Tugas", ikon: ClipboardCheck, nada: "brand" as const },
                 { href: "/tugas/usulan", label: "Usulkan", ikon: ListPlus, nada: "ink" as const },
                 { href: "/jurnal", label: "Jurnal", ikon: NotebookPen, nada: "gold" as const },
-                { href: "/pengembangan-diri", label: "Belajar", ikon: BookOpen, nada: "mint" as const },
+                { href: "/jurnal?tab=belajar", label: "Belajar", ikon: BookOpen, nada: "mint" as const },
               ].map((a) => (
                 <Link key={a.href} href={a.href} className="flex flex-col items-center gap-1.5 rounded-2xl py-2 text-xs font-medium text-foreground transition active:scale-95">
                   <PetakIkon ikon={a.ikon} nada={a.nada} besar />

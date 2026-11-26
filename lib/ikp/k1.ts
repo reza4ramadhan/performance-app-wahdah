@@ -36,6 +36,10 @@ export type ItemK1 = {
   dibuatPada: Date;
   /** Field khusus; SBK-3 memakai `ke` ("1" / "2"). */
   data: Record<string, string>;
+  /** SPB (SBK-2b): staf menandai dana belum cair. */
+  pendingDanaSejak?: Date | null;
+  /** SPB: tanggal dana cair (YYYY-MM-DD) yang dikonfirmasi koordinator; tenggat dihitung dari sini. */
+  danaCairPada?: string | null;
 };
 
 export type KegiatanK1 = {
@@ -259,11 +263,18 @@ class Evaluasi {
       }
       case "SBK-2a":
       case "SBK-2b": {
-        const perlu = this.kegiatanUntuk(pn, (k) => (def.kode === "SBK-2a" ? k.perluSpp : k.perluSpb));
-        const tepat = perlu.filter((k) => {
-          const batas = def.kode === "SBK-2a" ? geserHariKerja(k.tanggal, -tenggat, libur) : tambahHari(k.tanggal, tenggat);
-          return items.some((i) => i.kegiatanId === k.id && this.sah(i) && i.selesai && lokal(i.selesai) <= batas);
-        });
+        const spb = def.kode === "SBK-2b";
+        // SPB yang ditandai pending (dana belum cair) dan belum dikonfirmasi cair: tenggat berhenti, bukan target.
+        const pending = (k: KegiatanK1) => spb && items.some((i) => i.kegiatanId === k.id && i.pendingDanaSejak && !i.danaCairPada && !this.sah(i));
+        const perlu = this.kegiatanUntuk(pn, (k) => (spb ? k.perluSpb : k.perluSpp) && !pending(k));
+        const tepat = perlu.filter((k) =>
+          items.some((i) => {
+            if (i.kegiatanId !== k.id || !this.sah(i) || !i.selesai) return false;
+            // SPB: ≤ N hari setelah kegiatan, atau ≤ N hari setelah dana cair bila sempat pending.
+            const batas = spb ? tambahHari(i.danaCairPada && i.danaCairPada > k.tanggal ? i.danaCairPada : k.tanggal, tenggat) : geserHariKerja(k.tanggal, -tenggat, libur);
+            return lokal(i.selesai) <= batas;
+          }),
+        );
         return hasil(def, perlu.length, tepat.length, p.standar, "Tidak ada kegiatan yang perlu " + (def.kode === "SBK-2a" ? "SPP" : "SPB"));
       }
       case "SBK-3": {

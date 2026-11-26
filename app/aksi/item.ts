@@ -9,6 +9,7 @@ import { periodeTerbuka, tanggalPalingAwal } from "@/lib/data/batas";
 import { buatItemOtomatis } from "@/lib/data/kegiatan";
 import { paramIndikator } from "@/lib/data/ikp";
 import { periksaIsian, skemaItem, type IsianItem } from "@/lib/ikp/form-item";
+import { koordinatorAtauWakil } from "@/lib/akses";
 import { indikatorDari } from "@/lib/ikp/katalog";
 import { wajibSesi, type Sesi } from "@/lib/sesi";
 import { hariIni, jamLokal, keUtc, periodeDari, tambahHari, tanggalLokal, type Kantor } from "@/lib/waktu";
@@ -203,4 +204,46 @@ export async function ambilPilihanCatat(penugasanId: string) {
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit).where(inArray(s.unit.jenis, ["skuo", "bidang", "unit_pendukung"])).orderBy(s.unit.nama),
   ]);
   return { kegiatan, skuo };
+}
+
+/**
+ * Pending SPB (docs/rombak-v2/02 butir 1.8): staf menandai SPB yang dananya belum cair. Selama pending, tenggat
+ * berhenti dan item tidak dihitung terlambat. `batal = true` mencabut tanda pending (dana ternyata sudah cair).
+ */
+export async function tandaiPendingSpb(id: string, catatan: string, batal = false): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  const row = await itemMilik(sesi, id);
+  if (!row) return gagal("Item tidak ditemukan.");
+  if (row.indikatorKode !== "SBK-2b") return gagal("Pending dana hanya untuk SPB.");
+  if (row.status !== "terbuka" && row.status !== "ditolak") return gagal("SPB ini sudah diajukan.");
+  if (row.danaCairPada) return gagal("Tanggal cair sudah dikonfirmasi koordinator; tenggat sudah berjalan lagi.");
+  if (!(await cekPeriode(row.periodeId))) return gagal("Periode item ini sudah dikunci.");
+  const db = await getDb();
+  const pendingDanaSejak = batal ? null : (row.pendingDanaSejak ?? new Date());
+  await db.update(s.item).set({ pendingDanaSejak }).where(eq(s.item.id, id));
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: batal ? "batal-pending-dana" : "pending-dana", entitas: "item", entitasId: id, sebelum: { pendingDanaSejak: row.pendingDanaSejak }, sesudah: { pendingDanaSejak }, alasan: catatan.trim() || undefined });
+  refresh();
+  return berhasil(batal ? "Tanda pending dicabut. Tenggat SPB berjalan seperti biasa." : "SPB ditandai pending. Tenggat berhenti sampai koordinator mengonfirmasi tanggal dana cair.");
+}
+
+/**
+ * Koordinator unit (sementara menggantikan Bendahara) mengonfirmasi tanggal dana cair untuk SPB yang pending.
+ * Sejak tanggal itu tenggat SPB berjalan lagi: ≤ 7 hari setelah cair.
+ */
+export async function konfirmasiDanaCair(id: string, tanggal: string): Promise<HasilAksi> {
+  const sesi = await wajibSesi();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return gagal("Isi tanggal dana cair.");
+  if (tanggal > hariIni(sesi.kantor)) return gagal("Tanggal cair tidak boleh di masa depan.");
+  const db = await getDb();
+  const [r] = await db.select({ item: s.item, pn: s.penugasan }).from(s.item).innerJoin(s.penugasan, eq(s.penugasan.id, s.item.penugasanId)).where(eq(s.item.id, id));
+  if (!r || r.item.indikatorKode !== "SBK-2b") return gagal("SPB tidak ditemukan.");
+  if (r.pn.pegawaiId === sesi.pegawaiId) return gagal("Tanggal cair SPB Anda sendiri dikonfirmasi koordinator Anda.");
+  if (!koordinatorAtauWakil(sesi, r.pn.koordinatorId)) return gagal("Hanya koordinator unit staf ini yang bisa mengonfirmasi dana cair.");
+  if (!r.item.pendingDanaSejak) return gagal("SPB ini tidak sedang pending.");
+  if (!(await cekPeriode(r.item.periodeId))) return gagal("Periode item ini sudah dikunci.");
+  const nilai = { danaCairPada: tanggal, danaCairOleh: sesi.pegawaiId };
+  await db.update(s.item).set(nilai).where(eq(s.item.id, id));
+  await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "dana-cair", entitas: "item", entitasId: id, sebelum: { danaCairPada: r.item.danaCairPada }, sesudah: nilai });
+  refresh();
+  return berhasil("Tanggal dana cair tersimpan. Tenggat SPB staf berjalan lagi: 7 hari sejak cair.");
 }

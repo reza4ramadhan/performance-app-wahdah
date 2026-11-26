@@ -9,10 +9,10 @@ import { PilihCari } from "@/components/app/pilih-cari";
 import { Input } from "@/components/ui/input";
 import { ajukanK4 } from "@/app/aksi/k4";
 import { getDb, schema as s } from "@/lib/db";
-import { periodeK4Terbuka } from "@/lib/data/k4";
+import { jendelaK4 } from "@/lib/data/k4";
 import { LABEL_PERAN_KERJA, POIN_K4, type StatusK4 } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
-import { labelPeriode } from "@/lib/waktu";
+import { labelPeriode, labelTanggal, periodeBerikut, periodeDari } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Inovasi K4" };
 
@@ -38,8 +38,8 @@ export default function HalamanK4() {
 async function Isi() {
   const sesi = await wajibSesi();
   const db = await getDb();
-  const [periode, milik, rekan] = await Promise.all([
-    periodeK4Terbuka(sesi.kantor),
+  const [jendela, milik, rekan] = await Promise.all([
+    jendelaK4(sesi.kantor),
     db
       .select({ k: s.k4Pengajuan })
       .from(s.k4Pengajuan)
@@ -52,6 +52,7 @@ async function Isi() {
   const pengusul = ids.length
     ? await db.select({ k4Id: s.k4Pengusul.k4Id, nama: s.pegawai.nama }).from(s.k4Pengusul).innerJoin(s.pegawai, eq(s.pegawai.id, s.k4Pengusul.pegawaiId)).where(inArray(s.k4Pengusul.k4Id, ids))
     : [];
+  const periode = jendela.periode ? [jendela.periode] : [];
   const bisaNaik = milik.filter((m) => m.k.status === "ditetapkan" || m.k.status === "disahkan");
 
   return (
@@ -81,6 +82,14 @@ async function Isi() {
         )}
       </section>
 
+      {!periode.length ? (
+        <Kartu className="order-1 lg:order-2 lg:sticky lg:top-8">
+          <h2 className="text-[15px] font-semibold text-heading">Ajukan inovasi</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pengajuan K4 dibuka {labelTanggal(jendela.awal)}–{labelTanggal(jendela.akhir)}, untuk inovasi bulan {labelPeriode(periodeBerikut(periodeDari(jendela.awal), -1))}.
+          </p>
+        </Kartu>
+      ) : (
       <Kartu className="order-1 lg:order-2 lg:sticky lg:top-8">
         <h2 className="text-[15px] font-semibold text-heading">Ajukan inovasi</h2>
         <FormAksi aksi={ajukanK4} tombol="Ajukan" tombolPenuh className="mt-3 space-y-3">
@@ -134,6 +143,7 @@ async function Isi() {
           )}
         </FormAksi>
       </Kartu>
+      )}
     </div>
   );
 }

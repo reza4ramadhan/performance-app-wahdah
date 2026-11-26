@@ -51,7 +51,7 @@ export function BagianJurnal({ hariIni, entri, jumlahBulanIni, poin }: { hariIni
       <JudulBagian
         aksi={
           <span className="flex gap-4">
-            <TautanKecil href="/jurnal/sekaligus">Isi sekaligus</TautanKecil>
+            <TautanKecil href="/jurnal">Isi sekaligus</TautanKecil>
             <TautanKecil href="/jurnal">Semua jurnal</TautanKecil>
           </span>
         }

@@ -110,3 +110,16 @@ Perbedaan dari rencana (perlu dikonfirmasi pemilik):
 - **Saling periksa saat kunci IKP**: kunci adalah aksi satu periode, jadi diterapkan sebagai "Admin yang mengunci IKP sementara tidak boleh mengesahkannya sendiri; pengesahan oleh Admin lain". Status `disahkan` tetap ada (bukan kunci = langsung final).
 - Impor 1.3 baru sampai templat unit; data pegawai/penugasan SK belum diimpor ke DB.
 - Kolom 1.6–1.8 baru ada di skema; logika konfirmasi rencana, Pending SPB, dan durasi jurnal dikerjakan di Fase 2–3.
+
+### Fase 2 — selesai di branch `rombak-ux-v2` (26 Nov 2026)
+
+- **4 tab** Tugas · Jurnal · Progres · Akun untuk staf (peran tertinggi SBK atau SK). Koordinator masih memakai menu lama sampai Fase 3.
+- **`/` = Tugas · Saya** untuk Staf Administrasi ([app/(app)/tugas-saya.tsx](../../app/(app)/tugas-saya.tsx), [lib/tugas-saya.ts](../../lib/tugas-saya.ts)): ringkasan Terlambat · Hari ini · Pekan ini, chip K1 berjalan, filter unit (hanya bila rangkap), bagian Perlu diperbaiki / Terlambat / Hari ini, lalu Pending dana · Pekan ini · Nanti · Selesai minggu ini (dilipat). Isinya item checklist kegiatan + delegasi + item yang dicatat sendiri. Tombol **+ Catat** melayang.
+- **+ Catat** dua langkah: pilih jenis (Pembuatan surat · Koordinasi layanan · Dokumen arsip) → unit → isian.
+- **Detail tugas** (`/item/[id]`): judul berupa aksi ("Kirim pengingat ke-2"), checklist kegiatan ini, riwayat termasuk pending/dana cair, `?selesai=1` langsung membuka form selesai.
+- **Pending SPB**: `tandaiPendingSpb` (staf) dan `konfirmasiDanaCair` (koordinator/wakil, di detail SPB). Selama pending tenggat berhenti dan bukan target SBK-2b; setelah cair tenggat = tanggal cair + 7 hari (K1 dan tampilan).
+- **Jurnal**: tab Jurnal kerja | Belajar; isi sekaligus dengan pilihan durasi (15/30 mnt, 1/2 jam, lain), link opsional. Isian jam, unit, dan pemberi tugas dihapus dari form (kolom lama tetap di DB). `/jurnal/sekaligus` dan `/pengembangan-diri` dialihkan.
+- **Progres & K4**: pengajuan K4 hanya untuk bulan lalu, ≤ 5 hari kerja setelah bulan berakhir ([lib/jendela.ts](../../lib/jendela.ts)); di luar jendela tampil tanggal pembukaan berikutnya.
+- **Akun**: tautan Jurnal/Belajar/Tugas/K4 tidak diulang untuk staf.
+
+Perbedaan dari mockup: konfirmasi dana cair oleh **koordinator unit** (keputusan 02 butir 1.8), bukan Keuangan seperti teks mockup Adm-10/11. Layar Staf Tugas Rutin (`/` untuk SK) masih tampilan lama sampai Fase 4.

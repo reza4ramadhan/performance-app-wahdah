@@ -8,11 +8,12 @@ import { DaftarIndikator } from "@/components/app/rincian-ikp";
 import { Cincin, JudulBagian, Kartu, Kepala, Kerangka, Kosong, Lencana, LencanaPredikat, PetakIkon } from "@/components/app/ui";
 import { getDb, schema as s } from "@/lib/db";
 import { hasilPeriode, liburPerKantor } from "@/lib/data/ikp";
+import { jendelaK4 } from "@/lib/data/k4";
 import { idPenugasan, unitPenugasan } from "@/lib/ikp/hitung";
 import { angka } from "@/lib/format";
 import { LABEL_PERAN_KERJA, LABEL_STATUS_PERIODE } from "@/lib/ikp/tipe";
 import { wajibSesi } from "@/lib/sesi";
-import { hariIni, hariKerjaPeriode, labelPeriode, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
+import { hariIni, hariKerjaPeriode, labelPeriode, labelTanggal, periodeBerikut, periodeDari, rentangPeriode } from "@/lib/waktu";
 
 export const metadata: Metadata = { title: "Progres" };
 
@@ -36,7 +37,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
   const db = await getDb();
   const { awal, akhir } = rentangPeriode(periode);
 
-  const [{ hasil, status, snapshot }, libur, unit, riwayat, hariItem, hariJurnal] = await Promise.all([
+  const [{ hasil, status, snapshot }, libur, unit, riwayat, hariItem, hariJurnal, k4] = await Promise.all([
     hasilPeriode(periode),
     liburPerKantor(db),
     db.select({ id: s.unit.id, nama: s.unit.nama }).from(s.unit),
@@ -46,6 +47,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
       .from(s.item)
       .where(and(inArray(s.item.penugasanId, sesi.penugasan.map((p) => p.id).concat("-")), eq(s.item.periodeId, periode))),
     db.selectDistinct({ d: s.jurnal.tanggal }).from(s.jurnal).where(and(eq(s.jurnal.pegawaiId, sesi.pegawaiId), gte(s.jurnal.tanggal, awal), lte(s.jurnal.tanggal, akhir))),
+    jendelaK4(sesi.kantor),
   ]);
   const saya = hasil.find((h) => h.pegawaiId === sesi.pegawaiId);
   const namaUnit = new Map(unit.map((u) => [u.id, u.nama]));
@@ -83,7 +85,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
 
             {saya.penugasan
               .filter((p) => p.indikator.length)
-              // K1 tiap amanah berdiri sendiri (rangkap di bidang yang sama = satu K1 gabungan); amanah aktif di atas.
+              // K1 per unit (rangkap peran sama di bidang yang sama = satu K1 gabungan); peran tertinggi di atas.
               .map((p) => ({ ...p, aktif: idPenugasan(p).includes(sesi.amanah?.id ?? "") }))
               .sort((a, b) => Number(b.aktif) - Number(a.aktif))
               .map((p) => (
@@ -91,7 +93,6 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                   <JudulBagian aksi={<span className="text-sm font-bold tabular-nums text-heading">K1 {angka(p.k1)}</span>}>
                     {LABEL_PERAN_KERJA[p.peran]} · {unitPenugasan(p).map((u) => namaUnit.get(u)).join(", ")}
                     {p.bobotAlokasi ? <span className="ml-2 align-middle"><Lencana nada="brand">bobot {p.bobotAlokasi}%</Lencana></span> : null}
-                    {saya.penugasan.length > 1 && p.aktif ? <span className="ml-2 align-middle"><Lencana nada="mint">amanah aktif</Lencana></span> : null}
                   </JudulBagian>
                   <DaftarIndikator indikator={p.indikator} />
                   {!!p.tambahan && p.pokok != null && (
@@ -122,7 +123,7 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                   <PetakIkon ikon={UserRoundCheck} nada="brand" />
                   <span className="flex-1">
                     K2 kehadiran
-                    <span className="block text-xs text-muted-foreground">{saya.k2 === null ? "Menunggu unggahan Personalia" : `Hadir ${angka(saya.kehadiran)}% · tepat waktu ${angka(saya.ketepatan)}%`}</span>
+                    <span className="block text-xs text-muted-foreground">{saya.k2 === null ? "Menunggu unggahan absensi" : `Hadir ${angka(saya.kehadiran)}% · tepat waktu ${angka(saya.ketepatan)}%`}</span>
                   </span>
                   <strong className="tabular-nums">{angka(saya.k2)}</strong>
                 </li>
@@ -142,9 +143,13 @@ async function Isi({ searchParams }: { searchParams: Promise<Record<string, stri
                     <span className="flex-1">
                       K4 inovasi
                       <span className="block text-xs text-muted-foreground">
-                        <Link href="/k4" className="text-primary">
-                          Ajukan inovasi
-                        </Link>
+                        {k4.periode ? (
+                          <Link href="/k4" className="text-primary">
+                            Ajukan inovasi {labelPeriode(k4.periode)} · s.d. {labelTanggal(k4.akhir)}
+                          </Link>
+                        ) : (
+                          <Link href="/k4">Ajukan inovasi · dibuka {labelTanggal(k4.awal)}–{labelTanggal(k4.akhir)}</Link>
+                        )}
                       </span>
                     </span>
                     <strong className="tabular-nums">{angka(saya.k4)}</strong>

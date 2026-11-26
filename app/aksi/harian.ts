@@ -20,27 +20,21 @@ async function cekTanggal(sesi: Sesi, tanggal: string) {
   return null;
 }
 
-const jam = (pesan: string) => z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, pesan);
 const skemaTanggal = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Isi tanggal.");
 
-/** Satu poin jurnal: uraian dan rentang jam pengerjaannya (waktu kantor). */
-const skemaPoinJurnal = z
-  .object({
-    uraian: z.string().trim().min(3, "Tulis uraian singkat pekerjaan.").max(500),
-    jamMulai: jam("Isi jam mulai."),
-    jamSelesai: jam("Isi jam selesai."),
-    unitId: z.string().optional(),
-    pemberiTugas: z.string().trim().max(120).optional(),
-    link: z.union([z.literal(""), z.url({ protocol: /^https?$/, error: "Link harus alamat lengkap (https://…)." })]).optional(),
-  })
-  .refine((x) => x.jamSelesai > x.jamMulai, { path: ["jamSelesai"], message: "Jam selesai harus setelah jam mulai." });
+/** Durasi dalam menit: pilihan 15/30/60/120 atau isian lain. */
+const skemaDurasi = z.coerce.number({ error: "Pilih durasi." }).int("Durasi dalam menit bulat.").min(5, "Minimal 5 menit.").max(720, "Maksimal 12 jam.");
+
+/** Satu entri jurnal (rombak v2): uraian, durasi, link opsional. */
+const skemaPoinJurnal = z.object({
+  uraian: z.string().trim().min(3, "Tulis uraian singkat pekerjaan.").max(500),
+  durasiMenit: skemaDurasi,
+  link: z.union([z.literal(""), z.url({ protocol: /^https?$/, error: "Link harus alamat lengkap (https://…)." })]).optional(),
+});
 
 const nilaiJurnal = (x: z.infer<typeof skemaPoinJurnal>) => ({
   uraian: x.uraian,
-  jamMulai: x.jamMulai,
-  jamSelesai: x.jamSelesai,
-  unitId: x.unitId || null,
-  pemberiTugas: x.pemberiTugas || null,
+  durasiMenit: x.durasiMenit,
   link: x.link || null,
 });
 
@@ -60,7 +54,7 @@ export async function simpanJurnal(_: HasilAksi | null, fd: FormData): Promise<H
   return berhasil("Jurnal tersimpan.");
 }
 
-const KOLOM_POIN = ["uraian", "jamMulai", "jamSelesai", "unitId", "pemberiTugas", "link"] as const;
+const KOLOM_POIN = ["uraian", "durasiMenit", "link"] as const;
 const MAKS_POIN = 30;
 
 /** Banyak poin jurnal untuk satu tanggal. Baris yang seluruhnya kosong dilewati; satu baris salah membatalkan semuanya. */
@@ -72,7 +66,8 @@ export async function simpanJurnalSekaligus(_: HasilAksi | null, fd: FormData): 
   const baris = kolom.uraian
     .map((_, i) => Object.fromEntries(KOLOM_POIN.map((k) => [k, kolom[k][i] ?? ""])))
     .map((x, i) => ({ i, x }))
-    .filter(({ x }) => x.uraian.trim() || x.jamMulai || x.jamSelesai || x.pemberiTugas.trim() || x.link.trim());
+    // Baris tanpa uraian dan link dianggap kosong (durasi bawaan terpilih tidak dihitung).
+    .filter(({ x }) => x.uraian.trim() || x.link.trim());
   if (!baris.length) return gagal("Isi minimal satu poin jurnal.", { "uraian.0": "Tulis uraian singkat pekerjaan." });
   if (baris.length > MAKS_POIN) return gagal(`Maksimal ${MAKS_POIN} poin sekali simpan.`);
 
@@ -94,7 +89,7 @@ export async function simpanJurnalSekaligus(_: HasilAksi | null, fd: FormData): 
     .returning();
   await catatAudit(db, { aktorId: sesi.pegawaiId, aksi: "buat", entitas: "jurnal", entitasId: rows[0].id, sesudah: { tanggal: tanggal.data, jumlah: rows.length, id: rows.map((r) => r.id) } });
   refresh();
-  return berhasil(rows.length > 1 ? `${rows.length} poin jurnal tersimpan.` : "Jurnal tersimpan.");
+  return berhasil(rows.length > 1 ? `${rows.length} entri jurnal tersimpan.` : "Jurnal tersimpan.");
 }
 
 /** Ubah jurnal sendiri selama tanggal lama dan barunya masih dalam jendela 2 hari kerja. */
@@ -134,7 +129,7 @@ export async function hapusJurnal(id: string): Promise<HasilAksi> {
 const skemaPd = z.object({
   tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Isi tanggal."),
   judul: z.string().trim().min(3, "Isi judul bacaan atau materi.").max(200),
-  durasiMenit: z.coerce.number({ error: "Isi durasi dalam menit." }).int().min(5, "Minimal 5 menit.").max(600, "Maksimal 600 menit."),
+  durasiMenit: skemaDurasi,
   ringkasan: z.string().trim().min(5, "Tulis ringkasan satu kalimat.").max(300),
 });
 

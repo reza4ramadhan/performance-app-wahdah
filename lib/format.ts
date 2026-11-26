@@ -15,6 +15,14 @@ export const persenBulat = (pecahan: Mungkin) => (kosong(pecahan) ? "—" : `${b
 /** Nilai 0–100 → "89,35%" */
 export const persen = (n: Mungkin) => (kosong(n) ? "—" : `${duaDesimal.format(n)}%`);
 
+/** 45 → "45 mnt", 60 → "1 jam", 90 → "1 jam 30 mnt" */
+export function labelDurasi(menit: number | null | undefined) {
+  if (!menit) return "";
+  const j = Math.floor(menit / 60);
+  const m = menit % 60;
+  return [j && `${j} jam`, m && `${m} mnt`].filter(Boolean).join(" ");
+}
+
 /** "Ahmad Fauzan" → "AF" */
 export const inisial = (nama: string) =>
   nama

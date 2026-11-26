@@ -6,7 +6,7 @@ import { geserHariKerja, hariIni, hariKerjaAntara, rentangPeriode, tambahHari, t
 export type TenggatItem = { tanggal: string; jam?: Date } | null;
 
 export function tenggatItem(
-  i: { indikatorKode: string; tglMasuk: Date; periodeId: string; data?: Record<string, string> },
+  i: { indikatorKode: string; tglMasuk: Date; periodeId: string; data?: Record<string, string>; pendingDanaSejak?: Date | null; danaCairPada?: string | null },
   kegiatanTanggal: string | null,
   tenggat: number | null,
   libur: ReadonlySet<string>,
@@ -22,6 +22,9 @@ export function tenggatItem(
     case "SBK-2a":
       return kegiatanTanggal ? { tanggal: geserHariKerja(kegiatanTanggal, -t, libur) } : null;
     case "SBK-2b":
+      // Pending dana: tenggat berhenti sampai tanggal cair dikonfirmasi, lalu ≤ N hari setelah cair.
+      if (i.danaCairPada) return { tanggal: tambahHari(kegiatanTanggal && kegiatanTanggal > i.danaCairPada ? kegiatanTanggal : i.danaCairPada, t) };
+      if (i.pendingDanaSejak) return null;
       return kegiatanTanggal ? { tanggal: tambahHari(kegiatanTanggal, t) } : null;
     case "SBK-3": {
       const h = PARAMETER.pengingatHMinus[Number(i.data?.ke ?? 1) - 1] ?? PARAMETER.pengingatHMinus.at(-1)!;

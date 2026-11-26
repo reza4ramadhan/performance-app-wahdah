@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { BookOpen, ClipboardCheck, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
+import { BookOpen, KeyRound, Lightbulb, LogOut, NotebookPen, Smartphone } from "lucide-react";
 import { PanduanPasang, SakelarNotifikasi } from "@/components/app/pwa";
 import { PilihanTema } from "@/components/app/tema";
 import { Avatar, BarisTautan, Kartu, Kerangka, Lencana } from "@/components/app/ui";
@@ -117,10 +117,14 @@ async function Isi() {
       </Kartu>
 
       <Kartu className="p-2">
-        <BarisTautan href="/jurnal" ikon={NotebookPen} nada="gold" judul="Jurnal kerja" />
-        <BarisTautan href="/pengembangan-diri" ikon={BookOpen} nada="mint" judul="Pengembangan diri" />
-        {bisaTugas && <BarisTautan href="/tugas" ikon={ClipboardCheck} nada="ink" judul="Tugas khusus" />}
-        <BarisTautan href="/k4" ikon={Lightbulb} nada="brand" judul="Inovasi Plus (K4)" />
+        {/* Staf: Jurnal, Belajar, Tugas, dan K4 sudah ada di tab masing-masing (rombak v2). */}
+        {!bisaTugas && (
+          <>
+            <BarisTautan href="/jurnal" ikon={NotebookPen} nada="gold" judul="Jurnal kerja" />
+            <BarisTautan href="/jurnal?tab=belajar" ikon={BookOpen} nada="mint" judul="Pengembangan diri" />
+            <BarisTautan href="/k4" ikon={Lightbulb} nada="brand" judul="Inovasi Plus (K4)" />
+          </>
+        )}
         <BarisTautan href="/ganti-password" ikon={KeyRound} nada="netral" judul="Ganti password" />
       </Kartu>
 

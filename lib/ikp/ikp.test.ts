@@ -114,6 +114,22 @@ describe("K1 Staf Bidang Kerja: Kegiatan SKUO + Surat", () => {
     expect(ind(h, "pB", "SBK-2a")).toMatchObject({ target: 0, dikecualikan: true });
   });
 
+  it("SBK-2b Pending SPB: selama dana belum cair bukan target; setelah cair tenggat 7 hari dari tanggal cair", () => {
+    // g1 (23 Okt) butuh SPB, PJ = A. Batas normal 30 Okt.
+    expect(ind(h, "pA", "SBK-2b")).toMatchObject({ target: 1, realisasi: 0 });
+    const pending = konteks();
+    pending.item.push(item({ penugasanId: "pA", indikatorKode: "SBK-2b", kegiatanId: "g1", masuk: w("2026-10-23"), pendingDanaSejak: w("2026-10-26") }));
+    expect(ind(hitungK1(pending), "pA", "SBK-2b")).toMatchObject({ target: 0, dikecualikan: true });
+
+    const cair = konteks();
+    // Dana cair 5 Nov; SPB diinput 10 Nov (≤ 12 Nov) → tepat walau lewat 7 hari dari kegiatan.
+    cair.item.push(item({ penugasanId: "pA", indikatorKode: "SBK-2b", kegiatanId: "g1", ...setuju("2026-10-23", "2026-11-10"), pendingDanaSejak: w("2026-10-26"), danaCairPada: "2026-11-05" }));
+    expect(ind(hitungK1(cair), "pA", "SBK-2b")).toMatchObject({ target: 1, realisasi: 1 });
+    const tanpaPending = konteks();
+    tanpaPending.item.push(item({ penugasanId: "pA", indikatorKode: "SBK-2b", kegiatanId: "g1", ...setuju("2026-10-23", "2026-11-10") }));
+    expect(ind(hitungK1(tanpaPending), "pA", "SBK-2b")).toMatchObject({ target: 1, realisasi: 0 });
+  });
+
   it("SBK-3: dua pengingat per kegiatan, ke-1 ≤ H-6 dan ke-2 ≤ H-2, dinilai sendiri-sendiri", () => {
     expect(ind(h, "pA", "SBK-3")).toMatchObject({ target: 4, realisasi: 2, skor: 50 });
     expect(ind(h, "pB", "SBK-3")).toMatchObject({ target: 4, realisasi: 0, skor: 0 });

@@ -3,19 +3,21 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb, schema as s, type Db } from "../db";
-import { PARAMETER } from "../ikp/tipe";
-import { geserHariKerja, hariIni, periodeBerikut, periodeDari, rentangPeriode, type Kantor } from "../waktu";
+import { jendelaAkhirBulan } from "../jendela";
+import { hariIni, type Kantor } from "../waktu";
 import { liburPerKantor } from "./ikp";
 
-/** Periode yang masih boleh diajukan: bulan ini, dan bulan lalu sampai 5 hari kerja setelah bulan berakhir. */
-export async function periodeK4Terbuka(kantor: Kantor) {
+/** Jendela pengajuan K4 (rombak v2): hanya bulan lalu, ≤ 5 hari kerja setelah bulan berakhir. */
+export async function jendelaK4(kantor: Kantor) {
   const db = await getDb();
   const libur = await liburPerKantor(db);
-  const today = hariIni(kantor);
-  const kini = periodeDari(today);
-  const lalu = periodeBerikut(kini, -1);
-  const batas = geserHariKerja(rentangPeriode(lalu).akhir, PARAMETER.batasVerifikasiHariKerja, libur(kantor));
-  return today <= batas ? [lalu, kini] : [kini];
+  return jendelaAkhirBulan(hariIni(kantor), libur(kantor));
+}
+
+/** Periode yang masih boleh diajukan: kosong di luar jendela akhir bulan. */
+export async function periodeK4Terbuka(kantor: Kantor) {
+  const j = await jendelaK4(kantor);
+  return j.periode ? [j.periode] : [];
 }
 
 /** Total poin yang sudah diterima inovasi yang sama di tingkat-tingkat sebelumnya (rantai induk). */
