@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Manage tim</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex-shrink: 0; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: #ffffff; border-bottom: 1px solid #dde7ea">
+    <a href="Kor-1-Tim.dc.html" aria-label="Kembali" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <span style="font-size: 16px; font-weight: 600">Manage tim</span>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px">
+    <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #5e707c">Plot staf ke departemen yang ia layani. <strong style="color: #1c2a33">PJ utama</strong> otomatis menerima checklist setiap kegiatan departemen itu.</p>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12.5px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Departemen · 4</h2>
+
+      <article style="background: #ffffff; border: 1px solid #f3c7c2; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14.5px; font-weight: 600">Kaderisasi Remaja</span><span style="font-size: 12.5px; font-weight: 600; color: #a3261b">Belum ada staf · 2 kegiatan Desember tanpa PJ</span></span>
+        <a href="#plot-remaja" style="height: 36px; padding: 0 12px; border-radius: 10px; background: #0c7883; color: #ffffff; display: flex; align-items: center; text-decoration: none; font-size: 13px; font-weight: 600">Plot</a>
+      </article>
+
+      <article style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14.5px; font-weight: 600">DPPEL · Pembinaan Pelajar</span>
+          <span style="display: flex; gap: 6px; flex-wrap: wrap">
+            <span style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 13px; background: #e3f3f4; font-size: 12px; font-weight: 600; color: #0e606a"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0e606a" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21.1l1.5-7L2 9.3l7-.8z"/></svg>Luthfi · PJ utama</span>
+            <span style="display: flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 13px; background: #eef4f5; font-size: 12px; color: #3d4f5a">Yusuf</span>
+          </span></span>
+        <a href="#ubah-dppel" style="font-size: 13px; font-weight: 600; padding: 10px 4px; text-decoration: none">Ubah</a>
+      </article>
+
+      <article style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14.5px; font-weight: 600">Pembinaan Mahasiswa</span>
+          <span style="display: flex; gap: 6px"><span style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 13px; background: #e3f3f4; font-size: 12px; font-weight: 600; color: #0e606a"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0e606a" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21.1l1.5-7L2 9.3l7-.8z"/></svg>Yusuf · PJ utama</span></span></span>
+        <a href="#ubah-mhs" style="font-size: 13px; font-weight: 600; padding: 10px 4px; text-decoration: none">Ubah</a>
+      </article>
+
+      <article style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14.5px; font-weight: 600">Kepemudaan</span>
+          <span style="display: flex; gap: 6px"><span style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 13px; background: #e3f3f4; font-size: 12px; font-weight: 600; color: #0e606a"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0e606a" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21.1l1.5-7L2 9.3l7-.8z"/></svg>Yusuf · PJ utama</span></span></span>
+        <a href="#ubah-pemuda" style="font-size: 13px; font-weight: 600; padding: 10px 4px; text-decoration: none">Ubah</a>
+      </article>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12.5px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Anggota unit (sesuai SK)</h2>
+      <ul style="margin: 0; padding: 0; list-style: none; background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px">
+        <li style="border-bottom: 1px solid #eef4f5"><a href="Kor-6-Profil.dc.html" style="display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px; text-decoration: none; color: #1c2a33; font-size: 13.5px"><span>Muh. Yusuf Rachman Rivai</span><span style="color: #5e707c">3 departemen</span></a></li>
+        <li><a href="Kor-6-Profil.dc.html" style="display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px; text-decoration: none; color: #1c2a33; font-size: 13.5px"><span>Muh. Luthfi Alfatin</span><span style="color: #5e707c">1 departemen</span></a></li>
+      </ul>
+      <span style="font-size: 12px; line-height: 1.5; color: #5e707c">Anggota unit diatur Admin sesuai SK. Perubahan plot di tengah bulan hanya memindahkan kegiatan yang belum berjalan, dan tercatat di <a href="#riwayat">riwayat</a>.</span>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

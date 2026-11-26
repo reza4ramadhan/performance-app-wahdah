@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Catat pembuatan surat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button,input,select{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex-shrink: 0; padding: 0 8px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #dde7ea">
+    <a href="Adm-4-Catat.dc.html" aria-label="Kembali" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <span style="font-size: 16px; font-weight: 600">Pembuatan surat</span>
+  </header>
+
+  <form style="flex: 1; overflow: hidden; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px">
+    <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+      <legend style="font-size: 13.5px; font-weight: 600; margin-bottom: 6px">Unit</legend>
+      <div style="display: flex; gap: 8px">
+        <button type="button" aria-pressed="true" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 2px solid #0c7883; background: #e3f3f4; color: #0e606a; font-size: 13.5px; font-weight: 600">A · Dakwah</button>
+        <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #c9d7db; background: #ffffff; font-size: 13.5px">J · Pusat</button>
+        <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #c9d7db; background: #ffffff; font-size: 13.5px">K · Setjen</button>
+      </div>
+    </fieldset>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="perihal" style="font-size: 13.5px; font-weight: 600">Perihal surat</label>
+      <input id="perihal" type="text" value="Undangan narasumber kajian" style="height: 46px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #1c2a33">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="skuo" style="font-size: 13.5px; font-weight: 600">SKUO peminta</label>
+      <input id="skuo" type="text" placeholder="Ketik atau pilih SKUO" style="height: 46px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #1c2a33">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="kegiatan" style="font-size: 13.5px; font-weight: 600">Kegiatan <span style="font-weight: 500; color: #5e707c">(opsional)</span></label>
+      <select id="kegiatan" style="height: 46px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 12px; font-size: 15px; color: #1c2a33; background: #ffffff">
+        <option>Tidak terkait kegiatan</option>
+        <option>Kajian Pekanan Pengurus · 28 Nov</option>
+      </select>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="masuk" style="font-size: 13.5px; font-weight: 600">Permintaan diterima</label>
+      <input id="masuk" type="text" value="Kamis, 26 Nov 2026" style="height: 46px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #1c2a33; background: #f8fbfb">
+    </div>
+
+    <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+      <legend style="font-size: 13.5px; font-weight: 600; margin-bottom: 6px">Status</legend>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button type="button" aria-pressed="true" style="height: 44px; border-radius: 12px; border: 2px solid #0c7883; background: #e3f3f4; color: #0e606a; font-size: 14px; font-weight: 600">Masih dikerjakan</button>
+        <button type="button" aria-pressed="false" style="height: 44px; border-radius: 12px; border: 1px solid #c9d7db; background: #ffffff; font-size: 14px">Sudah selesai</button>
+      </div>
+      <span style="font-size: 12px; color: #5e707c">Masih dikerjakan → masuk Tugas dengan tenggat 1 hari kerja. Link bukti diminta saat ditandai selesai.</span>
+    </fieldset>
+  </form>
+
+  <footer style="flex-shrink: 0; padding: 12px 20px 20px; border-top: 1px solid #dde7ea">
+    <a href="Adm-1-Tugas.dc.html" style="height: 52px; border-radius: 14px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 16px; font-weight: 600">Simpan</a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

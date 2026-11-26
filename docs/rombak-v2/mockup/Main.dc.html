@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Beranda Staf Administrasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <header style="padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 13px; color: #5e707c">Kamis, 26 November 2026</span>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Tugas saya</h1>
+    </div>
+    <a href="#akun" aria-label="Akun Supriadi Sudirja" style="width: 44px; height: 44px; border-radius: 22px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; text-decoration: none">SS</a>
+  </header>
+
+  <div style="padding: 0 20px 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+    <a href="#terlambat" style="background: #fdecea; border-radius: 12px; padding: 10px 12px; text-decoration: none; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 20px; font-weight: 700; color: #a3261b">1</span>
+      <span style="font-size: 12px; font-weight: 500; color: #a3261b">Terlambat</span>
+    </a>
+    <a href="#hari-ini" style="background: #e3f3f4; border-radius: 12px; padding: 10px 12px; text-decoration: none; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 20px; font-weight: 700; color: #0e606a">3</span>
+      <span style="font-size: 12px; font-weight: 500; color: #0e606a">Hari ini</span>
+    </a>
+    <a href="#pekan-ini" style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 12px; padding: 10px 12px; text-decoration: none; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 20px; font-weight: 700; color: #1c2a33">5</span>
+      <span style="font-size: 12px; font-weight: 500; color: #5e707c">Pekan ini</span>
+    </a>
+  </div>
+
+  <div role="group" aria-label="Filter unit" style="padding: 0 20px 12px; display: flex; gap: 8px">
+    <button type="button" aria-pressed="true" style="height: 32px; padding: 0 14px; border-radius: 16px; border: none; background: #1f1b5c; color: #ffffff; font-size: 13px; font-weight: 600">Semua</button>
+    <button type="button" aria-pressed="false" style="height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid #dde7ea; background: #ffffff; color: #1c2a33; font-size: 13px; font-weight: 500">A · Dakwah</button>
+    <button type="button" aria-pressed="false" style="height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid #dde7ea; background: #ffffff; color: #1c2a33; font-size: 13px; font-weight: 500">J · Pusat</button>
+    <button type="button" aria-pressed="false" style="height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid #dde7ea; background: #ffffff; color: #1c2a33; font-size: 13px; font-weight: 500">K · Setjen</button>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 4px 20px 0; display: flex; flex-direction: column; gap: 10px">
+
+    <h2 id="terlambat" style="margin: 4px 0 0; font-size: 13px; font-weight: 600; color: #a3261b; text-transform: uppercase; letter-spacing: 0.04em">Perlu diperbaiki</h2>
+    <article style="background: #ffffff; border-radius: 14px; border: 1px solid #f3c7c2; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="font-size: 15px; font-weight: 600; color: #1c2a33">Arsipkan notulensi rapat</span>
+          <span style="font-size: 12.5px; color: #5e707c">Unit K · lewat 1 hari kerja</span>
+        </div>
+        <span style="flex-shrink: 0; font-size: 11.5px; font-weight: 600; color: #a3261b; background: #fdecea; padding: 3px 8px; border-radius: 6px">Ditolak</span>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #5e1a13; background: #fdf4f3; border-radius: 8px; padding: 8px 10px">“Link Drive belum dibagikan. Ubah akses ke siapa saja yang punya link.”</p>
+      <button type="button" style="align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid #0c7883; background: #ffffff; color: #0c7883; font-size: 13px; font-weight: 600">Perbaiki link</button>
+    </article>
+
+    <h2 id="hari-ini" style="margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Hari ini</h2>
+
+    <article style="background: #ffffff; border-radius: 14px; border: 1px solid #dde7ea; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+      <button type="button" aria-label="Tandai selesai: Kirim pengingat ke-2" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 14px; border: 2px solid #0c7883; background: #ffffff; padding: 0"></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: 15px; font-weight: 600; color: #1c2a33">Kirim pengingat ke-2</span>
+        <span style="font-size: 12.5px; color: #5e707c">Kajian Pekanan Pengurus · Unit A</span>
+      </div>
+      <span style="flex-shrink: 0; font-size: 12px; font-weight: 600; color: #8a4b00">s.d. 16.00</span>
+    </article>
+
+    <article style="background: #ffffff; border-radius: 14px; border: 1px solid #dde7ea; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+      <button type="button" aria-label="Tandai selesai: Input SPP di SIMAKPRO" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 14px; border: 2px solid #0c7883; background: #ffffff; padding: 0"></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: 15px; font-weight: 600; color: #1c2a33">Input SPP di SIMAKPRO</span>
+        <span style="font-size: 12.5px; color: #5e707c">Rapat Kerja Pusat-Pusat · Unit J</span>
+      </div>
+      <span style="flex-shrink: 0; font-size: 12px; font-weight: 500; color: #5e707c">Hari ini</span>
+    </article>
+
+    <article style="background: #ffffff; border-radius: 14px; border: 1px solid #dde7ea; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+      <button type="button" aria-label="Tandai selesai: Siapkan daftar hadir tamu" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 14px; border: 2px solid #0c7883; background: #ffffff; padding: 0"></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: 15px; font-weight: 600; color: #1c2a33">Siapkan daftar hadir tamu</span>
+        <span style="font-size: 12.5px; color: #5e707c"><span style="color: #4b2fa3; font-weight: 600">Delegasi</span> dari Koordinator K</span>
+      </div>
+      <span style="flex-shrink: 0; font-size: 12px; font-weight: 500; color: #5e707c">s.d. 14.00</span>
+    </article>
+
+    <a id="pekan-ini" href="#pekan" style="margin-top: 2px; height: 48px; border-radius: 12px; border: 1px dashed #c9d7db; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; text-decoration: none; color: #1c2a33; font-size: 14px; font-weight: 500">
+      <span>Pekan ini · 5 tugas</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+  </main>
+
+  <a href="#catat" style="position: absolute; right: 20px; bottom: 92px; height: 52px; padding: 0 20px; border-radius: 26px; background: #0c7883; color: #ffffff; display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 15px; font-weight: 600; box-shadow: 0 4px 12px rgba(12, 120, 131, 0.28)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    Catat
+  </a>
+
+  <nav aria-label="Navigasi utama" style="height: 72px; flex-shrink: 0; background: #ffffff; border-top: 1px solid #dde7ea; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px; box-sizing: border-box">
+    <a href="#tugas" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #0c7883; font-size: 12px; font-weight: 600">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0c7883" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tugas</a>
+    <a href="#jurnal" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>Jurnal</a>
+    <a href="#progres" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progres</a>
+    <a href="#akun" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Akun</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

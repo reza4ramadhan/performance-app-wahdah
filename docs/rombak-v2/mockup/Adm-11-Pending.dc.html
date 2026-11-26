@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Tandai pending SPB</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #5f6b72; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden">
+
+  <a href="Adm-10-SPB.dc.html" aria-label="Tutup" style="flex: 1; display: block"></a>
+
+  <section aria-label="Tandai pending" style="background: #ffffff; border-radius: 20px 20px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 16px">
+    <span aria-hidden="true" style="align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #c9d7db"></span>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Pending: dana belum cair</h1>
+      <span style="font-size: 13.5px; color: #5e707c">Input SPB · Rapat Kerja Pusat-Pusat · SPP-1126</span>
+    </div>
+
+    <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
+      <li style="display: flex; gap: 10px; font-size: 13.5px; line-height: 1.45"><span style="flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; background: #fff4e0; color: #6b4a00; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">1</span><span>Tenggat SPB <strong>berhenti</strong>. Tugas pindah ke bagian <em>Pending dana</em> dan tidak dihitung terlambat.</span></li>
+      <li style="display: flex; gap: 10px; font-size: 13.5px; line-height: 1.45"><span style="flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; background: #fff4e0; color: #6b4a00; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">2</span><span><strong>Keuangan</strong> mengonfirmasi tanggal pencairan dana.</span></li>
+      <li style="display: flex; gap: 10px; font-size: 13.5px; line-height: 1.45"><span style="flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; background: #fff4e0; color: #6b4a00; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">3</span><span>Sejak tanggal cair, tenggat berjalan lagi: <strong>7 hari</strong>. Anda mendapat notifikasi.</span></li>
+    </ol>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="catatan" style="font-size: 13.5px; font-weight: 600">Catatan <span style="font-weight: 500; color: #5e707c">(opsional)</span></label>
+      <textarea id="catatan" rows="2" placeholder="mis. Menunggu pencairan batch Desember" style="border: 1px solid #c9d7db; border-radius: 12px; padding: 10px 14px; font-size: 15px; resize: none"></textarea>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <a href="Adm-1-Tugas.dc.html" style="height: 52px; border-radius: 14px; background: #8a4b00; color: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 16px; font-weight: 600">Simpan sebagai pending</a>
+      <a href="Adm-10-SPB.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; font-weight: 600; color: #5e707c">Batal</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

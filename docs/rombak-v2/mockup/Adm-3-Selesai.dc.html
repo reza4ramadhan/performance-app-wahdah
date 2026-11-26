@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Tandai selesai</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #5f6b72; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden">
+
+  <a href="Adm-2-Detail.dc.html" aria-label="Tutup" style="flex: 1; display: block"></a>
+
+  <section aria-label="Tandai selesai" style="background: #ffffff; border-radius: 20px 20px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 16px">
+    <span aria-hidden="true" style="align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #c9d7db"></span>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Tandai selesai</h1>
+      <span style="font-size: 13.5px; color: #5e707c">Kirim pengingat ke-2 · Kajian Pekanan Pengurus</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="tgl" style="font-size: 13.5px; font-weight: 600">Tanggal dikirim</label>
+      <input id="tgl" type="text" value="Kamis, 26 Nov 2026 · 10.42" style="height: 48px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #1c2a33; background: #f8fbfb">
+      <span style="font-size: 12px; color: #5e707c">Terisi otomatis. Ubah bila dikirim lebih awal.</span>
+    </div>
+
+    <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+      <legend style="font-size: 13.5px; font-weight: 600; margin-bottom: 6px">Dikirim lewat</legend>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button type="button" aria-pressed="true" style="height: 44px; border-radius: 12px; border: 2px solid #0c7883; background: #e3f3f4; color: #0e606a; font-size: 14px; font-weight: 600">Grup</button>
+        <button type="button" aria-pressed="false" style="height: 44px; border-radius: 12px; border: 1px solid #c9d7db; background: #ffffff; color: #1c2a33; font-size: 14px; font-weight: 500">Pesan pribadi</button>
+      </div>
+    </fieldset>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="link" style="font-size: 13.5px; font-weight: 600">Link bukti <span style="color: #a3261b">*</span></label>
+      <input id="link" type="url" placeholder="https://drive.google.com/…" style="height: 48px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #1c2a33; background: #ffffff">
+      <span style="font-size: 12px; color: #5e707c">Tangkapan layar pesan. Atur akses: siapa saja yang punya link.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px">
+      <a href="Adm-1-Tugas.dc.html" style="height: 52px; border-radius: 14px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 16px; font-weight: 600">Simpan dan ajukan</a>
+      <a href="Adm-2-Detail.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; font-weight: 600; color: #5e707c">Batal</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

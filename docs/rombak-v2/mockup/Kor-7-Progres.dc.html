@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Progres koordinator</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 960px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="padding: 20px 20px 12px; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 13px; color: #5e707c">November 2026 · per 26 Nov</span>
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Progres</h1>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 12px">
+    <section aria-label="Skor K1 berjalan" style="background: #1f1b5c; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end">
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #c9c6ec">Skor K1 berjalan (gabungan)</span><span style="font-size: 36px; font-weight: 700; color: #ffffff; line-height: 1.1">91,2</span></div>
+        <span style="font-size: 12.5px; font-weight: 600; color: #5fd0da">+0,4 dari kemarin</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <div style="background: #2e2a78; border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 12px; color: #c9c6ec">Koordinator H</span><span style="font-size: 17px; font-weight: 700; color: #ffffff">90,8</span></div>
+        <div style="background: #2e2a78; border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 12px; color: #c9c6ec">Staf A</span><span style="font-size: 17px; font-weight: 700; color: #ffffff">91,5</span></div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-size: 12.5px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Skor koordinator H = rata-rata K1 staf</h2>
+      <table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; overflow: hidden; font-size: 13.5px">
+        <thead><tr style="background: #eef4f5; color: #5e707c; font-size: 12px"><th scope="col" style="text-align: left; padding: 8px 12px; font-weight: 600">Staf</th><th scope="col" style="text-align: right; padding: 8px 12px; font-weight: 600">K1 di unit H</th></tr></thead>
+        <tbody>
+          <tr style="border-top: 1px solid #eef4f5"><td style="padding: 10px 12px"><a href="Kor-6-Profil.dc.html" style="text-decoration: none">Muh. Yusuf Rachman Rivai</a></td><td style="text-align: right; padding: 10px 12px; font-weight: 600; color: #8a4b00">88,6</td></tr>
+          <tr style="border-top: 1px solid #eef4f5"><td style="padding: 10px 12px"><a href="Kor-6-Profil.dc.html" style="text-decoration: none">Muh. Luthfi Alfatin</a></td><td style="text-align: right; padding: 10px 12px; font-weight: 600">93,0</td></tr>
+          <tr style="border-top: 1px solid #dde7ea; background: #f8fbfb"><td style="padding: 10px 12px; font-weight: 600">Rata-rata</td><td style="text-align: right; padding: 10px 12px; font-weight: 700">90,8</td></tr>
+        </tbody>
+      </table>
+      <span style="font-size: 12px; line-height: 1.5; color: #5e707c">Item yang belum Anda periksa belum dihitung sebagai realisasi staf. Verifikasi yang terlambat menurunkan skor staf, dan ikut menurunkan skor Anda.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-size: 12.5px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Riwayat IKP</h2>
+      <div style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; display: flex; align-items: center; gap: 10px; padding: 10px 14px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Oktober 2026 · 89,4</span><span style="font-size: 12px; color: #5e707c">Baik · K1 92,6 · K2 88,0 · K3 84,4 · K4 0</span></span><a href="#rapor-okt" style="font-size: 13px; font-weight: 600; padding: 10px 4px">Rapor PDF</a></div>
+    </section>
+
+    <button type="button" disabled style="height: 48px; border-radius: 12px; border: 1px dashed #9fb3ba; background: transparent; color: #5e707c; font-size: 14px; font-weight: 600">Ajukan inovasi (K4) · dibuka 1–7 Des</button>
+  </main>
+
+  <nav aria-label="Navigasi utama" style="height: 72px; flex-shrink: 0; background: #ffffff; border-top: 1px solid #dde7ea; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px; box-sizing: border-box">
+    <a href="Kor-1-Tim.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tugas</a>
+    <a href="Adm-6-Jurnal.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>Jurnal</a>
+    <a href="Kor-7-Progres.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #0c7883; font-size: 12px; font-weight: 600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0c7883" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progres</a>
+    <a href="Adm-9-Akun.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Akun</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Atur Tugas Staf</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+select,button{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex-shrink: 0; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: #ffffff; border-bottom: 1px solid #dde7ea">
+    <a href="KR-1-Tim.dc.html" aria-label="Kembali" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <span style="font-size: 16px; font-weight: 600">Atur Tugas Staf</span>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #dde7ea; border-radius: 12px; padding: 4px">
+      <button type="button" aria-label="Pekan sebelumnya" style="width: 40px; height: 40px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <span style="display: flex; flex-direction: column; align-items: center; gap: 1px"><span style="font-size: 14.5px; font-weight: 600">Pekan depan</span><span style="font-size: 12px; color: #5e707c">30 Nov – 4 Des 2026</span></span>
+      <button type="button" aria-label="Pekan berikutnya" style="width: 40px; height: 40px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+
+    <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #5e707c">Pengaturan pekan ini <strong style="color: #1c2a33">berlanjut otomatis</strong>. Ubah hanya staf yang dirotasi; tersimpan langsung.</p>
+
+    <button type="button" style="height: 44px; border-radius: 12px; border: 1px solid #0c7883; background: #ffffff; color: #0c7883; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c7883" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h13M17 20l4-4-4-4M21 16H8"/></svg>Tukar dua set tugas sekaligus</button>
+
+    <ul style="margin: 0; padding: 0; list-style: none; background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px">
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-bottom: 1px solid #eef4f5; background: #fffaf0">
+        <label for="s1" style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Ramli Rani</span><span style="font-size: 11.5px; font-weight: 600; color: #8a4b00">Berubah dari shift pagi</span></label>
+        <select id="s1" style="width: 168px; height: 40px; border: 2px solid #c98a1a; border-radius: 10px; padding: 0 8px; font-size: 13px; background: #ffffff"><option>Keamanan shift malam</option></select>
+      </li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-bottom: 1px solid #eef4f5">
+        <label for="s2" style="flex: 1; font-size: 14px; font-weight: 600">Subair Raja</label>
+        <select id="s2" style="width: 168px; height: 40px; border: 1px solid #c9d7db; border-radius: 10px; padding: 0 8px; font-size: 13px; background: #ffffff"><option>Keamanan shift pagi</option></select>
+      </li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-bottom: 1px solid #eef4f5; background: #fffaf0">
+        <label for="s3" style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Rahmat Hidayat</span><span style="font-size: 11.5px; font-weight: 600; color: #8a4b00">Berubah dari shift malam</span></label>
+        <select id="s3" style="width: 168px; height: 40px; border: 2px solid #c98a1a; border-radius: 10px; padding: 0 8px; font-size: 13px; background: #ffffff"><option>Keamanan shift pagi</option></select>
+      </li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-bottom: 1px solid #eef4f5">
+        <label for="s4" style="flex: 1; font-size: 14px; font-weight: 600">Muh. Hidayat</label>
+        <select id="s4" style="width: 168px; height: 40px; border: 1px solid #c9d7db; border-radius: 10px; padding: 0 8px; font-size: 13px; background: #ffffff"><option>Penjaga pos gerbang</option></select>
+      </li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-bottom: 1px solid #eef4f5">
+        <label for="s5" style="flex: 1; font-size: 14px; font-weight: 600">Arman Rajab</label>
+        <select id="s5" style="width: 168px; height: 40px; border: 1px solid #c9d7db; border-radius: 10px; padding: 0 8px; font-size: 13px; background: #ffffff"><option>Keamanan shift malam</option></select>
+      </li>
+      <li style="display: flex; align-items: center; justify-content: center; height: 42px; font-size: 13px; font-weight: 600; color: #0c7883">9 staf lainnya</li>
+    </ul>
+    <span style="font-size: 12px; color: #5e707c">Staf yang dirotasi menerima notifikasi set tugas barunya.</span>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

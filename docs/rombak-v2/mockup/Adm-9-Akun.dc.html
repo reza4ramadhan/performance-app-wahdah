@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Akun</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="padding: 20px 20px 12px">
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Akun</h1>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 20px; display: flex; flex-direction: column; gap: 14px">
+    <section style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span aria-hidden="true" style="width: 52px; height: 52px; border-radius: 26px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600">SS</span>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 16px; font-weight: 700">Supriadi Sudirja, S.H.</span>
+          <span style="font-size: 12.5px; color: #5e707c">Staf Administrasi · Kantor Makassar</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Penugasan (SK D.008)</span>
+        <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px">
+          <li style="display: flex; justify-content: space-between; gap: 8px"><span>A · Dakwah, Kaderisasi &amp; PSDM</span><span style="color: #5e707c">Erwin A.</span></li>
+          <li style="display: flex; justify-content: space-between; gap: 8px"><span>J · Pusat-Pusat</span><span style="color: #5e707c">Ariesman M.</span></li>
+          <li style="display: flex; justify-content: space-between; gap: 8px"><span>K · Kesekretariatan Jenderal</span><span style="color: #5e707c">Musri Madung</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <ul style="margin: 0; padding: 0; list-style: none; background: #ffffff; border: 1px solid #dde7ea; border-radius: 16px">
+      <li style="border-bottom: 1px solid #eef4f5"><a href="#password" style="height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; text-decoration: none; color: #1c2a33; font-size: 14.5px"><span>Ganti password</span><span style="color: #5e707c">›</span></a></li>
+      <li style="border-bottom: 1px solid #eef4f5; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 14.5px">
+        <span style="display: flex; flex-direction: column; gap: 2px"><span>Notifikasi</span><span style="font-size: 12px; color: #5e707c">Pengingat 15.00, tenggat, ditolak, delegasi</span></span>
+        <button type="button" role="switch" aria-checked="true" aria-label="Notifikasi" style="width: 48px; height: 28px; border-radius: 14px; border: none; background: #0c7883; padding: 3px; display: flex; justify-content: flex-end"><span style="width: 22px; height: 22px; border-radius: 11px; background: #ffffff; display: block"></span></button>
+      </li>
+      <li style="border-bottom: 1px solid #eef4f5"><a href="#pwa" style="height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; text-decoration: none; color: #1c2a33; font-size: 14.5px"><span>Pasang aplikasi di HP</span><span style="color: #5e707c">›</span></a></li>
+      <li style="height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 14.5px">
+        <span>Tema</span>
+        <span role="group" aria-label="Tema" style="display: flex; background: #e6eef0; border-radius: 10px; padding: 3px">
+          <button type="button" aria-pressed="true" style="height: 32px; padding: 0 12px; border-radius: 8px; border: none; background: #ffffff; font-size: 13px; font-weight: 600">Terang</button>
+          <button type="button" aria-pressed="false" style="height: 32px; padding: 0 12px; border-radius: 8px; border: none; background: transparent; color: #5e707c; font-size: 13px">Gelap</button>
+        </span>
+      </li>
+    </ul>
+
+    <a href="#keluar" style="height: 50px; border-radius: 14px; border: 1px solid #f3c7c2; background: #ffffff; color: #a3261b; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 600">Keluar</a>
+  </main>
+
+  <nav aria-label="Navigasi utama" style="height: 72px; flex-shrink: 0; background: #ffffff; border-top: 1px solid #dde7ea; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px; box-sizing: border-box">
+    <a href="Adm-1-Tugas.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tugas</a>
+    <a href="Adm-6-Jurnal.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>Jurnal</a>
+    <a href="Adm-8-Progres.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progres</a>
+    <a href="Adm-9-Akun.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #0c7883; font-size: 12px; font-weight: 600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0c7883" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Akun</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

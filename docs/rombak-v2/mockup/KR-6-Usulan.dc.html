@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Usulan tugas dari staf</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+select{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex-shrink: 0; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: #ffffff; border-bottom: 1px solid #dde7ea">
+    <a href="KR-3-Template.dc.html" aria-label="Kembali" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <span style="font-size: 16px; font-weight: 600">Usulan dari staf · 2</span>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px">
+    <article style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: 12px; color: #5e707c">Ramli Rani · 26 Nov</span>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #1f1b5c">Cek APAR (alat pemadam) di tiap lantai</h2>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 6px; font-size: 13px">
+        <dt style="color: #5e707c">Frekuensi</dt><dd style="margin: 0; font-weight: 600">Sepekan sekali</dd>
+        <dt style="color: #5e707c">Jam tenggat</dt><dd style="margin: 0; font-weight: 600">11.00</dd>
+        <dt style="color: #5e707c">Alasan</dt><dd style="margin: 0">Belum ada yang rutin memeriksa masa berlaku APAR.</dd>
+      </dl>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="tpl1" style="font-size: 13px; font-weight: 600">Masukkan ke set tugas</label>
+        <select id="tpl1" style="height: 44px; border: 1px solid #c9d7db; border-radius: 10px; padding: 0 10px; font-size: 14px; background: #ffffff"><option>Keamanan shift pagi (usulan staf)</option><option>Keamanan shift malam</option><option>Penjaga pos gerbang</option></select>
+        <span style="font-size: 12px; color: #5e707c">Berlaku mulai pekan depan untuk 5 staf pengguna set tugas ini.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <a href="#tolak1" style="height: 46px; border-radius: 12px; border: 1px solid #f3c7c2; background: #ffffff; color: #a3261b; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px; font-weight: 600">Tolak</a>
+        <a href="KR-3-Template.dc.html" style="height: 46px; border-radius: 12px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px; font-weight: 600">Setujui</a>
+      </div>
+    </article>
+
+    <article style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 10px">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 12px; color: #5e707c">Subair Raja · 25 Nov</span><span style="font-size: 14.5px; font-weight: 600">Isi buku tamu digital setiap jam 09.00</span><span style="font-size: 12px; color: #5e707c">Setiap hari · ke Penjaga pos gerbang</span></span>
+      <span style="color: #5e707c">›</span>
+    </article>
+
+    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #5e707c">Tolak wajib disertai alasan; staf menerima notifikasi untuk keduanya.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

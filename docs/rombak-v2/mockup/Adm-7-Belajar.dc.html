@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Belajar — pengembangan diri</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0c7883}a:hover{color:#0e606a}
+button,input,textarea{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f7f8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #1c2a33; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="padding: 20px 20px 12px; display: flex; flex-direction: column; gap: 12px">
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f1b5c">Jurnal</h1>
+    <div role="tablist" aria-label="Jenis catatan" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #e6eef0; border-radius: 12px; padding: 4px">
+      <a href="Adm-6-Jurnal.dc.html" role="tab" aria-selected="false" style="height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #5e707c; font-size: 14px; font-weight: 500">Jurnal kerja</a>
+      <a href="Adm-7-Belajar.dc.html" role="tab" aria-selected="true" style="height: 36px; border-radius: 9px; background: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #1c2a33; font-size: 14px; font-weight: 600">Belajar</a>
+    </div>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 20px; display: flex; flex-direction: column; gap: 12px">
+    <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #5e1a13; background: #fff4e0; border-radius: 10px; padding: 10px 12px">Bila bulan ini kosong, nilai K3 <strong>Pengembangan diri</strong> paling tinggi 2.</p>
+
+    <form style="background: #ffffff; border: 1px solid #dde7ea; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="judul" style="font-size: 13.5px; font-weight: 600">Judul bacaan / materi</label>
+        <input id="judul" type="text" placeholder="mis. Fiqih Muamalah, bab akad" style="height: 46px; box-sizing: border-box; border: 1px solid #c9d7db; border-radius: 12px; padding: 0 14px; font-size: 15px">
+      </div>
+      <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+        <legend style="font-size: 13.5px; font-weight: 600; margin-bottom: 6px">Durasi</legend>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+          <button type="button" aria-pressed="false" style="height: 40px; border-radius: 10px; border: 1px solid #c9d7db; background: #ffffff; font-size: 13.5px">15 mnt</button>
+          <button type="button" aria-pressed="true" style="height: 40px; border-radius: 10px; border: 2px solid #0c7883; background: #e3f3f4; color: #0e606a; font-size: 13.5px; font-weight: 600">30 mnt</button>
+          <button type="button" aria-pressed="false" style="height: 40px; border-radius: 10px; border: 1px solid #c9d7db; background: #ffffff; font-size: 13.5px">60 mnt</button>
+          <button type="button" aria-pressed="false" style="height: 40px; border-radius: 10px; border: 1px solid #c9d7db; background: #ffffff; font-size: 13.5px">Lain</button>
+        </div>
+      </fieldset>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="ringkas" style="font-size: 13.5px; font-weight: 600">Ringkasan satu kalimat</label>
+        <textarea id="ringkas" rows="2" placeholder="Apa yang Anda pelajari?" style="border: 1px solid #c9d7db; border-radius: 12px; padding: 10px 14px; font-size: 15px; resize: none"></textarea>
+      </div>
+      <a href="Adm-7-Belajar.dc.html" style="height: 50px; border-radius: 14px; background: #0c7883; color: #ffffff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 600">Simpan</a>
+    </form>
+
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-size: 12.5px; font-weight: 600; color: #5e707c; text-transform: uppercase; letter-spacing: 0.04em">Bulan ini · 2 catatan · 75 menit</h2>
+      <ul style="margin: 0; padding: 0; list-style: none; background: #ffffff; border: 1px solid #dde7ea; border-radius: 12px">
+        <li style="display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #eef4f5; font-size: 13.5px"><span>Adab penuntut ilmu</span><span style="color: #5e707c">24 Nov · 45 mnt</span></li>
+        <li style="display: flex; justify-content: space-between; padding: 10px 14px; font-size: 13.5px"><span>Dasar Google Sheets</span><span style="color: #5e707c">17 Nov · 30 mnt</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <nav aria-label="Navigasi utama" style="height: 72px; flex-shrink: 0; background: #ffffff; border-top: 1px solid #dde7ea; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px; box-sizing: border-box">
+    <a href="Adm-1-Tugas.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tugas</a>
+    <a href="Adm-6-Jurnal.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #0c7883; font-size: 12px; font-weight: 600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0c7883" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>Jurnal</a>
+    <a href="Adm-8-Progres.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progres</a>
+    <a href="Adm-9-Akun.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5e707c; font-size: 12px; font-weight: 500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Akun</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
